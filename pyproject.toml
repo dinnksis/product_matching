@@ -1,0 +1,26 @@
+[project]
+name = "product-matching"
+version = "0.1.0"
+description = "Experiments for the E-CUP 2026 product matching competition"
+readme = "README.md"
+requires-python = ">=3.11,<3.13"
+dependencies = [
+    "matplotlib>=3.9,<4",
+    "numpy>=2.0,<3",
+    "pandas>=2.2,<3",
+    "pyarrow>=17,<22",
+    "rapidfuzz>=3.12,<4",
+    "scikit-learn>=1.5,<2",
+    "seaborn>=0.13,<0.14",
+]
+
+[dependency-groups]
+dev = [
+    "ipykernel>=6.29,<7",
+    "kaggle>=2.2.3,<3",
+    "nbconvert>=7.16,<8",
+    "nbformat>=5.10,<6",
+]
+
+[tool.uv]
+default-groups = ["dev"]

@@ -1,0 +1,12 @@
+{
+  "docker_image": "vllm/vllm-openai:v0.14.0",
+  "docker_image_manifest_digest": "sha256:1d6866b87630d94f5e0cdae55ab5abb4ce0b03fcb84d9d10612f9d518d19d4fd",
+  "docker_image_linux_amd64_digest": "sha256:48a03c91eaa04fb7e71c77121a85e661d62de1b2207edf591aea6a05d779f9ef",
+  "model_repository": "Qwen/Qwen3-Reranker-0.6B",
+  "model_revision": "e61197ed45024b0ed8a2d74b80b4d909f1255473",
+  "model_safetensors_bytes": 1191588280,
+  "model_safetensors_sha256": "27cd75a405b9c1b46b59abfd88aaa209e6fed2a1972cde9b70e7659537c5e65b",
+  "pyarrow_version": "21.0.0",
+  "pyarrow_source_wheel": "pyarrow-21.0.0-cp312-cp312-manylinux_2_28_x86_64.whl",
+  "pyarrow_source_wheel_sha256": "b7ae0bbdc8c6674259b25bef5d2a1d6af5d39d7200c819cf99e07f7dfef1c51e"
+}

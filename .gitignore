@@ -1,0 +1,28 @@
+.DS_Store
+.venv/
+.cache/
+.kaggle/
+.ipynb_checkpoints/
+__pycache__/
+*.py[cod]
+
+# Local credentials. Keep the committed example only.
+.env
+.env.*
+!.env.example
+
+# Competition data are large and must be downloaded separately.
+data/*.parquet
+data/*.csv
+!data/README.md
+
+# Local experiment artifacts.
+artifacts/
+models/
+checkpoints/
+wandb/
+
+# Generated container-submission payloads are kept locally, not in Git.
+submits/*.zip
+submits/**/models/
+submits/**/vendor/
