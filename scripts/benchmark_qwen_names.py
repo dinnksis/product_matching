@@ -71,7 +71,14 @@ def main() -> None:
     with torch.inference_mode():
         for batch in loader:
             batch = {key: value.cuda(non_blocking=True) for key, value in batch.items()}
-            scores = yes_probability(model(**batch).logits, collator.yes_id, collator.no_id)
+            # The reranker only needs the next-token yes/no logits. Avoiding the
+            # vocabulary projection at every sequence position is substantially
+            # faster and uses much less memory.
+            scores = yes_probability(
+                model(**batch, logits_to_keep=1).logits,
+                collator.yes_id,
+                collator.no_id,
+            )
             predictions.append(scores.float().cpu().numpy())
     torch.cuda.synchronize()
     elapsed = time.perf_counter() - started

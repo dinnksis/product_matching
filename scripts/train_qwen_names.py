@@ -17,6 +17,7 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.distributed as dist
+import torch.nn.functional as F
 from peft import LoraConfig, get_peft_model
 from sklearn.metrics import average_precision_score
 from torch.optim import AdamW
@@ -52,9 +53,9 @@ def evaluate(model, loader, collator, categories, device) -> tuple[float, dict[s
     scores = []
     with torch.inference_mode():
         for batch in loader:
-            targets = batch.pop("labels")[:, -1]
+            batch.pop("targets")
             batch = {key: value.to(device, non_blocking=True) for key, value in batch.items()}
-            logits = model(**batch).logits[:, -2, :]
+            logits = model(**batch, logits_to_keep=1).logits[:, -1, :]
             probability = torch.stack((logits[:, collator.no_id], logits[:, collator.yes_id]), dim=1).softmax(1)[:, 1]
             scores.extend(probability.float().cpu().tolist())
     frame = pd.DataFrame({"target": loader.dataset.targets, "predict": scores, "category": categories})
@@ -141,8 +142,14 @@ def main() -> None:
             train_sampler.set_epoch(epoch)
         model.train()
         for step, batch in enumerate(train_loader, start=1):
+            targets = batch.pop("targets")
             batch = {key: value.to(device, non_blocking=True) for key, value in batch.items()}
-            loss = model(**batch).loss / args.gradient_accumulation
+            targets = targets.to(device, non_blocking=True)
+            logits = model(**batch, logits_to_keep=1).logits[:, -1, :]
+            binary_logits = torch.stack(
+                (logits[:, train_collator.no_id], logits[:, train_collator.yes_id]), dim=1
+            )
+            loss = F.cross_entropy(binary_logits.float(), targets) / args.gradient_accumulation
             loss.backward()
             if step % args.gradient_accumulation == 0 or step == len(train_loader):
                 torch.nn.utils.clip_grad_norm_(model.parameters(), 1.0)

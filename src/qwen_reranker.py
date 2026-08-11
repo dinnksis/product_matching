@@ -42,7 +42,7 @@ class QwenBatchCollator:
 
     def __call__(self, rows: list[dict[str, Any]]) -> dict[str, torch.Tensor]:
         reserved = len(self.prefix_ids) + len(self.suffix_ids)
-        pair_budget = self.max_length - reserved - (1 if self.include_labels else 0)
+        pair_budget = self.max_length - reserved
         if pair_budget <= 0:
             raise ValueError("max_length is too small for the Qwen prompt")
         sequences, targets = [], []
@@ -55,18 +55,14 @@ class QwenBatchCollator:
             )
             sequence = self.prefix_ids + pair_ids + self.suffix_ids
             if self.include_labels:
-                target = self.yes_id if float(row["target"]) >= 0.5 else self.no_id
-                sequence.append(target)
-                targets.append(target)
+                targets.append(1 if float(row["target"]) >= 0.5 else 0)
             sequences.append(sequence)
 
         batch = self.tokenizer.pad(
             {"input_ids": sequences}, padding=True, return_tensors="pt"
         )
         if self.include_labels:
-            labels = torch.full_like(batch["input_ids"], -100)
-            labels[:, -1] = torch.tensor(targets, dtype=torch.long)
-            batch["labels"] = labels
+            batch["targets"] = torch.tensor(targets, dtype=torch.long)
         return batch
 
 
