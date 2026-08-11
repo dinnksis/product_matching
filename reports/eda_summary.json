@@ -1,0 +1,9 @@
+{
+  "items": 711304,
+  "pairs": 365654,
+  "positives": 93890,
+  "positive_rate": 0.2567727961406138,
+  "macro_prevalence": 0.2611126186277738,
+  "light_oof_macro_ap": 0.5350710550134959,
+  "light_oof_overall_ap": 0.6160488255935485
+}
