@@ -1,0 +1,13 @@
+data/
+prepared/
+predictions/
+dist/
+submit*.csv
+*.zip
+__pycache__/
+*.py[cod]
+.pytest_cache/
+.ipynb_checkpoints/
+.venv/
+.idea/
+.vscode/
