@@ -31,6 +31,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--prepared-dir", type=Path, default=Path("prepared/human"))
     parser.add_argument("--pairs", type=Path, help="Defaults to prepared-dir/val_pairs.parquet")
     parser.add_argument("--output", type=Path, default=Path("predictions/qwen_names_val.csv"))
+    parser.add_argument("--report-output", type=Path, help="Defaults to OUTPUT with .report.json suffix")
     parser.add_argument("--batch-size", type=int, default=64)
     parser.add_argument("--max-length", type=int, default=256)
     parser.add_argument("--attention-implementation", default="sdpa", choices=["sdpa", "flash_attention_2"])
@@ -99,7 +100,11 @@ def main() -> None:
         )
         report["macro_average_precision"] = float(per_category.mean())
         report["per_category_average_precision"] = {str(k): float(v) for k, v in per_category.items()}
+    report_output = args.report_output or args.output.with_suffix(".report.json")
+    report_output.parent.mkdir(parents=True, exist_ok=True)
+    report_output.write_text(json.dumps(report, ensure_ascii=False, indent=2), encoding="utf-8")
     print(json.dumps(report, ensure_ascii=False, indent=2))
+    print(f"Saved predictions to {args.output} and report to {report_output}")
 
 
 if __name__ == "__main__":
