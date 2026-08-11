@@ -27,7 +27,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, get_cosine_schedul
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.data_pipeline import attach_item_fields
-from src.qwen_reranker import QwenBatchCollator, yes_probability
+from src.qwen_reranker import QwenBatchCollator, preferred_cuda_dtype
 
 
 def parse_args() -> argparse.Namespace:
@@ -95,8 +95,9 @@ def main() -> None:
     validation = attach_item_fields(pd.read_parquet(args.prepared_dir / "val_pairs.parquet"), items)
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
+    model_dtype = preferred_cuda_dtype()
     model = AutoModelForCausalLM.from_pretrained(
-        args.model, torch_dtype=torch.bfloat16, attn_implementation=args.attention_implementation
+        args.model, torch_dtype=model_dtype, attn_implementation=args.attention_implementation
     )
     if args.training_mode == "lora":
         config = LoraConfig(
@@ -113,6 +114,7 @@ def main() -> None:
     model.gradient_checkpointing_enable()
     model.config.use_cache = False
     if is_main:
+        print(f"GPU: {torch.cuda.get_device_name(device)}, dtype: {model_dtype}")
         if args.training_mode == "lora":
             model.print_trainable_parameters()
         else:

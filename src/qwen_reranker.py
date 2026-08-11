@@ -15,6 +15,12 @@ PREFIX = (
 SUFFIX = "<|im_end|>\n<|im_start|>assistant\n<think>\n\n</think>\n\n"
 
 
+def preferred_cuda_dtype() -> torch.dtype:
+    """Use bf16 on Ampere/Hopper and fp16 on older Kaggle GPUs such as T4."""
+    major, _ = torch.cuda.get_device_capability()
+    return torch.bfloat16 if major >= 8 else torch.float16
+
+
 def format_pair(name1: str, name2: str, instruction: str = INSTRUCTION) -> str:
     return f"<Instruct>: {instruction}\n<Query>: {name1}\n<Document>: {name2}"
 
@@ -67,4 +73,3 @@ class QwenBatchCollator:
 def yes_probability(logits: torch.Tensor, yes_id: int, no_id: int) -> torch.Tensor:
     pair_logits = torch.stack((logits[:, -1, no_id], logits[:, -1, yes_id]), dim=1)
     return pair_logits.softmax(dim=1)[:, 1]
-

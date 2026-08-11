@@ -21,7 +21,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.data_pipeline import attach_item_fields
-from src.qwen_reranker import QwenBatchCollator, yes_probability
+from src.qwen_reranker import QwenBatchCollator, preferred_cuda_dtype, yes_probability
 
 
 def parse_args() -> argparse.Namespace:
@@ -52,8 +52,9 @@ def main() -> None:
     data_ready = time.perf_counter()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
+    model_dtype = preferred_cuda_dtype()
     model = AutoModelForCausalLM.from_pretrained(
-        args.model, torch_dtype=torch.bfloat16, attn_implementation=args.attention_implementation
+        args.model, torch_dtype=model_dtype, attn_implementation=args.attention_implementation
     ).cuda().eval()
     if args.adapter:
         from peft import PeftModel
@@ -81,6 +82,8 @@ def main() -> None:
     result.to_csv(args.output, index=False)
     report = {
         "pairs": len(result),
+        "device": torch.cuda.get_device_name(),
+        "model_dtype": str(model_dtype),
         "data_loading_seconds": data_ready - total_started,
         "model_loading_seconds": model_ready - data_ready,
         "inference_seconds": elapsed,
