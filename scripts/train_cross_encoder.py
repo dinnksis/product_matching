@@ -1,9 +1,5 @@
-"""Efficient LoRA/full fine-tuning of Qwen3-Reranker for product matching.
+"""Configurable DDP fine-tuning for compact product-pair cross-encoders."""
 
-The prepared product text contains category, name and priority-ordered attributes.
-Pair tokenization is cached once, batches are grouped by length, and validation is
-run once after all training epochs.
-"""
 from __future__ import annotations
 
 import argparse
@@ -22,71 +18,148 @@ import pandas as pd
 import torch
 import torch.distributed as dist
 import torch.nn.functional as F
-from peft import LoraConfig, get_peft_model
 from sklearn.metrics import average_precision_score
 from torch.nn.parallel import DistributedDataParallel
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
-from transformers import AutoModelForCausalLM, AutoTokenizer, get_cosine_schedule_with_warmup
+from transformers import (
+    AutoModelForSequenceClassification,
+    AutoTokenizer,
+    get_cosine_schedule_with_warmup,
+)
 
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
+from src.cross_encoder_training import (
+    CrossEncoderBatchCollator,
+    CrossEncoderPairDataset,
+    PairTokenCache,
+    build_pair_token_cache,
+)
 from src.data_pipeline import attach_item_fields
 from src.qwen_reranker import preferred_cuda_dtype
 from src.qwen_training import (
     FixedLengthBatchSampler,
     LengthBucketBatchSampler,
-    PackedBatchCollator,
-    PackedPairDataset,
-    TokenCache,
     balanced_sampling_weights,
-    build_token_cache,
 )
 
 
+ROOT = Path(__file__).resolve().parents[1]
+DEFAULT_CONFIG = ROOT / "configs" / "cross_encoder_minilm.json"
+CONFIG_KEYS = {
+    "model",
+    "epochs",
+    "batch_size",
+    "eval_batch_size",
+    "gradient_accumulation",
+    "learning_rate",
+    "weight_decay",
+    "warmup_ratio",
+    "max_length",
+    "attention_implementation",
+    "sampling",
+    "bucket_size_multiplier",
+    "dataloader_workers",
+    "prefetch_factor",
+    "tokenization_batch_size",
+    "tokenization_log_every",
+    "gradient_checkpointing",
+    "symmetric_validation",
+    "label_smoothing",
+    "max_grad_norm",
+    "log_every",
+    "seed",
+}
+
+
+def load_config_from_cli() -> tuple[Path, dict[str, Any]]:
+    pre_parser = argparse.ArgumentParser(add_help=False)
+    pre_parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
+    known, _ = pre_parser.parse_known_args()
+    config_path = known.config
+    if not config_path.is_file():
+        raise SystemExit(f"Config does not exist: {config_path}")
+    config = json.loads(config_path.read_text(encoding="utf-8"))
+    if not isinstance(config, dict):
+        raise SystemExit("Training config must contain a JSON object")
+    if unknown := set(config) - CONFIG_KEYS:
+        raise SystemExit(f"Unknown training config keys: {sorted(unknown)}")
+    return config_path, config
+
+
 def parse_args() -> argparse.Namespace:
+    config_path, config = load_config_from_cli()
+
+    def configured(name: str, fallback: Any) -> Any:
+        return config.get(name, fallback)
+
     parser = argparse.ArgumentParser()
-    parser.add_argument("--model", default="Qwen/Qwen3-Reranker-0.6B")
+    parser.add_argument("--config", type=Path, default=config_path)
+    parser.add_argument("--model", default=configured("model", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"))
     parser.add_argument("--prepared-dir", type=Path, default=Path("prepared/human"))
-    parser.add_argument("--output-dir", type=Path, default=Path("model/qwen_products_lora"))
+    parser.add_argument("--output-dir", type=Path, default=Path("models/cross_encoder_minilm"))
     parser.add_argument("--token-cache-dir", type=Path)
-    parser.add_argument("--hard-negatives", type=Path)
-    parser.add_argument("--hard-negative-weight", type=float, default=2.0)
-    parser.add_argument("--epochs", type=int, default=2)
-    parser.add_argument("--batch-size", type=int, default=16, help="Per GPU")
-    parser.add_argument("--eval-batch-size", type=int, default=32, help="Per GPU")
-    parser.add_argument("--gradient-accumulation", type=int, default=1)
-    parser.add_argument("--learning-rate", type=float)
-    parser.add_argument("--max-length", type=int, default=384)
+    parser.add_argument("--epochs", type=int, default=configured("epochs", 1))
+    parser.add_argument("--batch-size", type=int, default=configured("batch_size", 96), help="Per GPU")
+    parser.add_argument("--eval-batch-size", type=int, default=configured("eval_batch_size", 192), help="Per GPU")
+    parser.add_argument(
+        "--gradient-accumulation",
+        type=int,
+        default=configured("gradient_accumulation", 1),
+    )
+    parser.add_argument("--learning-rate", type=float, default=configured("learning_rate", 2e-5))
+    parser.add_argument("--weight-decay", type=float, default=configured("weight_decay", 0.01))
+    parser.add_argument("--warmup-ratio", type=float, default=configured("warmup_ratio", 0.05))
+    parser.add_argument("--max-length", type=int, default=configured("max_length", 256))
     parser.add_argument(
         "--attention-implementation",
-        default="sdpa",
-        choices=["sdpa", "flash_attention_2"],
+        choices=["eager", "sdpa"],
+        default=configured("attention_implementation", "sdpa"),
     )
-    parser.add_argument("--lora-rank", type=int, default=16)
-    parser.add_argument(
-        "--lora-targets",
-        choices=["attention", "attention_mlp"],
-        default="attention_mlp",
-    )
-    parser.add_argument("--training-mode", choices=["lora", "full"], default="lora")
     parser.add_argument(
         "--sampling",
         choices=["none", "category", "category_label"],
-        default="category_label",
+        default=configured("sampling", "category_label"),
     )
-    parser.add_argument("--bucket-size-multiplier", type=int, default=50)
-    parser.add_argument("--dataloader-workers", type=int, default=2, help="Per DDP process")
-    parser.add_argument("--prefetch-factor", type=int, default=2)
-    parser.add_argument("--tokenization-batch-size", type=int, default=512)
-    parser.add_argument("--gradient-checkpointing", action="store_true")
+    parser.add_argument(
+        "--bucket-size-multiplier",
+        type=int,
+        default=configured("bucket_size_multiplier", 50),
+    )
+    parser.add_argument(
+        "--dataloader-workers",
+        type=int,
+        default=configured("dataloader_workers", 2),
+        help="Per DDP process",
+    )
+    parser.add_argument("--prefetch-factor", type=int, default=configured("prefetch_factor", 2))
+    parser.add_argument(
+        "--tokenization-batch-size",
+        type=int,
+        default=configured("tokenization_batch_size", 512),
+    )
+    parser.add_argument(
+        "--tokenization-log-every",
+        type=int,
+        default=configured("tokenization_log_every", 50),
+    )
+    parser.add_argument(
+        "--gradient-checkpointing",
+        action=argparse.BooleanOptionalAction,
+        default=configured("gradient_checkpointing", False),
+    )
     parser.add_argument(
         "--symmetric-validation",
         action=argparse.BooleanOptionalAction,
-        default=True,
+        default=configured("symmetric_validation", True),
     )
-    parser.add_argument("--log-every", type=int, default=50)
-    parser.add_argument("--seed", type=int, default=42)
+    parser.add_argument(
+        "--label-smoothing", type=float, default=configured("label_smoothing", 0.0)
+    )
+    parser.add_argument("--max-grad-norm", type=float, default=configured("max_grad_norm", 1.0))
+    parser.add_argument("--log-every", type=int, default=configured("log_every", 20))
+    parser.add_argument("--seed", type=int, default=configured("seed", 42))
     return parser.parse_args()
 
 
@@ -96,74 +169,25 @@ def validate_args(args: argparse.Namespace) -> None:
         "batch-size": args.batch_size,
         "eval-batch-size": args.eval_batch_size,
         "gradient-accumulation": args.gradient_accumulation,
+        "learning-rate": args.learning_rate,
         "max-length": args.max_length,
-        "tokenization-batch-size": args.tokenization_batch_size,
         "bucket-size-multiplier": args.bucket_size_multiplier,
         "prefetch-factor": args.prefetch_factor,
+        "tokenization-batch-size": args.tokenization_batch_size,
+        "tokenization-log-every": args.tokenization_log_every,
+        "max-grad-norm": args.max_grad_norm,
         "log-every": args.log_every,
     }
-    invalid = [name for name, value in positive.items() if value <= 0]
-    if invalid:
+    if invalid := [name for name, value in positive.items() if value <= 0]:
         raise ValueError(f"These arguments must be positive: {', '.join(invalid)}")
     if args.dataloader_workers < 0:
         raise ValueError("dataloader-workers must be non-negative")
-    if args.hard_negative_weight <= 0:
-        raise ValueError("hard-negative-weight must be positive")
-
-
-def add_hard_negatives(
-    train_pairs: pd.DataFrame,
-    validation_pairs: pd.DataFrame,
-    path: Path | None,
-    weight: float,
-) -> pd.DataFrame:
-    train_pairs = train_pairs.reset_index(drop=True).copy()
-    train_pairs["sample_weight"] = 1.0
-    train_pairs["is_hard_negative"] = False
-    if path is None:
-        return train_pairs
-
-    hard = pd.read_parquet(path)
-    required = {"id1", "id2"}
-    if missing := required - set(hard.columns):
-        raise ValueError(f"Hard-negative file is missing columns: {sorted(missing)}")
-    hard = hard.copy()
-    if "target" not in hard:
-        hard["target"] = 0.0
-    if (hard["target"] != 0).any():
-        raise ValueError("The hard-negative file must contain only target=0 rows")
-    if (hard["id1"] == hard["id2"]).any():
-        raise ValueError("The hard-negative file contains self-pairs")
-
-    validation_ids = set(validation_pairs["id1"]) | set(validation_pairs["id2"])
-    leaking = hard["id1"].isin(validation_ids) | hard["id2"].isin(validation_ids)
-    if leaking.any():
-        print(f"Dropped {int(leaking.sum()):,} hard negatives touching validation items")
-        hard = hard.loc[~leaking].copy()
-
-    def canonical_keys(frame: pd.DataFrame) -> pd.MultiIndex:
-        left = np.minimum(frame["id1"].to_numpy(), frame["id2"].to_numpy())
-        right = np.maximum(frame["id1"].to_numpy(), frame["id2"].to_numpy())
-        return pd.MultiIndex.from_arrays([left, right])
-
-    existing = canonical_keys(train_pairs)
-    if existing.has_duplicates:
-        raise ValueError("Training pairs contain duplicate unordered pairs")
-    hard_keys = canonical_keys(hard)
-    existing_positions = existing.get_indexer(hard_keys)
-    matched_positions = np.unique(existing_positions[existing_positions >= 0])
-    if len(matched_positions):
-        train_pairs.loc[matched_positions, "sample_weight"] = weight
-        train_pairs.loc[matched_positions, "is_hard_negative"] = True
-    new_mask = (existing_positions < 0) & ~hard_keys.duplicated()
-    hard = hard.loc[new_mask, ["id1", "id2", "target"]]
-    hard["sample_weight"] = weight
-    hard["is_hard_negative"] = True
-    print(
-        f"Reweighted {len(matched_positions):,} known and added {len(hard):,} external "
-        f"hard negatives with loss weight {weight:g}"
-    )
-    return pd.concat([train_pairs, hard], ignore_index=True)
+    if args.weight_decay < 0:
+        raise ValueError("weight-decay must be non-negative")
+    if not 0 <= args.warmup_ratio < 1:
+        raise ValueError("warmup-ratio must be in [0, 1)")
+    if not 0 <= args.label_smoothing < 1:
+        raise ValueError("label-smoothing must be in [0, 1)")
 
 
 def loader_options(args: argparse.Namespace, *, persistent: bool) -> dict[str, Any]:
@@ -186,13 +210,13 @@ def create_caches(
     args: argparse.Namespace,
     is_main: bool,
     distributed: bool,
-) -> tuple[TokenCache, TokenCache]:
+) -> tuple[PairTokenCache, PairTokenCache]:
     cache_root = args.token_cache_dir or (
         Path("artifacts/token_cache") / args.output_dir.name
     )
     paths: list[str] | None = None
     if is_main:
-        train_cache = build_token_cache(
+        train_cache = build_pair_token_cache(
             train,
             tokenizer,
             cache_root,
@@ -200,8 +224,9 @@ def create_caches(
             args.model,
             args.max_length,
             args.tokenization_batch_size,
+            args.tokenization_log_every,
         )
-        validation_cache = build_token_cache(
+        validation_cache = build_pair_token_cache(
             validation,
             tokenizer,
             cache_root,
@@ -209,6 +234,7 @@ def create_caches(
             args.model,
             args.max_length,
             args.tokenization_batch_size,
+            args.tokenization_log_every,
         )
         paths = [str(train_cache.directory), str(validation_cache.directory)]
     if distributed:
@@ -217,38 +243,7 @@ def create_caches(
         paths = message[0]
     if paths is None:
         raise RuntimeError("Token cache paths were not initialized")
-    return TokenCache.load(Path(paths[0])), TokenCache.load(Path(paths[1]))
-
-
-class BinaryReranker(torch.nn.Module):
-    """Run the Qwen decoder and project its last state to only no/yes rows.
-
-    ``logits_to_keep=1`` avoids vocabulary logits at earlier positions, but the
-    regular CausalLM head still projects the last position to all 151k tokens.
-    The loss uses only no/yes, so selecting those two tied-embedding rows before
-    the projection is mathematically equivalent and avoids the full-vocab GEMM.
-    """
-
-    def __init__(
-        self, causal_model: torch.nn.Module, no_id: int, yes_id: int
-    ) -> None:
-        super().__init__()
-        self.causal_model = causal_model
-        self.register_buffer(
-            "class_token_ids", torch.tensor([no_id, yes_id], dtype=torch.long)
-        )
-
-    def forward(self, **batch: torch.Tensor) -> torch.Tensor:
-        base = (
-            self.causal_model.get_base_model()
-            if hasattr(self.causal_model, "get_base_model")
-            else self.causal_model
-        )
-        hidden = base.model(
-            **batch, use_cache=False, return_dict=True
-        ).last_hidden_state[:, -1]
-        class_weights = base.lm_head.weight.index_select(0, self.class_token_ids)
-        return F.linear(hidden, class_weights)
+    return PairTokenCache.load(Path(paths[0])), PairTokenCache.load(Path(paths[1]))
 
 
 def evaluate(
@@ -257,9 +252,10 @@ def evaluate(
     targets: np.ndarray,
     categories: list[str],
     device: torch.device,
+    amp_dtype: torch.dtype,
     distributed: bool,
     world_size: int,
-) -> tuple[float, dict[str, float]] | None:
+) -> tuple[float, float, dict[str, float]] | None:
     model.eval()
     sums: dict[int, float] = {}
     counts: dict[int, int] = {}
@@ -273,15 +269,16 @@ def evaluate(
                 key: value.to(device, non_blocking=True)
                 for key, value in packed.items()
             }
-            probabilities = model(**batch).float().softmax(1)[:, 1]
-            for index, probability in zip(pair_indices, probabilities.cpu().tolist()):
+            with torch.autocast(device_type="cuda", dtype=amp_dtype):
+                logits = model(**batch).logits.squeeze(-1)
+            probabilities = logits.float().sigmoid().cpu().tolist()
+            for index, probability in zip(pair_indices, probabilities):
                 sums[index] = sums.get(index, 0.0) + probability
                 counts[index] = counts.get(index, 0) + 1
 
     local = [(index, sums[index] / counts[index]) for index in sums]
-    gathered: list[Any]
     if distributed:
-        gathered = [None] * world_size
+        gathered: list[Any] = [None] * world_size
         dist.all_gather_object(gathered, local)
     else:
         gathered = [local]
@@ -300,7 +297,12 @@ def evaluate(
         lambda group: average_precision_score(group["target"], group["predict"]),
         include_groups=False,
     )
-    return float(per_category.mean()), {str(k): float(v) for k, v in per_category.items()}
+    overall_ap = float(average_precision_score(targets, scores))
+    return (
+        float(per_category.mean()),
+        overall_ap,
+        {str(key): float(value) for key, value in per_category.items()},
+    )
 
 
 def main() -> None:
@@ -319,33 +321,19 @@ def main() -> None:
     world_size = dist.get_world_size() if distributed else 1
     device = torch.device("cuda", local_rank)
     is_main = rank == 0
-    if (
-        args.attention_implementation == "flash_attention_2"
-        and torch.cuda.get_device_capability(device)[0] < 8
-    ):
-        raise ValueError(
-            "flash_attention_2 is not supported on Turing GPUs such as T4; use sdpa"
-        )
     random.seed(args.seed + rank)
     np.random.seed(args.seed + rank)
     torch.manual_seed(args.seed + rank)
 
-    items_path = args.prepared_dir / "items.parquet"
-    train_path = args.prepared_dir / "train_pairs.parquet"
-    validation_path = args.prepared_dir / "val_pairs.parquet"
-    items = pd.read_parquet(items_path)
-    required_item_columns = {"id", "product_text", "category"}
-    if missing := required_item_columns - set(items.columns):
-        raise ValueError(
-            f"Prepared items are missing {sorted(missing)}; rerun scripts/prepare_human_data.py"
-        )
-    items = items[["id", "product_text", "category"]]
-    train_pairs = pd.read_parquet(train_path)
-    validation_pairs = pd.read_parquet(validation_path)
-    train_pairs = add_hard_negatives(
-        train_pairs, validation_pairs, args.hard_negatives, args.hard_negative_weight
+    items = pd.read_parquet(
+        args.prepared_dir / "items.parquet",
+        columns=["id", "product_text", "category"],
     )
-    train = attach_item_fields(train_pairs, items, fields=("product_text", "category"))
+    train_pairs = pd.read_parquet(args.prepared_dir / "train_pairs.parquet")
+    validation_pairs = pd.read_parquet(args.prepared_dir / "val_pairs.parquet")
+    train = attach_item_fields(
+        train_pairs, items, fields=("product_text", "category")
+    )
     validation = attach_item_fields(
         validation_pairs, items, fields=("product_text", "category")
     )
@@ -356,27 +344,23 @@ def main() -> None:
     if not validation["target"].isin([0.0, 1.0]).all():
         raise ValueError("Validation targets must be binary for average precision")
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
+    tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
     if tokenizer.pad_token_id is None:
-        tokenizer.pad_token = tokenizer.eos_token
+        raise ValueError("Cross-encoder tokenizer must define pad_token_id")
     train_cache, validation_cache = create_caches(
         train, validation, tokenizer, args, is_main, distributed
     )
-    # The fast tokenizer has already finished its internally parallel work.
-    # Disable its fork warning before DataLoader worker processes are created.
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     train_targets = train["target"].to_numpy(dtype=np.float32)
     validation_targets = validation["target"].to_numpy(dtype=np.float32)
     train_categories = train["category_1"].astype(str).tolist()
     validation_categories = validation["category_1"].astype(str).tolist()
-    sample_weights = train["sample_weight"].to_numpy(dtype=np.float32)
-    hard_negative_count = int(train["is_hard_negative"].sum())
     sampling_weights = balanced_sampling_weights(
         train_categories, train_targets, args.sampling
     )
-    train_dataset = PackedPairDataset(train_cache, train_targets, sample_weights)
-    validation_dataset = PackedPairDataset(validation_cache, validation_targets)
+    train_dataset = CrossEncoderPairDataset(train_cache, train_targets)
+    validation_dataset = CrossEncoderPairDataset(validation_cache, validation_targets)
     train_sampler = LengthBucketBatchSampler(
         train_cache.forward_lengths,
         train_cache.reverse_lengths,
@@ -394,7 +378,7 @@ def main() -> None:
         args.eval_batch_size,
         both_orientations=args.symmetric_validation,
     )
-    collator = PackedBatchCollator(tokenizer.pad_token_id)
+    collator = CrossEncoderBatchCollator(tokenizer.pad_token_id)
     train_loader = DataLoader(
         train_dataset,
         batch_sampler=train_sampler,
@@ -409,65 +393,21 @@ def main() -> None:
     )
     del train, validation, items
 
-    model_dtype = preferred_cuda_dtype()
-    parameter_dtype = torch.float32 if args.training_mode == "full" else model_dtype
-    model = AutoModelForCausalLM.from_pretrained(
+    amp_dtype = preferred_cuda_dtype()
+    model = AutoModelForSequenceClassification.from_pretrained(
         args.model,
-        torch_dtype=parameter_dtype,
+        num_labels=1,
         attn_implementation=args.attention_implementation,
     )
-    if args.training_mode == "lora":
-        target_modules = ["q_proj", "k_proj", "v_proj", "o_proj"]
-        if args.lora_targets == "attention_mlp":
-            target_modules.extend(["gate_proj", "up_proj", "down_proj"])
-        model = get_peft_model(
-            model,
-            LoraConfig(
-                r=args.lora_rank,
-                lora_alpha=args.lora_rank * 2,
-                lora_dropout=0.05,
-                bias="none",
-                task_type="CAUSAL_LM",
-                target_modules=target_modules,
-            ),
-        )
+    model.config.id2label = {0: "MATCH_SCORE"}
+    model.config.label2id = {"MATCH_SCORE": 0}
     model = model.to(device)
-    model.config.use_cache = False
     if args.gradient_checkpointing:
-        model.enable_input_require_grads()
         model.gradient_checkpointing_enable(
             gradient_checkpointing_kwargs={"use_reentrant": False}
         )
-    if is_main:
-        print(
-            json.dumps(
-                {
-                    "gpu": torch.cuda.get_device_name(device),
-                    "world_size": world_size,
-                    "dtype": str(model_dtype),
-                    "training_mode": args.training_mode,
-                    "train_pairs": len(train_dataset),
-                    "validation_pairs": len(validation_dataset),
-                    "hard_negative_pairs": hard_negative_count,
-                    "per_device_batch": args.batch_size,
-                    "effective_batch": args.batch_size
-                    * world_size
-                    * args.gradient_accumulation,
-                    "gradient_checkpointing": args.gradient_checkpointing,
-                    "dataloader_workers_total": args.dataloader_workers * world_size,
-                },
-                ensure_ascii=False,
-            )
-        )
-        if args.training_mode == "lora":
-            model.print_trainable_parameters()
-        else:
-            trainable = sum(p.numel() for p in model.parameters() if p.requires_grad)
-            print(f"Full fine-tuning: {trainable:,} trainable parameters")
 
-    no_id = tokenizer("no", add_special_tokens=False).input_ids[0]
-    yes_id = tokenizer("yes", add_special_tokens=False).input_ids[0]
-    training_model: torch.nn.Module = BinaryReranker(model, no_id, yes_id).to(device)
+    training_model: torch.nn.Module = model
     if distributed:
         training_model = DistributedDataParallel(
             training_model,
@@ -476,19 +416,61 @@ def main() -> None:
             broadcast_buffers=False,
             gradient_as_bucket_view=True,
         )
-    learning_rate = args.learning_rate
-    if learning_rate is None:
-        learning_rate = 2e-4 if args.training_mode == "lora" else 2e-5
-    trainable_parameters = [p for p in training_model.parameters() if p.requires_grad]
-    optimizer = AdamW(trainable_parameters, lr=learning_rate)
+    named_parameters = [
+        (name, parameter)
+        for name, parameter in training_model.named_parameters()
+        if parameter.requires_grad
+    ]
+    decay_parameters = [
+        parameter
+        for name, parameter in named_parameters
+        if parameter.ndim >= 2 and "layer_norm" not in name.lower()
+    ]
+    no_decay_parameters = [
+        parameter
+        for name, parameter in named_parameters
+        if parameter.ndim < 2 or "layer_norm" in name.lower()
+    ]
+    optimizer = AdamW(
+        [
+            {"params": decay_parameters, "weight_decay": args.weight_decay},
+            {"params": no_decay_parameters, "weight_decay": 0.0},
+        ],
+        lr=args.learning_rate,
+    )
     updates_per_epoch = math.ceil(len(train_loader) / args.gradient_accumulation)
     total_updates = updates_per_epoch * args.epochs
     scheduler = get_cosine_schedule_with_warmup(
         optimizer,
-        max(1, int(total_updates * 0.05)),
+        max(1, int(total_updates * args.warmup_ratio)),
         total_updates,
     )
-    scaler = torch.amp.GradScaler("cuda", enabled=model_dtype == torch.float16)
+    scaler = torch.amp.GradScaler("cuda", enabled=amp_dtype == torch.float16)
+    trainable_parameters = [parameter for _, parameter in named_parameters]
+
+    if is_main:
+        print(
+            json.dumps(
+                {
+                    "gpu": torch.cuda.get_device_name(device),
+                    "world_size": world_size,
+                    "model": args.model,
+                    "architecture": type(model).__name__,
+                    "amp_dtype": str(amp_dtype),
+                    "trainable_parameters": sum(p.numel() for p in trainable_parameters),
+                    "train_pairs": len(train_dataset),
+                    "validation_pairs": len(validation_dataset),
+                    "steps_per_epoch": len(train_loader),
+                    "per_device_batch": args.batch_size,
+                    "effective_batch": args.batch_size
+                    * world_size
+                    * args.gradient_accumulation,
+                    "dataloader_workers_total": args.dataloader_workers * world_size,
+                    "validation_schedule": "after_training",
+                }
+            ),
+            flush=True,
+        )
 
     torch.cuda.reset_peak_memory_stats(device)
     torch.cuda.synchronize(device)
@@ -501,10 +483,8 @@ def main() -> None:
         training_model.train()
         interval_started = time.perf_counter()
         interval_loss = torch.zeros((), dtype=torch.float32, device=device)
-        interval_steps = 0
-        interval_examples = 0
-        interval_useful_tokens = 0
-        interval_padded_tokens = 0
+        interval_steps = interval_examples = 0
+        interval_useful_tokens = interval_padded_tokens = 0
         previous_step_finished = interval_started
         interval_data_seconds = 0.0
 
@@ -518,6 +498,8 @@ def main() -> None:
             useful_tokens = int(packed["attention_mask"].sum())
             padded_tokens = packed["attention_mask"].numel()
             targets = cpu_targets.to(device, non_blocking=True)
+            if args.label_smoothing:
+                targets = targets * (1 - args.label_smoothing) + 0.5 * args.label_smoothing
             weights = packed.pop("sample_weights").to(device, non_blocking=True)
             batch = {
                 key: value.to(device, non_blocking=True)
@@ -537,12 +519,10 @@ def main() -> None:
                 else nullcontext()
             )
             with sync_context:
-                with torch.autocast(device_type="cuda", dtype=model_dtype):
-                    logits = training_model(**batch)
+                with torch.autocast(device_type="cuda", dtype=amp_dtype):
+                    logits = training_model(**batch).logits.squeeze(-1)
                     per_example_loss = F.binary_cross_entropy_with_logits(
-                        (logits[:, 1] - logits[:, 0]).float(),
-                        targets,
-                        reduction="none",
+                        logits.float(), targets, reduction="none"
                     )
                     raw_loss = (per_example_loss * weights).sum() / weights.sum()
                     loss = raw_loss / group_size
@@ -550,7 +530,9 @@ def main() -> None:
 
             if should_update:
                 scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(trainable_parameters, 1.0)
+                torch.nn.utils.clip_grad_norm_(
+                    trainable_parameters, args.max_grad_norm
+                )
                 scaler.step(optimizer)
                 scaler.update()
                 scheduler.step()
@@ -566,9 +548,12 @@ def main() -> None:
             interval_steps += 1
             previous_step_finished = time.perf_counter()
 
-            if is_main and ((step + 1) % args.log_every == 0 or step + 1 == len(train_loader)):
+            if is_main and (
+                (step + 1) % args.log_every == 0 or step + 1 == len(train_loader)
+            ):
                 torch.cuda.synchronize(device)
                 interval_seconds = time.perf_counter() - interval_started
+                seconds_per_step = interval_seconds / interval_steps
                 print(
                     json.dumps(
                         {
@@ -579,6 +564,10 @@ def main() -> None:
                             "examples_per_second": interval_examples
                             * world_size
                             / interval_seconds,
+                            "seconds_per_step": seconds_per_step,
+                            "epoch_eta_minutes": (len(train_loader) - step - 1)
+                            * seconds_per_step
+                            / 60,
                             "data_wait_fraction_approx": interval_data_seconds
                             / interval_seconds,
                             "padding_efficiency": interval_useful_tokens
@@ -587,14 +576,13 @@ def main() -> None:
                             / 2**30,
                             "learning_rate": scheduler.get_last_lr()[0],
                         }
-                    )
+                    ),
+                    flush=True,
                 )
                 interval_started = time.perf_counter()
                 interval_loss = torch.zeros((), dtype=torch.float32, device=device)
-                interval_steps = 0
-                interval_examples = 0
-                interval_useful_tokens = 0
-                interval_padded_tokens = 0
+                interval_steps = interval_examples = 0
+                interval_useful_tokens = interval_padded_tokens = 0
                 interval_data_seconds = 0.0
                 previous_step_finished = interval_started
 
@@ -610,8 +598,6 @@ def main() -> None:
         dist.all_reduce(totals, op=dist.ReduceOp.SUM)
         dist.all_reduce(elapsed, op=dist.ReduceOp.MAX)
 
-    # Shut persistent training workers down before validation workers are
-    # started, otherwise both pools remain alive and contend for the same CPUs.
     del train_loader
     inference_model = training_model.module if distributed else training_model
     torch.cuda.synchronize(device)
@@ -622,6 +608,7 @@ def main() -> None:
         validation_targets,
         validation_categories,
         device,
+        amp_dtype,
         distributed,
         world_size,
     )
@@ -646,30 +633,34 @@ def main() -> None:
     if is_main:
         if validation_result is None:
             raise RuntimeError("Main rank did not receive validation metrics")
-        macro_ap, per_category = validation_result
+        macro_ap, overall_ap, per_category = validation_result
         report = {
             "training_seconds": float(elapsed.item()),
             "validation_seconds": validation_seconds,
             "total_pipeline_seconds": time.perf_counter() - pipeline_started,
             "training_examples": int(totals[0].item()),
-            "hard_negative_pairs": hard_negative_count,
             "examples_per_second": float(totals[0].item() / elapsed.item()),
             "padding_efficiency": float(totals[1].item() / totals[2].item()),
             "peak_vram_gib_by_rank": peak_memory_by_rank,
             "macro_average_precision": macro_ap,
+            "overall_average_precision": overall_ap,
             "per_category_average_precision": per_category,
             "args": vars(args),
         }
         args.output_dir.mkdir(parents=True, exist_ok=True)
-        inference_model.causal_model.save_pretrained(args.output_dir)
+        inference_model.save_pretrained(args.output_dir, safe_serialization=True)
         tokenizer.save_pretrained(args.output_dir)
         (args.output_dir / "training_report.json").write_text(
             json.dumps(report, default=str, ensure_ascii=False, indent=2),
             encoding="utf-8",
         )
-        print(json.dumps(report, default=str, ensure_ascii=False, indent=2))
-        print(f"Saved {args.training_mode} model to {args.output_dir}")
+        (args.output_dir / "training_config.json").write_text(
+            args.config.read_text(encoding="utf-8"), encoding="utf-8"
+        )
+        print(json.dumps(report, default=str, ensure_ascii=False, indent=2), flush=True)
+        print(f"Saved cross-encoder to {args.output_dir}", flush=True)
     if distributed:
+        dist.barrier()
         dist.destroy_process_group()
 
 

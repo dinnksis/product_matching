@@ -72,15 +72,27 @@ def serialize_attributes(raw_attributes: str, max_chars: int | None = 6000) -> s
             fields.append(f"{key_text}: {value_text}")
     text = "\n".join(fields)
     if max_chars is not None and len(text) > max_chars:
-        text = text[:max_chars].rsplit("\n", 1)[0].rstrip() + "\n[характеристики обрезаны]"
+        text = (
+            text[:max_chars].rsplit("\n", 1)[0].rstrip()
+            + "\nХарактеристики обрезаны: да"
+        )
     return text
 
 
 def serialize_product(row: pd.Series, max_attribute_chars: int | None = 6000) -> str:
-    parts = [f"Категория: {clean_field(row['category'])}", f"Название: {clean_field(row['name'])}"]
+    """Serialize a product as one ``field: value`` record per line.
+
+    Keeping the category, name and attributes in the same flat representation
+    makes truncation predictable: identifiers and other high-priority
+    attributes are emitted first by :func:`serialize_attributes`.
+    """
+    parts = [
+        f"Категория: {clean_field(row['category'])}",
+        f"Название: {clean_field(row['name'])}",
+    ]
     attributes = serialize_attributes(row["attributes"], max_chars=max_attribute_chars)
     if attributes:
-        parts.append("Характеристики:\n" + attributes)
+        parts.extend(attributes.splitlines())
     return "\n".join(parts)
 
 
@@ -164,4 +176,3 @@ def attach_item_fields(
     if result[[f"{field}_{side}" for field in fields for side in (1, 2)]].isna().any().any():
         raise ValueError("Some pair ids are absent from items")
     return result
-

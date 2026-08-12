@@ -1,4 +1,4 @@
-"""Full fine-tuning entry point for the names-only Qwen experiment.
+"""Full fine-tuning entry point for the product-text Qwen experiment.
 
 Kept separate so it cannot be started accidentally while running the LoRA
 experiment. All training mechanics live in train_qwen_names.py.
@@ -17,5 +17,5 @@ if __name__ == "__main__":
     if "--training-mode" not in sys.argv:
         sys.argv.extend(["--training-mode", "full"])
     if "--output-dir" not in sys.argv:
-        sys.argv.extend(["--output-dir", "model/qwen_names_full"])
+        sys.argv.extend(["--output-dir", "model/qwen_products_full"])
     main()

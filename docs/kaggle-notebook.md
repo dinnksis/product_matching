@@ -101,3 +101,79 @@ uv run python scripts/run_kaggle_notebook.py notebooks/train.ipynb \
 
 Остановка локального ожидания через `Ctrl+C` не обязательно останавливает remote
 kernel. Ссылку на него скрипт печатает перед отправкой.
+
+## Полное обучение Qwen3-Reranker на двух T4
+
+Для обучения используется сгенерированный notebook
+`notebooks/qwen3_reranker_training_2xt4.ipynb` и отдельный приватный Dataset.
+Dataset содержит `items_human.parquet`, `matches.parquet`, `requirements-gpu.txt`,
+актуальные файлы `src/` и training scripts в code bundle, а также manifest с
+SHA-256 каждого файла. Kaggle обычно автоматически разворачивает загруженный
+ZIP в каталог `product_matching_training_code`; notebook поддерживает и каталог,
+и исходный ZIP, проверяя хеш каждого файла до запуска. Поэтому код и данные не
+могут незаметно разойтись.
+
+Собрать notebook и локальный payload без обращения к Kaggle:
+
+```bash
+make kaggle-train-build
+uv run python scripts/push_kaggle_training_dataset.py --dry-run
+```
+
+Создать приватный Dataset при первом запуске или добавить новую версию при
+следующем:
+
+```bash
+make kaggle-train-data
+```
+
+Скрипт сам выбирает `datasets create` или `datasets version`, сохраняет Parquet
+без преобразования в CSV и ждёт готовности новой версии. В конце он печатает
+reference вида `owner/product-matching-qwen-training`.
+
+Проверить будущую отправку notebook, явно подключив training Dataset:
+
+```bash
+uv run python scripts/run_kaggle_notebook.py \
+  notebooks/qwen3_reranker_training_2xt4.ipynb \
+  --dataset owner/product-matching-qwen-training \
+  --no-env-sources \
+  --dry-run
+```
+
+Отправить notebook и вернуть управление сразу после создания remote run:
+
+```bash
+uv run python scripts/run_kaggle_notebook.py \
+  notebooks/qwen3_reranker_training_2xt4.ipynb \
+  --dataset owner/product-matching-qwen-training \
+  --no-env-sources \
+  --no-wait
+```
+
+Без `--no-wait` runner будет отслеживать выполнение до конца и скачает model
+adapter, `training_report.json`, полный training log и completion marker.
+
+Notebook запускает DDP через `torch.distributed.run --nproc_per_node=2`.
+`batch_size=32` относится к одной GPU (глобально 64), а `dataloader_workers=2`
+создаёт по два worker-процесса на каждую T4. Сериализация и token cache строятся
+до старта GPU-обучения, validation выполняется один раз после всех эпох.
+Промежуточные prepared-файлы и token cache находятся в `/kaggle/temp`, чтобы не
+попадать в скачиваемые notebook outputs.
+
+## MiniLM cross-encoder без PEFT
+
+Для более быстрого full fine-tuning добавлен отдельный notebook
+`notebooks/cross_encoder_minilm_training_2xt4.ipynb`. Он использует
+`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`, не импортирует PEFT и управляется
+одним JSON-файлом `configs/cross_encoder_minilm.json`.
+
+```bash
+make kaggle-cross-build
+make kaggle-train-data       # только при первом запуске или изменении src/scripts
+make kaggle-cross-dry-run
+make kaggle-cross-run
+```
+
+Подробное описание параметров, локального и Kaggle-запуска находится в
+[`docs/cross-encoder-training.md`](cross-encoder-training.md).

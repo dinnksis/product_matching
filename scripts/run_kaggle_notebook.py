@@ -124,6 +124,9 @@ def validate_slug(value: str, label: str) -> str:
 
 
 def kaggle_command() -> list[str]:
+    local_executable = ROOT / ".venv" / "bin" / "kaggle"
+    if local_executable.is_file():
+        return [str(local_executable)]
     executable = shutil.which("kaggle")
     if executable:
         return [executable]
@@ -254,6 +257,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--no-wait", action="store_true", help="return immediately after push")
     parser.add_argument("--no-download", action="store_true", help="do not download outputs")
     parser.add_argument("--no-gpu-check", action="store_true", help="do not assert that two T4s exist")
+    parser.add_argument(
+        "--no-env-sources",
+        action="store_true",
+        help="ignore dataset/competition/kernel/model sources from .env",
+    )
     parser.add_argument("--dry-run", action="store_true", help="prepare files but do not call Kaggle")
     return parser
 
@@ -291,10 +299,18 @@ def main() -> int:
     wait_timeout = env_int("KAGGLE_WAIT_TIMEOUT_SECONDS", 45000, minimum=60)
     poll_interval = env_int("KAGGLE_POLL_INTERVAL_SECONDS", 30, minimum=5)
 
-    datasets = split_sources(os.getenv("KAGGLE_DATASET_SOURCES")) + args.dataset
-    competitions = split_sources(os.getenv("KAGGLE_COMPETITION_SOURCES")) + args.competition
-    kernel_sources = split_sources(os.getenv("KAGGLE_KERNEL_SOURCES"))
-    model_sources = split_sources(os.getenv("KAGGLE_MODEL_SOURCES"))
+    env_datasets = [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_DATASET_SOURCES"))
+    env_competitions = (
+        [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_COMPETITION_SOURCES"))
+    )
+    datasets = env_datasets + args.dataset
+    competitions = env_competitions + args.competition
+    kernel_sources = (
+        [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_KERNEL_SOURCES"))
+    )
+    model_sources = (
+        [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_MODEL_SOURCES"))
+    )
 
     stage_dir = STAGE_ROOT / slug
     stage_dir.mkdir(parents=True, exist_ok=True)

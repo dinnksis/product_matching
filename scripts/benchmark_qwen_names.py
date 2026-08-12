@@ -1,4 +1,4 @@
-"""Zero-shot/adapter validation and timed inference for Qwen3-Reranker.
+"""Product-text adapter validation and timed inference for Qwen3-Reranker.
 
 This script intentionally is not part of the CPU fallback submission yet.
 Run it on a GPU machine after downloading the model files.
@@ -30,11 +30,20 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--adapter", type=Path)
     parser.add_argument("--prepared-dir", type=Path, default=Path("prepared/human"))
     parser.add_argument("--pairs", type=Path, help="Defaults to prepared-dir/val_pairs.parquet")
-    parser.add_argument("--output", type=Path, default=Path("predictions/qwen_names_val.csv"))
-    parser.add_argument("--report-output", type=Path, help="Defaults to OUTPUT with .report.json suffix")
+    parser.add_argument(
+        "--output", type=Path, default=Path("predictions/qwen_names_val.csv")
+    )
+    parser.add_argument(
+        "--report-output", type=Path, help="Defaults to OUTPUT with .report.json suffix"
+    )
     parser.add_argument("--batch-size", type=int, default=64)
-    parser.add_argument("--max-length", type=int, default=256)
-    parser.add_argument("--attention-implementation", default="sdpa", choices=["sdpa", "flash_attention_2"])
+    parser.add_argument("--max-length", type=int, default=384)
+    parser.add_argument(
+        "--attention-implementation",
+        default="sdpa",
+        choices=["sdpa", "flash_attention_2"],
+    )
+    parser.add_argument("--dataloader-workers", type=int, default=2)
     parser.add_argument("--limit", type=int, help="Useful for throughput smoke tests")
     return parser.parse_args()
 
@@ -45,11 +54,14 @@ def main() -> None:
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required")
     pairs_path = args.pairs or args.prepared_dir / "val_pairs.parquet"
-    items = pd.read_parquet(args.prepared_dir / "items.parquet", columns=["id", "name", "category"])
+    items = pd.read_parquet(
+        args.prepared_dir / "items.parquet",
+        columns=["id", "product_text", "category"],
+    )
     pairs = pd.read_parquet(pairs_path)
     if args.limit:
         pairs = pairs.head(args.limit).copy()
-    data = attach_item_fields(pairs, items, fields=("name", "category"))
+    data = attach_item_fields(pairs, items, fields=("product_text", "category"))
     data_ready = time.perf_counter()
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
@@ -64,7 +76,15 @@ def main() -> None:
 
     collator = QwenBatchCollator(tokenizer, max_length=args.max_length)
     rows = data.to_dict("records")
-    loader = DataLoader(rows, batch_size=args.batch_size, shuffle=False, collate_fn=collator)
+    loader = DataLoader(
+        rows,
+        batch_size=args.batch_size,
+        shuffle=False,
+        collate_fn=collator,
+        num_workers=args.dataloader_workers,
+        pin_memory=True,
+        persistent_workers=args.dataloader_workers > 0,
+    )
     predictions: list[np.ndarray] = []
     torch.cuda.synchronize()
     started = time.perf_counter()
@@ -98,6 +118,7 @@ def main() -> None:
         "total_seconds": time.perf_counter() - total_started,
         "pairs_per_second": len(result) / elapsed,
         "estimated_seconds_1m_pairs": 1_000_000 * elapsed / len(result),
+        "dataloader_workers": args.dataloader_workers,
     }
     if "target" in data:
         scored = pd.DataFrame({"target": data["target"], "predict": scores, "category": data["category_1"]})

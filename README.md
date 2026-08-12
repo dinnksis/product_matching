@@ -105,6 +105,72 @@ make report
 `make report` пересоздаёт notebook, исполняет его на локальных parquet-файлах и
 экспортирует HTML. На текущем объёме расчёт занимает примерно 1–2 минуты на CPU.
 
+## Fine-tuning Qwen3-Reranker
+
+Сначала нужно заново подготовить данные. Каждый товар записывается плоским
+списком, по одному полю на строку: `Категория: значение`, `Название: значение`,
+затем приоритетные артикулы, бренд, модель, размер и остальные характеристики.
+
+```bash
+python scripts/prepare_human_data.py
+```
+
+Обучение на двух GPU запускается через DDP. `--batch-size` задаётся на одну GPU;
+приведённая конфигурация имеет глобальный batch 32 без gradient accumulation:
+
+```bash
+torchrun --standalone --nproc_per_node=2 scripts/train_qwen_names.py \
+  --batch-size 16 \
+  --max-length 384 \
+  --epochs 2 \
+  --dataloader-workers 2
+```
+
+При первом запуске rank 0 пакетно токенизирует обе ориентации каждой пары и
+сохраняет mmap-кэш в `artifacts/token_cache/`. Следующие запуски с теми же
+данными, моделью, prompt и `max-length` переиспользуют его. DataLoader каждого
+DDP-процесса использует отдельные worker-процессы, prefetch, pinned memory и
+length bucketing. Validation запускается один раз после всех эпох, делится между
+GPU и по умолчанию усредняет scores для порядков A/B и B/A.
+
+Gradient checkpointing по умолчанию выключен. Если выбранные длина и batch не
+помещаются в VRAM, сначала уменьшите `--batch-size`; checkpointing включается
+явно флагом `--gradient-checkpointing`. На T4 следует оставлять `--attention-implementation sdpa`.
+
+По умолчанию sampler выравнивает сочетания категории и класса, LoRA добавляется
+как в attention, так и в MLP-проекции. Отключить это для контрольной абляции
+можно через `--sampling none --lora-targets attention`. Внешний результат
+hard-negative mining подключается Parquet-файлом с `id1,id2` и необязательным
+нулевым `target`:
+
+```bash
+torchrun --standalone --nproc_per_node=2 scripts/train_qwen_names.py \
+  --hard-negatives prepared/hard_negatives.parquet \
+  --hard-negative-weight 2
+```
+
+Hard negatives, содержащие товары из validation, автоматически исключаются.
+Итоговые throughput, padding efficiency, peak VRAM и macro/category AP пишутся
+в `training_report.json` рядом с adapter/model checkpoint.
+
+## Компактный MiniLM cross-encoder
+
+Для быстрого full fine-tuning без PEFT добавлен multilingual checkpoint
+`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`. Все параметры находятся в
+`configs/cross_encoder_minilm.json`; текущий preset обучается одну эпоху на
+2×T4 с batch 96 на GPU и validation только после обучения.
+
+```bash
+make kaggle-cross-build
+make kaggle-train-data
+make kaggle-cross-dry-run
+make kaggle-cross-run
+```
+
+Последующие изменения только гиперпараметров не требуют новой версии Dataset —
+достаточно изменить JSON и повторить последние две команды. Полная инструкция:
+[`docs/cross-encoder-training.md`](docs/cross-encoder-training.md).
+
 ## Удалённый запуск notebook на Kaggle (2×T4)
 
 Один раз установите окружение и заполните локальный `.env`:
@@ -141,6 +207,25 @@ Kaggle datasets/competition/model sources перечисляются через 
 вернёт их как output. Выделение двух GPU само по себе не распараллеливает
 обучение: notebook должен использовать DDP, `accelerate` или multi-GPU режим
 конкретного trainer.
+
+Готовый DDP notebook для полного human-labelled обучения создаётся вместе с
+приватным Kaggle Dataset payload:
+
+```bash
+make kaggle-train-build
+make kaggle-train-data
+uv run python scripts/run_kaggle_notebook.py \
+  notebooks/qwen3_reranker_training_2xt4.ipynb \
+  --dataset owner/product-matching-qwen-training \
+  --no-env-sources \
+  --no-wait
+```
+
+Dataset включает исходные parquet, текущую реализацию `src/`, training scripts
+и manifest их SHA-256. Notebook проверяет bundle, разворачивает проект в
+`/kaggle/working`, использует batch 32 на каждую T4 и по два DataLoader worker'а
+на DDP process. Подробный сценарий описан в
+[`docs/kaggle-notebook.md`](docs/kaggle-notebook.md).
 
 ### Zero-shot Qwen3 reranker через vLLM
 
@@ -285,11 +370,17 @@ python -u run.py \
 ├── data/                       # локальные parquet-файлы (не в Git)
 ├── notebooks/
 │   ├── 01_human_data_eda.ipynb
+│   ├── cross_encoder_minilm_training_2xt4.ipynb
+│   ├── qwen3_reranker_training_2xt4.ipynb
 │   └── qwen3_vllm_inference_10k.ipynb
 ├── reports/                    # HTML и компактные таблицы EDA
 ├── scripts/
 │   ├── create_eda_notebook.py
+│   ├── create_cross_encoder_training_notebook.py
+│   ├── create_qwen_training_notebook.py
 │   ├── create_qwen3_vllm_notebook.py
+│   ├── push_kaggle_training_dataset.py
+│   ├── run_cross_encoder_kaggle.py
 │   └── run_kaggle_notebook.py
 ├── src/product_matching/
 │   └── eda.py                  # проверки, признаки, CV baseline

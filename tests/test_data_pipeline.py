@@ -19,6 +19,19 @@ class DataPipelineTest(unittest.TestCase):
         row = pd.Series({"name": "  A   B ", "category": "Demo", "attributes": "{}"})
         self.assertEqual(serialize_product(row), "Категория: Demo\nНазвание: A B")
 
+    def test_product_attributes_are_flat_lines(self) -> None:
+        row = pd.Series(
+            {
+                "name": "Phone",
+                "category": "Electronics",
+                "attributes": json.dumps({"цвет": "чёрный", "бренд": "Acme"}),
+            }
+        )
+        self.assertEqual(
+            serialize_product(row),
+            "Категория: Electronics\nНазвание: Phone\nбренд: Acme\nцвет: чёрный",
+        )
+
     def test_component_split_has_no_item_leakage(self) -> None:
         pairs = pd.DataFrame(
             {"id1": [1, 2, 10, 20], "id2": [2, 3, 11, 21], "target": [1, 0, 1, 0]}
