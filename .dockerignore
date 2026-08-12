@@ -1,0 +1,13 @@
+.git
+.gitignore
+data
+prepared
+predictions
+dist
+notebooks
+tests
+scripts
+*.zip
+submit*.csv
+__pycache__
+.pytest_cache

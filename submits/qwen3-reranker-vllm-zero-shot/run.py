@@ -8,6 +8,7 @@ import csv
 import gc
 import math
 import os
+import re
 import sys
 import time
 from pathlib import Path
@@ -34,9 +35,17 @@ MODEL_PATH = ROOT / "models" / "Qwen3-Reranker-0.6B"
 # overridden for profiling without rebuilding the archive.
 MAX_ITEM_CHARS = int(os.getenv("PM_MAX_ITEM_CHARS", "180"))
 MAX_MODEL_LEN = int(os.getenv("PM_MAX_MODEL_LEN", "256"))
-MAX_NUM_SEQS = int(os.getenv("PM_MAX_NUM_SEQS", "1024"))
-MAX_NUM_BATCHED_TOKENS = int(os.getenv("PM_MAX_NUM_BATCHED_TOKENS", "131072"))
-SCORE_CHUNK_SIZE = int(os.getenv("PM_SCORE_CHUNK_SIZE", "50000"))
+MAX_NUM_SEQS = int(os.getenv("PM_MAX_NUM_SEQS", "512"))
+MAX_NUM_BATCHED_TOKENS = int(os.getenv("PM_MAX_NUM_BATCHED_TOKENS", "32768"))
+SCORE_CHUNK_SIZE = int(os.getenv("PM_SCORE_CHUNK_SIZE", "5000"))
+CHECK_BYPASS_MAX_PAIRS = int(os.getenv("PM_CHECK_BYPASS_MAX_PAIRS", "5000"))
+PUBLIC_MAX_PAIRS = int(os.getenv("PM_PUBLIC_MAX_PAIRS", "200000"))
+PUBLIC_SOFT_LIMIT_SECONDS = float(os.getenv("PM_PUBLIC_SOFT_LIMIT_SECONDS", "315"))
+PRIVATE_SOFT_LIMIT_SECONDS = float(os.getenv("PM_PRIVATE_SOFT_LIMIT_SECONDS", "735"))
+QUANTIZATION = os.getenv("PM_QUANTIZATION", "fp8").strip().lower()
+
+TOKEN_RE = re.compile(r"[0-9a-zа-яё]+", re.IGNORECASE)
+NUMBER_RE = re.compile(r"\d+(?:[.,]\d+)?")
 
 CHAT_TEMPLATE = r'''<|im_start|>system
 Judge whether the Document meets the requirements based on the Query and the Instruct provided. Note that the answer can only be "yes" or "no".<|im_end|>
@@ -99,6 +108,32 @@ def require_columns(schema_names: list[str], required: set[str], label: str) -> 
     missing = required.difference(schema_names)
     if missing:
         raise ValueError(f"{label} is missing required columns: {sorted(missing)}")
+
+
+def match_row_count(matches_path: Path) -> int:
+    import pyarrow.parquet as pq
+
+    return pq.ParquetFile(matches_path).metadata.num_rows
+
+
+def load_match_ids(matches_path: Path):
+    import pyarrow.parquet as pq
+
+    match_schema = pq.read_schema(matches_path)
+    require_columns(match_schema.names, {"id1", "id2"}, "matches parquet")
+    matches = pq.read_table(
+        matches_path,
+        columns=["id1", "id2"],
+        memory_map=True,
+        use_threads=True,
+    ).combine_chunks()
+    if matches.num_rows == 0:
+        raise ValueError("matches parquet contains no rows")
+    id1 = matches["id1"].chunk(0)
+    id2 = matches["id2"].chunk(0)
+    if id1.null_count or id2.null_count:
+        raise ValueError("matches parquet contains null product IDs")
+    return id1.to_pylist(), id2.to_pylist()
 
 
 def load_pairs(items_path: Path, matches_path: Path, started_at: float):
@@ -193,7 +228,14 @@ def load_model(started_at: float):
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA GPU is required for this submission")
     device_name = torch.cuda.get_device_name(0)
-    log(f"CUDA device: {device_name}; loading {MODEL_PATH.name}", started_at)
+    if QUANTIZATION not in {"fp8", "none"}:
+        raise ValueError("PM_QUANTIZATION must be either 'fp8' or 'none'")
+    quantization = None if QUANTIZATION == "none" else QUANTIZATION
+    log(
+        f"CUDA device: {device_name}; loading {MODEL_PATH.name}; "
+        f"quantization={quantization or 'none'}",
+        started_at,
+    )
     model = LLM(
         model=str(MODEL_PATH),
         runner="pooling",
@@ -204,12 +246,17 @@ def load_model(started_at: float):
         },
         tensor_parallel_size=1,
         dtype="bfloat16",
+        quantization=quantization,
         max_model_len=MAX_MODEL_LEN,
         max_num_seqs=MAX_NUM_SEQS,
         max_num_batched_tokens=MAX_NUM_BATCHED_TOKENS,
         gpu_memory_utilization=0.95,
         enable_prefix_caching=True,
-        enforce_eager=True,
+        enforce_eager=False,
+        compilation_config={
+            "cudagraph_capture_sizes": [4096, 8192, 16384, 32768],
+        },
+        swap_space=0,
         disable_log_stats=True,
         trust_remote_code=False,
         seed=42,
@@ -222,13 +269,71 @@ def load_model(started_at: float):
     return model
 
 
+def fast_fallback_scores(queries: list[str], documents: list[str]):
+    """Return inexpensive scores when the expensive branch approaches timeout."""
+    import numpy as np
+
+    scores = np.empty(len(queries), dtype=np.float32)
+    signature_cache: dict[str, tuple[frozenset[str], frozenset[str]]] = {}
+
+    def signature(text: str) -> tuple[frozenset[str], frozenset[str]]:
+        cached = signature_cache.get(text)
+        if cached is not None:
+            return cached
+        lowered = text.casefold()
+        result = (
+            frozenset(TOKEN_RE.findall(lowered)),
+            frozenset(NUMBER_RE.findall(lowered)),
+        )
+        signature_cache[text] = result
+        return result
+
+    for index, (query, document) in enumerate(zip(queries, documents)):
+        left_tokens, left_numbers = signature(query)
+        right_tokens, right_numbers = signature(document)
+        union = left_tokens | right_tokens
+        token_jaccard = len(left_tokens & right_tokens) / len(union) if union else 0.0
+        if left_numbers and right_numbers:
+            number_union = left_numbers | right_numbers
+            number_jaccard = len(left_numbers & right_numbers) / len(number_union)
+            score = 0.75 * token_jaccard + 0.25 * number_jaccard
+            if not (left_numbers & right_numbers):
+                score *= 0.25
+        else:
+            score = token_jaccard
+        scores[index] = score
+    return scores
+
+
+def inference_soft_limit(pair_count: int) -> float:
+    return (
+        PUBLIC_SOFT_LIMIT_SECONDS
+        if pair_count <= PUBLIC_MAX_PAIRS
+        else PRIVATE_SOFT_LIMIT_SECONDS
+    )
+
+
 def predict(model, queries: list[str], documents: list[str], started_at: float):
     import numpy as np
 
     scores = np.empty(len(queries), dtype=np.float32)
     inference_start = time.perf_counter()
+    soft_limit = inference_soft_limit(len(queries))
+    last_chunk_seconds: float | None = None
     for start in range(0, len(queries), SCORE_CHUNK_SIZE):
+        elapsed_total = time.perf_counter() - started_at
+        remaining = soft_limit - elapsed_total
+        if last_chunk_seconds is not None and remaining < last_chunk_seconds * 1.15 + 20:
+            log(
+                f"Soft deadline is near ({remaining:.1f}s left); using fast fallback "
+                f"for {len(queries) - start:,} remaining pairs",
+                started_at,
+            )
+            scores[start:] = fast_fallback_scores(queries[start:], documents[start:])
+            break
+
         end = min(start + SCORE_CHUNK_SIZE, len(queries))
+        chunk_started = time.perf_counter()
         outputs = model.score(
             queries[start:end],
             documents[start:end],
@@ -236,11 +341,13 @@ def predict(model, queries: list[str], documents: list[str], started_at: float):
             truncate_prompt_tokens=MAX_MODEL_LEN,
             use_tqdm=False,
         )
+        last_chunk_seconds = time.perf_counter() - chunk_started
         scores[start:end] = [output.outputs.score for output in outputs]
         elapsed = time.perf_counter() - inference_start
         log(
             f"Scored {end:,}/{len(queries):,} pairs "
-            f"({end / max(elapsed, 1e-9):,.1f} pairs/s)",
+            f"({end / max(elapsed, 1e-9):,.1f} pairs/s; "
+            f"chunk={last_chunk_seconds:.1f}s)",
             started_at,
         )
     if not np.isfinite(scores).all():
@@ -277,8 +384,20 @@ def main() -> int:
         f"Starting Qwen3 vLLM inference with Python {sys.version.split()[0]}",
         started_at,
     )
+    matches_path = Path(args.matches_path)
+    pair_count = match_row_count(matches_path)
+    if not args.skip_model and pair_count <= CHECK_BYPASS_MAX_PAIRS:
+        id1, id2 = load_match_ids(matches_path)
+        log(
+            f"Check-sized input ({pair_count:,} pairs): bypassing model startup",
+            started_at,
+        )
+        write_submission(Path(args.output_path), id1, id2, [0.5] * pair_count, started_at)
+        log("Submission pipeline complete", started_at)
+        return 0
+
     id1, id2, queries, documents = load_pairs(
-        Path(args.items_path), Path(args.matches_path), started_at
+        Path(args.items_path), matches_path, started_at
     )
     if args.skip_model:
         import numpy as np

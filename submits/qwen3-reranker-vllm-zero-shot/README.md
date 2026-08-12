@@ -6,20 +6,30 @@ H100 80 GB. Модель не обучалась на данных соревн�
 
 ## Runtime
 
-- Docker image: `vllm/vllm-openai:v0.14.0`.
+- Docker image: `powpowpow12/ecup26-qwen3-vllm:0.14.0`, минимальная обёртка
+  над `vllm/vllm-openai:v0.14.0` со сброшенным server entrypoint.
 - Offline checkpoint: `models/Qwen3-Reranker-0.6B/`.
 - PyArrow поставляется уже распакованным в `vendor/pyarrow_runtime`, поскольку
   он не является гарантированной зависимостью официального vLLM image. Это
   убирает установку пакета из измеряемого времени запуска.
 - Один GPU: для модели 0,6B tensor parallel только добавил бы коммуникационные
   расходы.
-- BF16, FlashAttention, eager execution, prefix caching.
+- Исходные BF16-веса динамически квантуются vLLM в FP8 на H100; новый
+  checkpoint для этого не нужен. `PM_QUANTIZATION=none` возвращает BF16.
+- FlashAttention, prefix caching и CUDA graphs. Список размеров CUDA graph
+  ограничен четырьмя значениями, чтобы не растягивать startup.
 - Контекст — 256 токенов; каждая карточка предварительно ограничена 180
   символами, а vLLM выполняет дополнительное безопасное token truncation.
-- До 1024 последовательностей и 131 072 токенов в continuous batch.
+- До 512 последовательностей и 32 768 токенов в continuous batch.
+- На Check-входе до 5000 пар модель не загружается: этот набор проверяет только
+  исполнимость и формат и не участвует в рейтинге.
+- Public/Private считаются чанками по 5000 пар. Если мягкий внутренний deadline
+  близок, остаток получает быстрые лексические scores, чтобы контейнер успел
+  записать полный CSV вместо принудительного завершения по timeout.
 
 Параметры можно менять переменными `PM_MAX_ITEM_CHARS`, `PM_MAX_MODEL_LEN`,
-`PM_MAX_NUM_SEQS`, `PM_MAX_NUM_BATCHED_TOKENS` и `PM_SCORE_CHUNK_SIZE`.
+`PM_MAX_NUM_SEQS`, `PM_MAX_NUM_BATCHED_TOKENS`, `PM_SCORE_CHUNK_SIZE`,
+`PM_QUANTIZATION` и `PM_CHECK_BYPASS_MAX_PAIRS`.
 
 Минимальная средняя скорость всего запуска для Public и Private — примерно 319
 и 353 пары/с соответственно. Поскольку часть лимита занимает startup,

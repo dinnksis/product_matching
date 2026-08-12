@@ -1,0 +1,7 @@
+transformers>=4.51.0,<5
+peft>=0.15,<1
+torch>=2.5,<3
+pandas>=2.2,<3
+pyarrow>=18,<24
+scikit-learn>=1.6,<2
+numpy>=1.26,<3
