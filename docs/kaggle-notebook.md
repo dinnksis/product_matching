@@ -177,3 +177,35 @@ make kaggle-cross-run
 
 Подробное описание параметров, локального и Kaggle-запуска находится в
 [`docs/cross-encoder-training.md`](cross-encoder-training.md).
+## Embedding + boosting experiment
+
+The repository has a dedicated autonomous launcher for the three CatBoost
+ablations described in `docs/data-findings.md`:
+
+```powershell
+python scripts/run_embedding_boosting_kaggle.py --dry-run
+python scripts/run_embedding_boosting_kaggle.py
+```
+
+The second command submits the notebook and returns while Kaggle continues in
+the background. Closing the browser or the local terminal does not stop the
+remote kernel. Later, wait for it and download all `/kaggle/working` artifacts:
+
+```powershell
+python scripts/run_embedding_boosting_kaggle.py --monitor-existing
+```
+
+Outputs are downloaded to
+`artifacts/kaggle/product-matching-embedding-boosting/`. The remote output
+contains three CatBoost models, validation predictions, macro/per-category AP,
+feature importances, timings, selected train-only attribute keys, the Qwen
+float16 item-embedding cache, the exact Qwen model snapshot, logs, the exact config, a manifest and a
+`COMPLETED` marker. These are experiment artifacts; a separate offline submit
+builder will package the winning preprocessing code, CatBoost model and Qwen
+weights after the ablation result is known.
+
+The launcher reuses the existing private Dataset
+`<KAGGLE_USERNAME>/e-cup-human-data` for `items_human.parquet` and
+`matches.parquet`. It creates a separate small private Dataset containing only
+the versioned code/config bundle, so the parquet files are never uploaded a
+second time.

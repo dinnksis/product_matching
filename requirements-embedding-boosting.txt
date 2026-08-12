@@ -1,0 +1,9 @@
+torch>=2.5,<3
+transformers>=4.51,<5
+sentence-transformers>=5.0,<6
+catboost>=1.2.8,<2
+pandas>=2.2,<3
+pyarrow>=18,<24
+scikit-learn>=1.6,<2
+numpy>=1.26,<3
+rapidfuzz>=3.12,<4

@@ -1,4 +1,4 @@
-.PHONY: setup notebook report prepare-human train-qwen train-cross-encoder kaggle-train-build kaggle-train-data kaggle-cross-build kaggle-cross-dry-run kaggle-cross-run kaggle-run kaggle-dry-run submit-build submit-archive
+.PHONY: setup notebook attributes-notebook report prepare-human train-qwen train-cross-encoder kaggle-train-build kaggle-train-data kaggle-cross-build kaggle-cross-dry-run kaggle-cross-run kaggle-run kaggle-dry-run submit-build submit-archive submit-jina-build submit-jina-archive
 
 CROSS_ENCODER_CONFIG ?= configs/cross_encoder_minilm.json
 
@@ -7,6 +7,9 @@ setup:
 
 notebook:
 	uv run python scripts/create_eda_notebook.py
+
+attributes-notebook:
+	uv run python scripts/create_attributes_analysis_notebook.py
 
 report: notebook
 	mkdir -p .cache/matplotlib reports
@@ -60,3 +63,19 @@ submit-build:
 
 submit-archive:
 	uv run python scripts/build_qwen3_vllm_submit.py --archive-only
+
+submit-jina-build:
+	uv run python scripts/build_jina_submit.py
+
+submit-jina-archive:
+	uv run python scripts/build_jina_submit.py --archive-only
+.PHONY: embedding-boosting-dry-run embedding-boosting-run embedding-boosting-monitor
+
+embedding-boosting-dry-run:
+	python scripts/run_embedding_boosting_kaggle.py --dry-run
+
+embedding-boosting-run:
+	python scripts/run_embedding_boosting_kaggle.py
+
+embedding-boosting-monitor:
+	python scripts/run_embedding_boosting_kaggle.py --monitor-existing

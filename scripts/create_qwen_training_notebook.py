@@ -27,6 +27,8 @@ RAW_DATA_FILES = (
     Path("data/matches.parquet"),
 )
 BUNDLE_FILES = (
+    Path("configs/embedding_boosting.json"),
+    Path("requirements-embedding-boosting.txt"),
     Path("requirements-gpu.txt"),
     Path("requirements-cross-encoder.txt"),
     Path("src/__init__.py"),
@@ -34,6 +36,7 @@ BUNDLE_FILES = (
     Path("src/data_pipeline.py"),
     Path("src/qwen_reranker.py"),
     Path("src/qwen_training.py"),
+    Path("src/embedding_boosting.py"),
     Path("scripts/prepare_human_data.py"),
     Path("scripts/train_cross_encoder.py"),
     Path("scripts/train_qwen_names.py"),
