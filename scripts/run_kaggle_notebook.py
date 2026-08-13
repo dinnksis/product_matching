@@ -298,6 +298,11 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--kernel", action="append", default=[], help="attach owner/kernel-slug output")
     parser.add_argument("--no-wait", action="store_true", help="return immediately after push")
     parser.add_argument("--no-download", action="store_true", help="do not download outputs")
+    parser.add_argument(
+        "--cpu",
+        action="store_true",
+        help="run on Kaggle CPU without requesting an accelerator",
+    )
     parser.add_argument("--no-gpu-check", action="store_true", help="do not assert that two T4s exist")
     parser.add_argument(
         "--no-env-sources",
@@ -339,7 +344,11 @@ def main() -> int:
     if not title:
         fail("KAGGLE_KERNEL_TITLE cannot be empty")
 
-    accelerator = os.getenv("KAGGLE_ACCELERATOR", "NvidiaTeslaT4").strip()
+    accelerator = None if args.cpu else os.getenv(
+        "KAGGLE_ACCELERATOR", "NvidiaTeslaT4"
+    ).strip()
+    if not args.cpu and not accelerator:
+        fail("KAGGLE_ACCELERATOR cannot be empty for a GPU run")
     internet_enabled = env_bool("KAGGLE_ENABLE_INTERNET", True)
     is_private = env_bool("KAGGLE_IS_PRIVATE", True)
     run_timeout = env_int("KAGGLE_RUN_TIMEOUT_SECONDS", 43200, minimum=60)
@@ -373,7 +382,11 @@ def main() -> int:
     stage_dir = STAGE_ROOT / slug
     stage_dir.mkdir(parents=True, exist_ok=True)
     staged_notebook = stage_dir / "notebook.ipynb"
-    prepare_notebook(notebook, staged_notebook, gpu_check=not args.no_gpu_check)
+    prepare_notebook(
+        notebook,
+        staged_notebook,
+        gpu_check=not args.cpu and not args.no_gpu_check,
+    )
 
     kernel_ref = f"{username}/{slug}"
     metadata = {
@@ -383,15 +396,16 @@ def main() -> int:
         "language": "python",
         "kernel_type": "notebook",
         "is_private": is_private,
-        "enable_gpu": True,
+        "enable_gpu": not args.cpu,
         "enable_tpu": False,
         "enable_internet": internet_enabled,
-        "machine_shape": accelerator,
         "dataset_sources": datasets,
         "competition_sources": competitions,
         "kernel_sources": kernel_sources,
         "model_sources": model_sources,
     }
+    if accelerator is not None:
+        metadata["machine_shape"] = accelerator
     (stage_dir / "kernel-metadata.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
@@ -399,7 +413,15 @@ def main() -> int:
 
     print(f"Prepared: {stage_dir}")
     print(f"Kernel:   https://www.kaggle.com/code/{kernel_ref}")
-    print(f"GPU:      {accelerator} (the staged notebook asserts exactly 2 x T4)")
+    if args.cpu:
+        print("Compute:  Kaggle CPU (no accelerator requested)")
+    else:
+        gpu_check_note = (
+            "the staged notebook asserts exactly 2 x T4"
+            if not args.no_gpu_check
+            else "GPU preflight disabled"
+        )
+        print(f"GPU:      {accelerator} ({gpu_check_note})")
     print(f"Sources:  {len(datasets)} dataset(s), {len(competitions)} competition(s)")
     if args.dry_run:
         print("Dry run complete; Kaggle was not contacted.")
@@ -408,19 +430,17 @@ def main() -> int:
     cli = kaggle_command()
     print("Checking Kaggle credentials...")
     run_command(cli + ["kernels", "list", "--mine", "--page-size", "1"])
-    push_result = run_command(
-        cli
-        + [
-            "kernels",
-            "push",
-            "-p",
-            str(stage_dir),
-            "--accelerator",
-            accelerator,
-            "--timeout",
-            str(run_timeout),
-        ]
-    )
+    push_command = cli + [
+        "kernels",
+        "push",
+        "-p",
+        str(stage_dir),
+        "--timeout",
+        str(run_timeout),
+    ]
+    if accelerator is not None:
+        push_command.extend(["--accelerator", accelerator])
+    push_result = run_command(push_command)
     if "not valid dataset sources" in push_result.stdout.lower():
         fail(
             "Kaggle rejected one or more Dataset attachments during kernel push; "

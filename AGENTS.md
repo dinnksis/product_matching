@@ -147,6 +147,11 @@ notebook output or commits. External Kaggle mutations require user authorization
 - `notebooks/04_error_pattern_analysis.ipynb` and
   `docs/error-pattern-analysis.md`: hard negatives, word/character n-grams,
   semantic FPR/FNR combinations and concrete FP/FN examples;
+- `docs/prevalence-shift-diagnostic.md` and
+  `reports/prevalence_shift_diagnostic/`: frozen lexical CatBoost weighting and
+  bootstrap evidence that macro AP reaches 0.21 near 5.9% global effective
+  prevalence without changing predictions; this is not an estimate of hidden
+  prevalence;
 - `src/embedding_boosting.py`: three controlled CatBoost ablations using names,
   Qwen item embeddings, and structured attributes;
 - `scripts/run_embedding_boosting_kaggle.py`: background Kaggle launcher and
