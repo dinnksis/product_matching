@@ -5,11 +5,13 @@ description = "Experiments for the E-CUP 2026 product matching competition"
 readme = "README.md"
 requires-python = ">=3.11,<3.13"
 dependencies = [
+    "google-auth>=2.38,<3",
     "matplotlib>=3.9,<4",
     "numpy>=2.0,<3",
     "pandas>=2.2,<3",
     "pyarrow>=17,<22",
     "rapidfuzz>=3.12,<4",
+    "requests>=2.32,<3",
     "scikit-learn>=1.5,<2",
     "seaborn>=0.13,<0.14",
 ]

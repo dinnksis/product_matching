@@ -84,6 +84,100 @@ make kaggle-run NOTEBOOK=notebooks/train.ipynb
 Notebook должен сохранять нужные файлы именно в `/kaggle/working`, иначе Kaggle
 не вернёт их как output.
 
+## Обязательный контракт экспериментального notebook
+
+Любой Kaggle notebook в этом проекте, который обучает, валидирует, сравнивает
+или тестирует модель и производит метрики эксперимента, **обязан** отправлять
+результат в общую Google-таблицу. Это относится как к новой версии существующего
+notebook, так и к notebook с новым slug.
+
+Экспериментальный notebook считается готовым к запуску только при выполнении
+всех условий:
+
+1. До начала эксперимента создаются стабильный UUID `run_id` и время старта.
+2. Метрики, конфигурация и сведения об источниках сохраняются в
+   `training_report.json` и `notebook_completed.json` в `/kaggle/working`.
+3. После сохранения всех основных outputs расположена финальная ячейка
+   синхронизации с Google Sheets. Она должна передавать как минимум `run_id`,
+   время старта и завершения, статус, название эксперимента, модель,
+   `dataset_ref`, `kaggle_kernel_ref`, SHA code bundle, конфигурацию, итоговые и
+   покатегорийные метрики.
+4. К notebook подключён private Dataset
+   `alexproger23/ecom-matching-google-sheets-credentials`, а сам notebook также
+   остаётся приватным.
+5. Сбой Google Sheets не отменяет успешно завершённый эксперимент: финальная
+   ячейка не делает `raise`, а сохраняет `google_sheets_sync.json` и при ошибке
+   `sheets_sync_pending.json`.
+
+Для notebook, генерируемых кодом, нельзя создавать собственную копию логики
+синхронизации. Новый generator должен переиспользовать
+`experiment_run_initialization_cell()` и `google_sheets_tracking_cells()` из
+`scripts/create_qwen_training_notebook.py`. Так сохраняются единая схема,
+идемпотентность по `run_id` и одинаковое поведение при ошибках.
+
+При запуске через `scripts/run_kaggle_notebook.py` credential Dataset
+подключается автоматически. Флаг `--no-google-sheets-credentials` допустим
+только для неэкспериментальных или диагностических notebook; для настоящего
+эксперимента его использовать нельзя. Если notebook создаётся вручную на сайте
+Kaggle, перед запуском необходимо одновременно:
+
+- добавить private Dataset через `Add Input`;
+- проверить наличие финальной ячейки отправки метрик;
+- оставить notebook приватным.
+
+Запуск без финальной ячейки или без credential Dataset считается незавершённой
+настройкой эксперимента, даже если обучение технически может выполниться.
+
+## Автоматический журнал экспериментов в Google Sheets
+
+Сгенерированные training notebooks после успешного сохранения модели записывают
+`training_report.json` в таблицу
+<https://docs.google.com/spreadsheets/d/1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA/edit>:
+
+- `experiments` содержит одну строку на запуск, основные метрики, конфиг и полный
+  JSON-отчёт;
+- `category_metrics` содержит AP каждой категории отдельными строками.
+
+Для автоматической авторизации используется отдельный приватный Kaggle Dataset
+`alexproger23/ecom-matching-google-sheets-credentials`. Создать или безопасно
+обновить его из локального ключа можно командой:
+
+```bash
+make kaggle-google-credentials
+```
+
+`scripts/run_kaggle_notebook.py` автоматически добавляет этот Dataset в
+`dataset_sources` каждого приватного notebook, включая новый slug. Для
+конкретного запуска это можно отключить флагом
+`--no-google-sheets-credentials`.
+
+Новый notebook, а не новую версию существующего, можно создать той же командой,
+передав ещё не использованный `--slug`:
+
+```bash
+uv run python scripts/run_kaggle_notebook.py notebooks/train.ipynb \
+  --slug new-experiment-slug \
+  --title "New Experiment"
+```
+
+При создании notebook вручную в web-интерфейсе runner не участвует, поэтому там
+credential Dataset нужно добавить через `Add Input` вручную.
+
+Kaggle Secret `GOOGLE_SERVICE_ACCOUNT_JSON` также поддерживается и имеет
+приоритет, если он подключён вручную. Сам JSON-ключ не хранится в Git, не
+встраивается в notebook и не копируется в Dataset с обучающими данными.
+
+У каждого запуска есть UUID `run_id`. Повторное выполнение финальной ячейки
+обновляет существующие строки и не создаёт дублей. Если Google временно
+недоступен или credential Dataset не подключён, обучение всё равно остаётся
+успешным, а в `/kaggle/working` сохраняются `google_sheets_sync.json` и
+`sheets_sync_pending.json`. После исправления доступа достаточно повторно
+выполнить последнюю ячейку.
+
+Logger встраивается в notebook при генерации, а `google-auth` при необходимости
+устанавливается только в финальной ячейке. Поэтому для изменений самого журнала
+не требуется повторно загружать Dataset с training-данными.
+
 ## Дополнительные параметры
 
 Скрипт можно запускать напрямую:
