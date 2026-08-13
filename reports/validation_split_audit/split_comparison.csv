@@ -1,0 +1,7 @@
+split,notes,train_pairs,validation_pairs,validation_fraction,train_positive_rate,validation_positive_rate,overlapping_item_ids,macro_average_precision,overall_average_precision,best_iteration,catboost_backend
+component_seed_13,Exact reproduction of the existing connected-component split.,310704,54950,0.15027867875095036,0.256465961172048,0.25850773430391266,0,0.514904028384206,0.6006640067443626,1199,CPU
+brand_model_family_holdout,Pair components merged by conservative category + brand + model/id signature.,311978,53676,0.14679451065761623,0.25642192718717344,0.25881213205156867,0,0.5086979345075973,0.5967961032527536,1199,CPU
+component_seed_42,Exact reproduction of the existing connected-component split.,310767,54887,0.15010638472435692,0.2566617433639994,0.25740157049938966,0,0.5044499172321768,0.5962206254744186,1192,CPU
+exact_normalized_name_holdout,Pair components merged by exact category + normalized name.,314973,50681,0.13860370732988017,0.2552345756620409,0.26633255066001066,0,0.5031706949618785,0.6009052830787425,1199,CPU
+component_seed_77,Exact reproduction of the existing connected-component split.,310856,54798,0.14986298522647093,0.2571094011375042,0.2548633161794226,0,0.5000186624029948,0.5892660711706037,1188,CPU
+component_seed_2026,Exact reproduction of the existing connected-component split.,310277,55377,0.15144644937563925,0.25716698305062896,0.25456416923993713,0,0.49816709100012774,0.5804926246166845,1198,CPU

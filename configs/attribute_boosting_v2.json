@@ -1,0 +1,14 @@
+{
+  "embedding_model": "Qwen/Qwen3-Embedding-0.6B",
+  "validation_fraction": 0.15,
+  "seed": 42,
+  "embedding_batch_size": 256,
+  "embedding_max_length": 128,
+  "embedding_dimension": 512,
+  "catboost_iterations": 1600,
+  "catboost_depth": 9,
+  "catboost_learning_rate": 0.05,
+  "catboost_early_stopping_rounds": 150,
+  "exact_keys_per_category": 12,
+  "exact_key_min_support": 100
+}

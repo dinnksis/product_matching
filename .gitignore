@@ -39,3 +39,13 @@ wandb/
 submits/*.zip
 submits/**/models/
 submits/**/vendor/
+docker/embedding-catboost-runtime/models/
+docker/embedding-catboost-runtime/wheels/*.whl
+docker/embedding-catboost-runtime/wheels/*.tmp
+docker/embedding-catboost-runtime/st-wheels/
+docker/embedding-catboost-runtime/st-wheels-linux/
+
+# Reproducible validation intermediates and fitted models are local artifacts.
+reports/**/*.parquet
+reports/**/*.cbm
+predicted/

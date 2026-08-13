@@ -1,0 +1,4 @@
+{
+  "image": "dinakepech/ecup26-embedding-catboost:1.1",
+  "entry_point": "python -u run.py"
+}

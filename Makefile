@@ -1,4 +1,4 @@
-.PHONY: setup notebook attributes-notebook report prepare-human prepare-mxbai-balanced analyze-validation train-qwen train-cross-encoder kaggle-google-credentials kaggle-google-credentials-dry-run kaggle-train-build kaggle-train-data kaggle-cross-build kaggle-cross-dry-run kaggle-cross-run kaggle-mxbai-build kaggle-mxbai-data-dry-run kaggle-mxbai-dry-run kaggle-mxbai-run kaggle-run kaggle-dry-run submit-build submit-archive submit-jina-build submit-jina-archive embedding-boosting-dry-run embedding-boosting-run embedding-boosting-monitor
+.PHONY: setup notebook attributes-notebook validation-audit-notebooks validation-split-audit error-pattern-audit report prepare-human prepare-mxbai-balanced analyze-validation train-qwen train-cross-encoder kaggle-google-credentials kaggle-google-credentials-dry-run kaggle-train-build kaggle-train-data kaggle-cross-build kaggle-cross-dry-run kaggle-cross-run kaggle-mxbai-build kaggle-mxbai-data-dry-run kaggle-mxbai-dry-run kaggle-mxbai-run kaggle-run kaggle-dry-run submit-build submit-archive submit-jina-build submit-jina-archive embedding-boosting-dry-run embedding-boosting-run embedding-boosting-monitor submit-embedding-build submit-embedding-archive
 
 CROSS_ENCODER_CONFIG ?= configs/cross_encoder_minilm.json
 VALIDATION_PREDICTIONS ?= data/runs/validation_predictions_v1.parquet
@@ -11,6 +11,17 @@ notebook:
 
 attributes-notebook:
 	uv run python scripts/create_attributes_analysis_notebook.py
+
+validation-audit-notebooks:
+	uv run python scripts/create_validation_audit_notebooks.py
+
+validation-split-audit: validation-audit-notebooks
+	uv run jupyter nbconvert --execute --to notebook --inplace \
+		--ExecutePreprocessor.timeout=7200 notebooks/03_validation_split_audit.ipynb
+
+error-pattern-audit: validation-audit-notebooks
+	uv run jupyter nbconvert --execute --to notebook --inplace \
+		--ExecutePreprocessor.timeout=3600 notebooks/04_error_pattern_analysis.ipynb
 
 report: notebook
 	mkdir -p .cache/matplotlib reports
@@ -103,3 +114,9 @@ embedding-boosting-run:
 
 embedding-boosting-monitor:
 	python scripts/run_embedding_boosting_kaggle.py --monitor-existing
+
+submit-embedding-build:
+	python scripts/build_embedding_catboost_submit.py
+
+submit-embedding-archive:
+	python scripts/build_embedding_catboost_submit.py --archive-only

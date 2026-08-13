@@ -50,8 +50,9 @@ separate decision is made.
   time constraints. LoRA training was abandoned. Do not resume Qwen reranker
   work without a new speed argument.
 - `jinaai/jina-reranker-v2-base-multilingual` (278M), zero-shot, names only,
-  direct Transformers inference, passed the competition time checks. Its score
-  is not recorded yet. Treat it as the current proven neural runtime baseline.
+  direct Transformers inference, passed the competition time checks in roughly
+  6--7 minutes and scored about 0.25 on the competition leaderboard. Treat it
+  as the current proven neural runtime baseline, not as a quality baseline.
   It is CC-BY-NC-4.0; retain attribution and verify competition/license fit.
 - MiniLM cross-encoder full fine-tuning is being improved by another
   collaborator. Avoid overwriting its config/training files without inspecting
@@ -136,6 +137,16 @@ notebook output or commits. External Kaggle mutations require user authorization
   embedding/boosting experiment.
 - `docs/data-findings.md`: concise interpretation of the human data, attribute
   signals, and the existing CPU baseline;
+- `docs/reranker-experiments.md`: chronological reranker/cross-encoder results,
+  paths, runtime evidence and next model candidates;
+- `docs/embedding-catboost-experiments.md`: the four confirmed boosting
+  ablations and the unresolved 0.596 local versus 0.216 leaderboard gap;
+- `notebooks/03_validation_split_audit.ipynb` and
+  `docs/validation-split-audit.md`: compare exact component seeds and grouped
+  name/model/seller holdouts with the same lexical CatBoost;
+- `notebooks/04_error_pattern_analysis.ipynb` and
+  `docs/error-pattern-analysis.md`: hard negatives, word/character n-grams,
+  semantic FPR/FNR combinations and concrete FP/FN examples;
 - `src/embedding_boosting.py`: three controlled CatBoost ablations using names,
   Qwen item embeddings, and structured attributes;
 - `scripts/run_embedding_boosting_kaggle.py`: background Kaggle launcher and

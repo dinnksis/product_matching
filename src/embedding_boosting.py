@@ -334,7 +334,13 @@ def fit_experiment(
     )
     if os.environ.get("CUDA_VISIBLE_DEVICES", "") != "" or Path("/proc/driver/nvidia/version").exists():
         parameters.update(task_type="GPU", devices="0:1")
-    logger.info("Training %s: %,d features, %,d train, %,d validation", name, features.shape[1], train_mask.sum(), valid_mask.sum())
+    logger.info(
+        "Training %s: %s features, %s train, %s validation",
+        name,
+        f"{features.shape[1]:,}",
+        f"{int(train_mask.sum()):,}",
+        f"{int(valid_mask.sum()):,}",
+    )
     started = time.perf_counter()
     model = CatBoostClassifier(**parameters)
     try:

@@ -28,6 +28,7 @@ RAW_DATA_FILES = (
     Path("data/matches.parquet"),
 )
 BUNDLE_FILES = (
+    Path("configs/attribute_boosting_v2.json"),
     Path("configs/embedding_boosting.json"),
     Path("requirements-embedding-boosting.txt"),
     Path("requirements-gpu.txt"),
@@ -40,6 +41,7 @@ BUNDLE_FILES = (
     Path("src/qwen_reranker.py"),
     Path("src/qwen_training.py"),
     Path("src/embedding_boosting.py"),
+    Path("src/attribute_boosting_v2.py"),
     Path("scripts/prepare_human_data.py"),
     Path("scripts/prepare_balanced_llm_data.py"),
     Path("scripts/train_cross_encoder.py"),

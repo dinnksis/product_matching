@@ -295,6 +295,7 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--title", help="override KAGGLE_KERNEL_TITLE")
     parser.add_argument("--dataset", action="append", default=[], help="attach owner/dataset")
     parser.add_argument("--competition", action="append", default=[], help="attach competition slug")
+    parser.add_argument("--kernel", action="append", default=[], help="attach owner/kernel-slug output")
     parser.add_argument("--no-wait", action="store_true", help="return immediately after push")
     parser.add_argument("--no-download", action="store_true", help="do not download outputs")
     parser.add_argument("--no-gpu-check", action="store_true", help="do not assert that two T4s exist")
@@ -362,7 +363,7 @@ def main() -> int:
         print("Skipping the credential Dataset because this notebook is public.")
     datasets = unique_sources(datasets)
     competitions = env_competitions + args.competition
-    kernel_sources = (
+    kernel_sources = args.kernel + (
         [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_KERNEL_SOURCES"))
     )
     model_sources = (
