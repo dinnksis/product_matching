@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import NoReturn
@@ -18,6 +19,7 @@ from typing import NoReturn
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ENV_FILE = ROOT / ".env"
 STAGE_ROOT = ROOT / ".kaggle" / "staging"
+GOOGLE_CREDENTIALS_DATASET_SLUG = "ecom-matching-google-sheets-credentials"
 
 TERMINAL_SUCCESS = {"complete", "completed"}
 TERMINAL_FAILURE = {
@@ -115,6 +117,11 @@ def split_sources(value: str | None) -> list[str]:
     if not value:
         return []
     return [item for item in re.split(r"[\s,]+", value.strip()) if item]
+
+
+def unique_sources(values: list[str]) -> list[str]:
+    """Deduplicate Kaggle sources while preserving their declared order."""
+    return list(dict.fromkeys(values))
 
 
 def validate_slug(value: str, label: str) -> str:
@@ -244,6 +251,40 @@ def wait_for_kernel(
     )
 
 
+def verify_remote_sources(
+    cli: list[str],
+    kernel_ref: str,
+    *,
+    expected_datasets: list[str],
+) -> None:
+    """Verify that Kaggle kept requested attachments on the pushed version."""
+    if not expected_datasets:
+        return
+
+    with tempfile.TemporaryDirectory(prefix="kaggle-kernel-metadata-") as temp_dir:
+        result = run_command(
+            cli + ["kernels", "pull", kernel_ref, "-p", temp_dir, "-m"],
+            check=False,
+        )
+        if result.returncode:
+            fail("could not verify the Dataset attachments of the pushed kernel")
+        metadata_path = Path(temp_dir) / "kernel-metadata.json"
+        if not metadata_path.is_file():
+            fail("Kaggle kernel pull did not return kernel-metadata.json")
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+
+    actual = set(metadata.get("dataset_sources") or [])
+    missing = [source for source in expected_datasets if source not in actual]
+    if missing:
+        fail(
+            "Kaggle accepted the kernel version but dropped its Dataset attachment(s): "
+            f"{missing}. Remote dataset_sources={sorted(actual)}. "
+            "Do not wait for this run: it cannot read /kaggle/input. "
+            "Confirm the Dataset is ready and submit the kernel again."
+        )
+    print(f"Verified remote Dataset attachment(s): {sorted(actual)}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run a local .ipynb on Kaggle and download /kaggle/working outputs."
@@ -261,6 +302,11 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-env-sources",
         action="store_true",
         help="ignore dataset/competition/kernel/model sources from .env",
+    )
+    parser.add_argument(
+        "--no-google-sheets-credentials",
+        action="store_true",
+        help="do not attach the private Google Sheets credential Dataset",
     )
     parser.add_argument("--dry-run", action="store_true", help="prepare files but do not call Kaggle")
     return parser
@@ -304,6 +350,17 @@ def main() -> int:
         [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_COMPETITION_SOURCES"))
     )
     datasets = env_datasets + args.dataset
+    credentials_dataset = os.getenv(
+        "KAGGLE_GOOGLE_SHEETS_CREDENTIALS_DATASET",
+        f"{username}/{GOOGLE_CREDENTIALS_DATASET_SLUG}",
+    ).strip()
+    if not args.no_google_sheets_credentials and is_private:
+        if not credentials_dataset:
+            fail("KAGGLE_GOOGLE_SHEETS_CREDENTIALS_DATASET cannot be empty")
+        datasets.append(credentials_dataset)
+    elif not args.no_google_sheets_credentials:
+        print("Skipping the credential Dataset because this notebook is public.")
+    datasets = unique_sources(datasets)
     competitions = env_competitions + args.competition
     kernel_sources = (
         [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_KERNEL_SOURCES"))
@@ -350,7 +407,7 @@ def main() -> int:
     cli = kaggle_command()
     print("Checking Kaggle credentials...")
     run_command(cli + ["kernels", "list", "--mine", "--page-size", "1"])
-    run_command(
+    push_result = run_command(
         cli
         + [
             "kernels",
@@ -363,6 +420,12 @@ def main() -> int:
             str(run_timeout),
         ]
     )
+    if "not valid dataset sources" in push_result.stdout.lower():
+        fail(
+            "Kaggle rejected one or more Dataset attachments during kernel push; "
+            "the run cannot read /kaggle/input"
+        )
+    verify_remote_sources(cli, kernel_ref, expected_datasets=datasets)
 
     if args.no_wait:
         print("Notebook was submitted; not waiting for completion.")

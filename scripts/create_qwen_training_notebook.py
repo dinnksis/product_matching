@@ -22,6 +22,7 @@ DEFAULT_DATASET_DIR = (
 DATASET_SLUG = "product-matching-qwen-training"
 BUNDLE_NAME = "product_matching_training_code.zip"
 MANIFEST_NAME = "training_bundle_manifest.json"
+EXPERIMENT_SPREADSHEET_ID = "1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA"
 RAW_DATA_FILES = (
     Path("data/items_human.parquet"),
     Path("data/matches.parquet"),
@@ -33,11 +34,14 @@ BUNDLE_FILES = (
     Path("requirements-cross-encoder.txt"),
     Path("src/__init__.py"),
     Path("src/cross_encoder_training.py"),
+    Path("src/blended_data.py"),
     Path("src/data_pipeline.py"),
+    Path("src/pair_features.py"),
     Path("src/qwen_reranker.py"),
     Path("src/qwen_training.py"),
     Path("src/embedding_boosting.py"),
     Path("scripts/prepare_human_data.py"),
+    Path("scripts/prepare_balanced_llm_data.py"),
     Path("scripts/train_cross_encoder.py"),
     Path("scripts/train_qwen_names.py"),
 )
@@ -173,6 +177,138 @@ def code(text: str) -> nbf.NotebookNode:
     return nbf.v4.new_code_cell(dedent(text).strip())
 
 
+def google_sheets_tracking_cells() -> list[nbf.NotebookNode]:
+    """Cells shared by every generated training notebook."""
+    logger_source = (ROOT / "src/google_sheets_logger.py").read_text(encoding="utf-8")
+    return [
+        markdown(
+            """
+            ## Автоматическая запись результатов в Google Sheets
+
+            Успешный отчёт синхронизируется по `run_id`: повторный запуск этой
+            ячейки обновит те же строки, а не создаст дубли. Сначала используется
+            Kaggle Secret `GOOGLE_SERVICE_ACCOUNT_JSON`, а если он не подключён —
+            ключ из приватного Dataset `ecom-matching-google-sheets-credentials`.
+            """
+        ),
+        code(
+            f"""
+            spreadsheet_id = {EXPERIMENT_SPREADSHEET_ID!r}
+            sync_path = WORKING_ROOT / "google_sheets_sync.json"
+            pending_path = WORKING_ROOT / "sheets_sync_pending.json"
+            logger_module = None
+            try:
+                import importlib.util
+
+                embedded_logger_path = WORKING_ROOT / "google_sheets_logger.py"
+                embedded_logger_path.write_text({logger_source!r}, encoding="utf-8")
+                logger_spec = importlib.util.spec_from_file_location(
+                    "product_matching_google_sheets_logger", embedded_logger_path
+                )
+                if logger_spec is None or logger_spec.loader is None:
+                    raise RuntimeError("Could not load the embedded Google Sheets logger")
+                logger_module = importlib.util.module_from_spec(logger_spec)
+                sys.modules[logger_spec.name] = logger_module
+                logger_spec.loader.exec_module(logger_module)
+                try:
+                    import google.auth  # noqa: F401
+                    import requests  # noqa: F401
+                except ImportError:
+                    subprocess.run(
+                        [
+                            sys.executable,
+                            "-m",
+                            "pip",
+                            "install",
+                            "--quiet",
+                            "--disable-pip-version-check",
+                            "google-auth>=2.38,<3",
+                            "requests>=2.32,<3",
+                        ],
+                        check=True,
+                    )
+                sync_result = logger_module.sync_from_kaggle_credentials(
+                    spreadsheet_id=spreadsheet_id,
+                    completion=completion,
+                )
+            except Exception as error:
+                error_message = (
+                    logger_module.safe_error_message(error)
+                    if logger_module is not None
+                    else f"{{type(error).__name__}}: logger initialization failed"
+                )
+                sync_result = {{
+                    "status": "pending",
+                    "run_id": completion["run_id"],
+                    "spreadsheet_id": spreadsheet_id,
+                    "error_type": type(error).__name__,
+                    "error": error_message,
+                }}
+                pending_path.write_text(
+                    json.dumps(
+                        {{**sync_result, "completion": completion}},
+                        ensure_ascii=False,
+                        indent=2,
+                        default=str,
+                    ),
+                    encoding="utf-8",
+                )
+                print(
+                    "Google Sheets sync is pending; training outputs are still complete:\\n"
+                    + json.dumps(sync_result, ensure_ascii=False, indent=2)
+                )
+            else:
+                sync_result = {{"status": "synced", **sync_result}}
+                pending_path.unlink(missing_ok=True)
+                print(json.dumps(sync_result, ensure_ascii=False, indent=2))
+            sync_path.write_text(
+                json.dumps(sync_result, ensure_ascii=False, indent=2, default=str),
+                encoding="utf-8",
+            )
+            print(f"Saved {{sync_path.name}}")
+            """
+        ),
+    ]
+
+
+def experiment_run_initialization_cell() -> nbf.NotebookNode:
+    """Create a stable run identity before any expensive training starts."""
+    return code(
+        """
+        from datetime import datetime, timezone
+        import uuid
+
+        RUN_ID_PATH = WORKING_ROOT / "experiment_run_id.txt"
+        RUN_STARTED_PATH = WORKING_ROOT / "experiment_started_at_utc.txt"
+        if RUN_ID_PATH.is_file():
+            EXPERIMENT_RUN_ID = RUN_ID_PATH.read_text(encoding="utf-8").strip()
+        else:
+            EXPERIMENT_RUN_ID = uuid.uuid4().hex
+            RUN_ID_PATH.write_text(EXPERIMENT_RUN_ID + "\\n", encoding="utf-8")
+        if RUN_STARTED_PATH.is_file():
+            EXPERIMENT_STARTED_AT_UTC = RUN_STARTED_PATH.read_text(
+                encoding="utf-8"
+            ).strip()
+        else:
+            EXPERIMENT_STARTED_AT_UTC = datetime.now(timezone.utc).isoformat(
+                timespec="seconds"
+            ).replace("+00:00", "Z")
+            RUN_STARTED_PATH.write_text(
+                EXPERIMENT_STARTED_AT_UTC + "\\n", encoding="utf-8"
+            )
+        print(
+            json.dumps(
+                {
+                    "run_id": EXPERIMENT_RUN_ID,
+                    "started_at_utc": EXPERIMENT_STARTED_AT_UTC,
+                },
+                ensure_ascii=False,
+            )
+        )
+        """
+    )
+
+
 def build_notebook(manifest: dict[str, object]) -> nbf.NotebookNode:
     bundle = manifest["code_bundle"]
     assert isinstance(bundle, dict)
@@ -213,6 +349,7 @@ def build_notebook(manifest: dict[str, object]) -> nbf.NotebookNode:
             from pathlib import Path, PurePosixPath
 
             INPUT_ROOT = Path("/kaggle/input")
+            EXPECTED_DATASET_REF = {dataset_reference!r}
             WORKING_ROOT = Path("/kaggle/working")
             TEMP_ROOT = Path("/kaggle/temp/product_matching_training")
             PROJECT_ROOT = WORKING_ROOT / "product_matching"
@@ -242,6 +379,14 @@ def build_notebook(manifest: dict[str, object]) -> nbf.NotebookNode:
             matches_path = exactly_one("matches.parquet")
             manifest_path = exactly_one({MANIFEST_NAME!r})
             attached_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            attached_bundle_hash = attached_manifest["code_bundle"]["sha256"]
+            if attached_bundle_hash != EXPECTED_BUNDLE_SHA256:
+                raise RuntimeError(
+                    "Attached Kaggle Dataset version does not match this notebook: "
+                    f"expected bundle {{EXPECTED_BUNDLE_SHA256}}, "
+                    f"got {{attached_bundle_hash}}. Re-submit the kernel only after "
+                    "the new Dataset version reports ready."
+                )
             bundle_candidates = list(INPUT_ROOT.glob("**/{BUNDLE_NAME}"))
             bundle_candidates.extend(
                 path
@@ -304,6 +449,7 @@ def build_notebook(manifest: dict[str, object]) -> nbf.NotebookNode:
             print(subprocess.run(["nvidia-smi"], check=False, capture_output=True, text=True).stdout)
             """
         ),
+        experiment_run_initialization_cell(),
         markdown(
             """
             ## Зависимости и подготовка данных
@@ -475,6 +621,19 @@ def build_notebook(manifest: dict[str, object]) -> nbf.NotebookNode:
             report = json.loads(report_path.read_text(encoding="utf-8"))
             completion = {
                 "status": "complete",
+                "run_id": EXPERIMENT_RUN_ID,
+                "started_at_utc": EXPERIMENT_STARTED_AT_UTC,
+                "completed_at_utc": datetime.now(timezone.utc).isoformat(
+                    timespec="seconds"
+                ).replace("+00:00", "Z"),
+                "experiment": OUTPUT_DIR.name,
+                "model": report.get("args", {}).get("model", ""),
+                "dataset_ref": EXPECTED_DATASET_REF,
+                "kaggle_kernel_ref": (
+                    os.getenv("KAGGLE_KERNEL_RUN_ID")
+                    or os.getenv("KAGGLE_KERNEL_INFERENCE_RUN_ID")
+                    or ""
+                ),
                 "code_bundle_sha256": EXPECTED_BUNDLE_SHA256,
                 "training_wall_seconds": training_wall_seconds,
                 "training_report": report,
@@ -493,6 +652,7 @@ def build_notebook(manifest: dict[str, object]) -> nbf.NotebookNode:
             print(f"  {completion_path.name}: {completion_path.stat().st_size / 2**20:.2f} MiB")
             """
         ),
+        *google_sheets_tracking_cells(),
     ]
     notebook = nbf.v4.new_notebook(cells=cells)
     notebook.metadata.update(

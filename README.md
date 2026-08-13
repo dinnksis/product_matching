@@ -70,6 +70,11 @@ Parquet-файлы игнорируются Git. Подробнее — в [data
 - [notebooks/01_human_data_eda.ipynb](notebooks/01_human_data_eda.ipynb) —
   выполненный notebook с кодом и выводами;
 - [reports/human_data_eda.html](reports/human_data_eda.html) — статический отчёт;
+- [docs/inferred-human-matching-guidelines.md](docs/inferred-human-matching-guidelines.md) —
+  восстановленная по 2000 ручным примерам инструкция о границе `target=1/0`;
+- [docs/llm-label-quality-audit.md](docs/llm-label-quality-audit.md) — ручной
+  аудит 2000 LLM-пар, оценка шума по confidence/category и рекомендации по
+  использованию weak labels;
 - `reports/category_summary.csv`, `reports/univariate_feature_scores.csv`,
   `reports/light_baseline_by_category.csv` — таблицы для следующих экспериментов;
 - `reports/eda_summary.json` — компактная сводка основных метрик.
@@ -170,6 +175,18 @@ make kaggle-cross-run
 Последующие изменения только гиперпараметров не требуют новой версии Dataset —
 достаточно изменить JSON и повторить последние две команды. Полная инструкция:
 [`docs/cross-encoder-training.md`](docs/cross-encoder-training.md).
+
+Завершённые Kaggle training runs автоматически журналируются в Google Sheets:
+одна строка на запуск плюс отдельные AP по категориям. Отдельный private
+credential Dataset автоматически подключается даже к новым notebook slug;
+настройка описана в
+[`docs/kaggle-notebook.md`](docs/kaggle-notebook.md#автоматический-журнал-экспериментов-в-google-sheets).
+
+Отдельный эксперимент с `mixedbread-ai/mxbai-rerank-xsmall-v1` физически
+выравнивает все категории и классы, сохраняя весь human train и дополняя его
+только наиболее уверенными LLM-метками. Подробности подготовки, sample weights
+и отдельного Kaggle payload описаны в
+[`docs/mxbai-balanced-training.md`](docs/mxbai-balanced-training.md).
 
 ## Удалённый запуск notebook на Kaggle (2×T4)
 
