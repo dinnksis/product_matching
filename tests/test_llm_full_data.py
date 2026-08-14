@@ -1,0 +1,143 @@
+from __future__ import annotations
+
+import tempfile
+import unittest
+from pathlib import Path
+
+import numpy as np
+import pandas as pd
+
+from scripts.train_llm_full import (
+    SymmetricEvaluationBatchSampler,
+    infer_pair_template,
+    snapshot_checkpoint,
+)
+from src.llm_full_data import balanced_prefix_lengths, build_full_pair_cache
+
+
+class FakePairTokenizer:
+    model_input_names = ["input_ids", "attention_mask"]
+    padding_side = "right"
+    pad_token_id = 0
+
+    def __len__(self) -> int:
+        return 512
+
+    def num_special_tokens_to_add(self, pair: bool = False) -> int:
+        return 4 if pair else 2
+
+    def build_inputs_with_special_tokens(self, first, second=None):
+        if second is None:
+            return [1, *first, 2]
+        return [1, *first, 2, 2, *second, 2]
+
+    def __call__(self, texts, *, max_length, **kwargs):
+        return {
+            "input_ids": [
+                [3 + ord(character) % 500 for character in text][:max_length]
+                for text in texts
+            ]
+        }
+
+
+class FullLlmDataTest(unittest.TestCase):
+    def test_balanced_prefixes_keep_both_products(self) -> None:
+        self.assertEqual(balanced_prefix_lengths(10, 100, 40), (10, 30))
+        self.assertEqual(balanced_prefix_lengths(100, 10, 40), (30, 10))
+        self.assertEqual(balanced_prefix_lengths(12, 8, 40), (12, 8))
+
+    def test_pair_template_is_inferred_without_hardcoding_xlmr_tokens(self) -> None:
+        template = infer_pair_template(FakePairTokenizer())
+        np.testing.assert_array_equal(template.prefix, [1])
+        np.testing.assert_array_equal(template.middle, [2, 2])
+        np.testing.assert_array_equal(template.suffix, [2])
+        self.assertEqual(template.special_tokens, 4)
+        self.assertFalse(template.uses_token_type_ids)
+
+    def test_symmetric_evaluation_visits_both_orientations_once(self) -> None:
+        sampler = SymmetricEvaluationBatchSampler([30, 10, 20], batch_size=4)
+        rows = [row for batch in sampler for row in batch]
+        self.assertEqual(len(sampler), 2)
+        self.assertCountEqual(
+            rows,
+            [
+                (0, False),
+                (0, True),
+                (1, False),
+                (1, True),
+                (2, False),
+                (2, True),
+            ],
+        )
+
+    def test_checkpoint_snapshot_uses_hard_links(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            source = root / "checkpoint-last"
+            source.mkdir()
+            (source / "model.safetensors").write_bytes(b"weights")
+            destination = root / "checkpoint-epoch-01"
+            snapshot_checkpoint(source, destination, replace=False)
+            self.assertEqual(
+                (source / "model.safetensors").stat().st_ino,
+                (destination / "model.safetensors").stat().st_ino,
+            )
+
+    def test_cache_retains_every_fractional_soft_target(self) -> None:
+        targets = [0.0, 5 / 9, 6 / 9, 7 / 9, 1.0]
+        items = pd.DataFrame(
+            {
+                "id": [40, 10, 50, 20, 30],
+                "name": ["d", "a", "e", "b", "c"],
+                "attributes": ['{"Brand": "Test"}'] * 5,
+                "category": ["test"] * 5,
+            }
+        )
+        pairs = pd.DataFrame(
+            {
+                "id1": [10, 20, 30, 40, 50],
+                "id2": [20, 30, 40, 50, 10],
+                "target": targets,
+            }
+        )
+        tokenizer = FakePairTokenizer()
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            item_path = root / "items.parquet"
+            pair_path = root / "pairs.parquet"
+            items.to_parquet(item_path, index=False)
+            pairs.to_parquet(pair_path, index=False)
+            cache = build_full_pair_cache(
+                item_paths=[item_path],
+                pair_paths=[pair_path],
+                tokenizer=tokenizer,
+                model_name="fake",
+                cache_root=root / "cache",
+                max_length=32,
+                item_batch_size=2,
+                pair_batch_size=2,
+            )
+            self.assertEqual(cache.pair_count, 5)
+            self.assertEqual(cache.item_count, 5)
+            np.testing.assert_allclose(cache.targets, targets, rtol=0, atol=1e-6)
+            self.assertGreater(len(cache.tokens_for_item(0)), 0)
+            self.assertTrue((cache.pair_lengths <= 32).all())
+            self.assertEqual(cache.metadata["serialization"]["variant"], "S1_KEY_VALUE")
+            self.assertFalse(cache.metadata["serialization"]["category_included"])
+            self.assertTrue((cache.directory / "attribute_name_frequency.csv").is_file())
+
+            reused = build_full_pair_cache(
+                item_paths=[item_path],
+                pair_paths=[pair_path],
+                tokenizer=tokenizer,
+                model_name="fake",
+                cache_root=root / "cache",
+                max_length=32,
+                item_batch_size=2,
+                pair_batch_size=2,
+            )
+            self.assertEqual(reused.directory, cache.directory)
+
+
+if __name__ == "__main__":
+    unittest.main()

@@ -37,6 +37,7 @@ BUNDLE_FILES = (
     Path("src/cross_encoder_training.py"),
     Path("src/blended_data.py"),
     Path("src/data_pipeline.py"),
+    Path("src/experiment_protocol.py"),
     Path("src/pair_features.py"),
     Path("src/qwen_reranker.py"),
     Path("src/qwen_training.py"),

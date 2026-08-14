@@ -22,53 +22,31 @@ SPREADSHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets"
 DEFAULT_SECRET_NAME = "GOOGLE_SERVICE_ACCOUNT_JSON"
 DEFAULT_CREDENTIAL_DATASET_SLUG = "ecom-matching-google-sheets-credentials"
 DEFAULT_CREDENTIAL_FILENAME = "google-service-account.json"
-EXPERIMENTS_SHEET = "experiments"
+EXPERIMENTS_SHEET = "experiments_v2"
 CATEGORY_METRICS_SHEET = "category_metrics"
 
 EXPERIMENT_HEADERS = (
     "run_id",
-    "started_at_utc",
     "completed_at_utc",
-    "synced_at_utc",
     "status",
     "experiment",
     "model",
     "dataset_ref",
     "kaggle_kernel_ref",
     "code_bundle_sha256",
-    "training_wall_seconds",
-    "training_seconds",
-    "validation_seconds",
-    "total_pipeline_seconds",
-    "training_examples",
-    "original_training_examples",
-    "validation_examples",
-    "validation_positive_examples",
-    "validation_positive_rate",
-    "macro_average_precision",
-    "overall_average_precision",
-    "examples_per_second",
-    "padding_efficiency",
-    "peak_vram_gib",
-    "mean_score_order_gap",
+    "iid_macro_ap",
+    "hard_macro_ap",
+    "ood_macro_ap",
+    "iid_overall_ap",
+    "hard_overall_ap",
+    "ood_overall_ap",
+    "train_pairs",
     "epochs",
     "batch_size",
-    "eval_batch_size",
     "gradient_accumulation",
     "learning_rate",
-    "weight_decay",
-    "warmup_ratio",
     "max_length",
-    "attention_implementation",
-    "sampling",
-    "train_subset",
-    "loss_weighting",
-    "lexical_hard_negative_strength",
-    "symmetric_validation",
-    "label_smoothing",
     "seed",
-    "config_json",
-    "report_json",
 )
 
 CATEGORY_HEADERS = (
@@ -154,57 +132,48 @@ def build_experiment_row(
     *,
     synced_at_utc: str | None = None,
 ) -> list[Any]:
-    """Flatten a completion report while preserving the full JSON payload."""
+    """Build the compact experiment leaderboard row.
+
+    Detailed timings, per-category diagnostics and the full config remain in the
+    Kaggle JSON artifact. The Sheet intentionally keeps only reproducibility
+    identifiers, the three protocol scores and core training parameters.
+    """
     run_id = str(completion.get("run_id", "")).strip()
     if not run_id:
         raise SheetsLoggerError("Experiment completion is missing a non-empty run_id")
     report = _mapping(completion.get("training_report"))
     args = _mapping(report.get("args"))
     model = completion.get("model") or args.get("model") or ""
+    validation_splits = _mapping(report.get("validation_splits"))
+    if not validation_splits:
+        # Backward-compatible placement for historical single-validation runs.
+        validation_splits = {"iid": report}
+
+    def metric(split: str, name: str) -> Any:
+        return _mapping(validation_splits.get(split)).get(name)
+
     values = {
         "run_id": run_id,
-        "started_at_utc": completion.get("started_at_utc"),
         "completed_at_utc": completion.get("completed_at_utc"),
-        "synced_at_utc": synced_at_utc or utc_now(),
         "status": completion.get("status"),
         "experiment": completion.get("experiment"),
         "model": model,
         "dataset_ref": completion.get("dataset_ref"),
         "kaggle_kernel_ref": completion.get("kaggle_kernel_ref"),
         "code_bundle_sha256": completion.get("code_bundle_sha256"),
-        "training_wall_seconds": completion.get("training_wall_seconds"),
-        "training_seconds": report.get("training_seconds"),
-        "validation_seconds": report.get("validation_seconds"),
-        "total_pipeline_seconds": report.get("total_pipeline_seconds"),
-        "training_examples": report.get("training_examples"),
-        "original_training_examples": report.get("original_training_examples"),
-        "validation_examples": report.get("validation_examples"),
-        "validation_positive_examples": report.get("validation_positive_examples"),
-        "validation_positive_rate": report.get("validation_positive_rate"),
-        "macro_average_precision": report.get("macro_average_precision"),
-        "overall_average_precision": report.get("overall_average_precision"),
-        "examples_per_second": report.get("examples_per_second"),
-        "padding_efficiency": report.get("padding_efficiency"),
-        "peak_vram_gib": _peak_vram(report),
-        "mean_score_order_gap": report.get("mean_score_order_gap"),
+        "iid_macro_ap": metric("iid", "macro_average_precision"),
+        "hard_macro_ap": metric("hard", "macro_average_precision"),
+        "ood_macro_ap": metric("ood", "macro_average_precision"),
+        "iid_overall_ap": metric("iid", "overall_average_precision"),
+        "hard_overall_ap": metric("hard", "overall_average_precision"),
+        "ood_overall_ap": metric("ood", "overall_average_precision"),
+        "train_pairs": report.get("original_training_examples"),
         "epochs": args.get("epochs"),
         "batch_size": args.get("batch_size"),
-        "eval_batch_size": args.get("eval_batch_size"),
         "gradient_accumulation": args.get("gradient_accumulation"),
         "learning_rate": args.get("learning_rate"),
-        "weight_decay": args.get("weight_decay"),
-        "warmup_ratio": args.get("warmup_ratio"),
         "max_length": args.get("max_length"),
-        "attention_implementation": args.get("attention_implementation"),
-        "sampling": args.get("sampling"),
-        "train_subset": args.get("train_subset"),
-        "loss_weighting": args.get("loss_weighting"),
-        "lexical_hard_negative_strength": args.get("lexical_hard_negative_strength"),
-        "symmetric_validation": args.get("symmetric_validation"),
-        "label_smoothing": args.get("label_smoothing"),
         "seed": args.get("seed"),
-        "config_json": _json_cell(args),
-        "report_json": _json_cell(report),
     }
     return [_cell(values[header]) for header in EXPERIMENT_HEADERS]
 
@@ -606,7 +575,6 @@ def _format_requests(
 def ensure_tables(client: SheetsRestClient) -> dict[str, int]:
     tables = {
         EXPERIMENTS_SHEET: EXPERIMENT_HEADERS,
-        CATEGORY_METRICS_SHEET: CATEGORY_HEADERS,
     }
     metadata = client.metadata()
     properties = _sheet_properties(metadata)
@@ -670,7 +638,7 @@ def ensure_tables(client: SheetsRestClient) -> dict[str, int]:
             _format_requests(
                 sheet_id,
                 len(headers),
-                json_columns=title == EXPERIMENTS_SHEET,
+                json_columns=False,
             )
         )
     if formatting:
@@ -842,22 +810,13 @@ def sync_experiment(
     sheet_ids = ensure_tables(client)
     synced_at = utc_now()
     experiment_row = build_experiment_row(completion, synced_at_utc=synced_at)
-    category_rows = build_category_rows(completion)
     experiment_action = _upsert_experiment(client, experiment_row)
-    category_action = _upsert_categories(
-        client,
-        sheet_ids[CATEGORY_METRICS_SHEET],
-        category_rows,
-        str(completion["run_id"]),
-    )
     return {
         "run_id": str(completion["run_id"]),
         "synced_at_utc": synced_at,
         "spreadsheet_id": spreadsheet_id,
         "spreadsheet_url": f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit",
         "experiment_action": experiment_action,
-        "category_metrics_action": category_action,
-        "category_metrics_count": len(category_rows),
     }
 
 

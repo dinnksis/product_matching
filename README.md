@@ -176,6 +176,14 @@ make kaggle-cross-run
 достаточно изменить JSON и повторить последние две команды. Полная инструкция:
 [`docs/cross-encoder-training.md`](docs/cross-encoder-training.md).
 
+Для full fine-tuning на всех 10,04 млн non-OOD LLM-парах на одной серверной
+H100 добавлен отдельный потоковый trainer. Он сохраняет все дробные soft labels,
+использует `S1_KEY_VALUE` serialization из MiniLM ablation, обучается с длиной
+до 512 токенов, применяет ELR против запоминания noisy labels, валидируется после
+каждой из 10 эпох на IID/hard/OOD, не материализует 10 млн пар текстов в pandas
+и поддерживает полный checkpoint/resume:
+[`docs/llm-full-server-training.md`](docs/llm-full-server-training.md).
+
 Завершённые Kaggle training runs автоматически журналируются в Google Sheets:
 одна строка на запуск плюс отдельные AP по категориям. Отдельный private
 credential Dataset автоматически подключается даже к новым notebook slug;
