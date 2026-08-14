@@ -1,4 +1,4 @@
-.PHONY: setup notebook attributes-notebook validation-audit-notebooks validation-split-audit error-pattern-audit report prepare-human prepare-mxbai-balanced analyze-validation train-qwen train-cross-encoder kaggle-google-credentials kaggle-google-credentials-dry-run kaggle-train-build kaggle-train-data kaggle-cross-build kaggle-cross-dry-run kaggle-cross-run kaggle-mxbai-build kaggle-mxbai-data-dry-run kaggle-mxbai-dry-run kaggle-mxbai-run kaggle-run kaggle-dry-run submit-build submit-archive submit-jina-build submit-jina-archive embedding-boosting-dry-run embedding-boosting-run embedding-boosting-monitor submit-embedding-build submit-embedding-archive
+.PHONY: setup notebook attributes-notebook validation-audit-notebooks validation-split-audit error-pattern-audit report prepare-human prepare-mxbai-balanced analyze-validation train-qwen train-cross-encoder kaggle-google-credentials kaggle-google-credentials-dry-run kaggle-train-build kaggle-train-data kaggle-cross-build kaggle-cross-dry-run kaggle-cross-run kaggle-mxbai-build kaggle-mxbai-data-dry-run kaggle-mxbai-dry-run kaggle-mxbai-run kaggle-run kaggle-dry-run serialization-ablation-build serialization-ablation-dry-run serialization-ablation-run serialization-ablation-monitor submit-build submit-archive submit-jina-build submit-jina-archive submit-minilm-s2 embedding-boosting-dry-run embedding-boosting-run embedding-boosting-monitor submit-embedding-build submit-embedding-archive
 
 CROSS_ENCODER_CONFIG ?= configs/cross_encoder_minilm.json
 VALIDATION_PREDICTIONS ?= data/runs/validation_predictions_v1.parquet
@@ -95,6 +95,18 @@ kaggle-dry-run:
 	@test -n "$(NOTEBOOK)" || (echo "Usage: make kaggle-dry-run NOTEBOOK=notebooks/train.ipynb"; exit 2)
 	uv run python scripts/run_kaggle_notebook.py "$(NOTEBOOK)" --dry-run
 
+serialization-ablation-build:
+	uv run python scripts/create_serialization_ablation_notebook.py
+
+serialization-ablation-dry-run:
+	uv run python scripts/run_serialization_ablation_kaggle.py --dry-run
+
+serialization-ablation-run:
+	uv run python scripts/run_serialization_ablation_kaggle.py
+
+serialization-ablation-monitor:
+	uv run python scripts/run_serialization_ablation_kaggle.py --monitor-existing
+
 submit-build:
 	uv run python scripts/build_qwen3_vllm_submit.py
 
@@ -106,6 +118,10 @@ submit-jina-build:
 
 submit-jina-archive:
 	uv run python scripts/build_jina_submit.py --archive-only
+
+submit-minilm-s2:
+	python scripts/build_minilm_s2_submit.py
+
 embedding-boosting-dry-run:
 	python scripts/run_embedding_boosting_kaggle.py --dry-run
 

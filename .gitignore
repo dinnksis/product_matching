@@ -39,6 +39,8 @@ wandb/
 submits/*.zip
 submits/**/models/
 submits/**/vendor/
+submits/minilm-s2-values-only/attribute_name_frequency.csv
+submits/minilm-s2-values-only/serialization_ablation.py
 docker/embedding-catboost-runtime/models/
 docker/embedding-catboost-runtime/wheels/*.whl
 docker/embedding-catboost-runtime/wheels/*.tmp

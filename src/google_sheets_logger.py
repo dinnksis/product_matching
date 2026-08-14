@@ -298,6 +298,19 @@ def kaggle_service_account_json(
         pass
 
     credential_path = input_root / dataset_slug / credential_filename
+    if not credential_path.is_file():
+        candidates = [
+            path
+            for path in input_root.glob(f"**/{credential_filename}")
+            if dataset_slug in path.parts
+        ]
+        if len(candidates) == 1:
+            credential_path = candidates[0]
+        elif len(candidates) > 1:
+            raise SheetsLoggerError(
+                "Google service-account credential Dataset contains multiple "
+                f"files named {credential_filename!r}"
+            )
     try:
         dataset_value = credential_path.read_text(encoding="utf-8")
         load_service_account_info(dataset_value)

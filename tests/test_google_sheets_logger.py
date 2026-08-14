@@ -227,6 +227,30 @@ class CredentialLoadingTest(unittest.TestCase):
         self.assertEqual(actual, expected)
 
     @patch("src.google_sheets_logger.kaggle_secret")
+    def test_expanded_private_dataset_layout_is_supported(
+        self,
+        secret: Mock,
+    ) -> None:
+        secret.side_effect = SheetsLoggerError("secret unavailable")
+        expected = sample_service_account_json()
+
+        with tempfile.TemporaryDirectory() as directory:
+            dataset_dir = (
+                Path(directory)
+                / "ecom-matching-google-sheets-credentials"
+                / "expanded-version"
+            )
+            dataset_dir.mkdir(parents=True)
+            (dataset_dir / "google-service-account.json").write_text(
+                expected,
+                encoding="utf-8",
+            )
+
+            actual = kaggle_service_account_json(input_root=Path(directory))
+
+        self.assertEqual(actual, expected)
+
+    @patch("src.google_sheets_logger.kaggle_secret")
     def test_missing_credentials_error_does_not_leak_secret_error(
         self,
         secret: Mock,

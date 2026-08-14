@@ -1,0 +1,99 @@
+{
+  "inputs": {
+    "items": "data\\items.parquet",
+    "human_items": "data\\items_human.parquet",
+    "human_matches": "data\\matches.parquet",
+    "llm_matches": "data\\matches_llm.parquet"
+  },
+  "human": {
+    "pairs": 365654,
+    "positive_examples": 93890,
+    "global_positive_rate": 0.2567727961406138,
+    "mean_category_positive_rate": 0.2611126186277738
+  },
+  "llm": {
+    "pairs": 11187780,
+    "soft_positive_mass": 2724903.222222225,
+    "global_mean_soft_score": 0.24356067264660414,
+    "mean_category_soft_score": 0.24515562551207948,
+    "threshold_positive_examples": 2619567,
+    "global_threshold_positive_rate": 0.23414538004858873,
+    "mean_category_threshold_positive_rate": 0.23575787938269,
+    "exact_zero_examples": 7184663,
+    "exact_one_examples": 1223955,
+    "uncertain_examples": 2779162,
+    "target_values": [
+      0.0,
+      0.1111111111111111,
+      0.2222222222222222,
+      0.3333333333333333,
+      0.4444444444444444,
+      0.5555555555555556,
+      0.6666666666666666,
+      0.7777777777777778,
+      0.8888888888888888,
+      1.0
+    ]
+  },
+  "item_universes": {
+    "all_items": 13397761,
+    "human_items": 711304,
+    "human_items_present_in_all_items": 711304,
+    "llm_unique_items": 12384610,
+    "llm_pairs_with_any_human_item": 0,
+    "llm_pairs_with_two_human_items": 0,
+    "all_items_unused_by_llm_pairs": 1013151
+  },
+  "integrity": {
+    "human_nulls": {
+      "id1": 0,
+      "id2": 0,
+      "target": 0
+    },
+    "llm_nulls": {
+      "id1": 0,
+      "id2": 0,
+      "target": 0
+    },
+    "human_missing_id1": 0,
+    "human_missing_id2": 0,
+    "llm_missing_id1": 0,
+    "llm_missing_id2": 0,
+    "human_cross_category_pairs": 0,
+    "llm_cross_category_pairs": 0,
+    "human_self_pairs": 0,
+    "llm_self_pairs": 0,
+    "duplicate_unordered_rows_after_first": 0,
+    "adjacent_conflicting_duplicate_links": 0
+  },
+  "llm_graph": {
+    "unique_items": 12384610,
+    "mean_degree": 1.8067230215565933,
+    "degree_one_items": 9203191,
+    "degree_one_rate": 0.7431151243357683,
+    "degree_quantiles": {
+      "min": 1,
+      "p50": 1,
+      "p90": 3,
+      "p95": 5,
+      "p99": 12,
+      "p999": 44,
+      "max": 223
+    }
+  },
+  "human_llm_category_prevalence_pearson": 0.6889428596855248,
+  "human_llm_category_prevalence_spearman": 0.7383458646616541,
+  "lexical_sample": {
+    "seed": 20260814,
+    "requested_pairs_per_source_category": 10000,
+    "sampled_pairs": 400000
+  },
+  "llm_prior_shift_diagnostic": {
+    "baseline_macro_ap": 0.5015377923802575,
+    "llm_soft_mean_macro_ap": 0.4865161600199867,
+    "llm_soft_mean_macro_roc_auc": 0.7357064022541515,
+    "llm_threshold_macro_ap": 0.4743272472738219,
+    "llm_threshold_macro_roc_auc": 0.7357064022541541
+  },
+  "runtime_seconds": 70.7724607999844
+}

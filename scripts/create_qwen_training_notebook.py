@@ -179,8 +179,17 @@ def code(text: str) -> nbf.NotebookNode:
     return nbf.v4.new_code_cell(dedent(text).strip())
 
 
-def google_sheets_tracking_cells() -> list[nbf.NotebookNode]:
+def google_sheets_tracking_cells(
+    *, sync_stem: str = "google_sheets_sync"
+) -> list[nbf.NotebookNode]:
     """Cells shared by every generated training notebook."""
+    if not sync_stem or any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-" for character in sync_stem):
+        raise ValueError("sync_stem must contain only letters, digits, underscores, and hyphens")
+    pending_filename = (
+        "sheets_sync_pending.json"
+        if sync_stem == "google_sheets_sync"
+        else f"{sync_stem}_pending.json"
+    )
     logger_source = (ROOT / "src/google_sheets_logger.py").read_text(encoding="utf-8")
     return [
         markdown(
@@ -196,8 +205,8 @@ def google_sheets_tracking_cells() -> list[nbf.NotebookNode]:
         code(
             f"""
             spreadsheet_id = {EXPERIMENT_SPREADSHEET_ID!r}
-            sync_path = WORKING_ROOT / "google_sheets_sync.json"
-            pending_path = WORKING_ROOT / "sheets_sync_pending.json"
+            sync_path = WORKING_ROOT / {f"{sync_stem}.json"!r}
+            pending_path = WORKING_ROOT / {pending_filename!r}
             logger_module = None
             try:
                 import importlib.util
