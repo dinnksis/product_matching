@@ -1,9 +1,10 @@
 #!/usr/bin/env python3
-"""Full single-GPU fine-tuning on every LLM-labelled product pair.
+"""Full single-node fine-tuning on every LLM-labelled product pair.
 
 The default run uses all non-OOD pairs, including the ambiguous 5/9--7/9
 targets, as soft labels.  OOD categories remain excluded unless
-``--include-ood`` is explicitly passed.
+``--include-ood`` is explicitly passed.  The same entry point supports one GPU
+or one ``torchrun`` process per GPU with exact checkpoint/resume semantics.
 """
 
 from __future__ import annotations
@@ -18,6 +19,7 @@ import sys
 import time
 from contextlib import nullcontext
 from dataclasses import dataclass
+from datetime import timedelta
 from pathlib import Path
 from typing import Any, Iterator, Sequence
 
@@ -44,6 +46,39 @@ DEFAULT_MODEL = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
 VALIDATION_SPLITS = ("iid", "hard", "ood")
 
 
+@dataclass(frozen=True)
+class DistributedContext:
+    rank: int
+    local_rank: int
+    world_size: int
+
+    @property
+    def distributed(self) -> bool:
+        return self.world_size > 1
+
+    @property
+    def is_main(self) -> bool:
+        return self.rank == 0
+
+
+def distributed_context_from_environment() -> DistributedContext:
+    """Read the single-node process coordinates populated by torchrun."""
+    world_size = int(os.environ.get("WORLD_SIZE", "1"))
+    rank = int(os.environ.get("RANK", "0"))
+    local_rank = int(os.environ.get("LOCAL_RANK", "0"))
+    local_world_size = int(os.environ.get("LOCAL_WORLD_SIZE", str(world_size)))
+    if world_size <= 0 or not 0 <= rank < world_size:
+        raise ValueError("Invalid WORLD_SIZE/RANK distributed environment")
+    if local_world_size != world_size:
+        raise ValueError(
+            "train_llm_full.py currently supports single-node torchrun only; "
+            f"WORLD_SIZE={world_size}, LOCAL_WORLD_SIZE={local_world_size}"
+        )
+    if not 0 <= local_rank < local_world_size:
+        raise ValueError("Invalid LOCAL_RANK distributed environment")
+    return DistributedContext(rank=rank, local_rank=local_rank, world_size=world_size)
+
+
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
         description="Stream and full-fine-tune a cross-encoder on all LLM pairs"
@@ -54,6 +89,14 @@ def parse_args() -> argparse.Namespace:
         default=Path("prepared/validation_splits_v1/llm"),
     )
     parser.add_argument("--model", default=DEFAULT_MODEL)
+    parser.add_argument(
+        "--trust-remote-code",
+        action="store_true",
+        help=(
+            "Opt in to custom Hub tokenizer/model code for compatible "
+            "one-logit models"
+        ),
+    )
     parser.add_argument(
         "--output-dir", type=Path, default=Path("models/minilm_llm_full")
     )
@@ -88,8 +131,12 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--rebuild-cache", action="store_true")
 
     parser.add_argument("--epochs", type=int, default=10)
-    parser.add_argument("--batch-size", type=int, default=256)
-    parser.add_argument("--eval-batch-size", type=int, default=512)
+    parser.add_argument(
+        "--batch-size", type=int, default=256, help="Training batch per GPU"
+    )
+    parser.add_argument(
+        "--eval-batch-size", type=int, default=512, help="Validation batch per GPU"
+    )
     parser.add_argument("--gradient-accumulation", type=int, default=1)
     parser.add_argument("--learning-rate", type=float, default=5e-6)
     parser.add_argument("--weight-decay", type=float, default=0.01)
@@ -125,7 +172,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--torch-compile", action="store_true")
     parser.add_argument("--amp-dtype", choices=["bf16", "fp16"], default="bf16")
 
-    parser.add_argument("--num-workers", type=int, default=8)
+    parser.add_argument(
+        "--num-workers", type=int, default=8, help="DataLoader workers per process"
+    )
     parser.add_argument("--prefetch-factor", type=int, default=4)
     parser.add_argument("--bucket-size-multiplier", type=int, default=100)
     parser.add_argument("--pad-to-multiple-of", type=int, default=8)
@@ -255,7 +304,8 @@ def infer_pair_template(tokenizer: Any) -> PairTemplate:
     expected = tokenizer.num_special_tokens_to_add(pair=True)
     if template.special_tokens != expected:
         raise ValueError(
-            f"Inferred {template.special_tokens} pair special tokens, expected {expected}"
+            f"Inferred {template.special_tokens} pair special tokens, "
+            f"expected {expected}"
         )
     return template
 
@@ -298,7 +348,13 @@ class FullPairDataset:
 
 
 class BucketBatchSampler:
-    """One-pass shuffled batches with local length bucketing and resumability."""
+    """One-pass global batches sharded exactly across DDP ranks.
+
+    Every example appears once per epoch without DistributedSampler padding.
+    All ranks yield the same number of steps; when the final global remainder
+    is smaller than ``world_size``, a few examples are moved from the previous
+    step so every rank still receives a non-empty local batch.
+    """
 
     def __init__(
         self,
@@ -307,17 +363,50 @@ class BucketBatchSampler:
         batch_size: int,
         bucket_size_multiplier: int,
         seed: int,
+        rank: int = 0,
+        world_size: int = 1,
     ) -> None:
         self.lengths = np.asarray(lengths)
         self.batch_size = batch_size
-        self.bucket_size = batch_size * bucket_size_multiplier
+        self.rank = rank
+        self.world_size = world_size
+        if world_size <= 0 or not 0 <= rank < world_size:
+            raise ValueError("Invalid sampler rank/world_size")
+        if len(self.lengths) < world_size:
+            raise ValueError("Training set must contain at least one example per rank")
+        self.global_batch_size = batch_size * world_size
+        self.bucket_size = self.global_batch_size * bucket_size_multiplier
         self.seed = seed
         self.epoch = 0
         self.start_batch = 0
+        self._step_sizes = self._global_step_sizes()
+
+    def _global_step_sizes(self) -> tuple[int, ...]:
+        full_steps, remainder = divmod(len(self.lengths), self.global_batch_size)
+        sizes = [self.global_batch_size] * full_steps
+        if remainder:
+            sizes.append(remainder)
+        if remainder and remainder < self.world_size and full_steps:
+            moved = self.world_size - remainder
+            sizes[-2] -= moved
+            sizes[-1] += moved
+        if not sizes or any(size < self.world_size for size in sizes):
+            raise ValueError("Could not construct a non-empty batch for every rank")
+        return tuple(sizes)
 
     @property
     def total_batches(self) -> int:
-        return math.ceil(len(self.lengths) / self.batch_size)
+        return len(self._step_sizes)
+
+    def global_examples_at(self, batch_index: int) -> int:
+        return self._step_sizes[batch_index]
+
+    def accumulation_examples_at(
+        self, batch_index: int, gradient_accumulation: int
+    ) -> int:
+        start = (batch_index // gradient_accumulation) * gradient_accumulation
+        stop = min(start + gradient_accumulation, self.total_batches)
+        return sum(self._step_sizes[start:stop])
 
     def set_epoch(self, epoch: int, *, start_batch: int = 0) -> None:
         if not 0 <= start_batch <= self.total_batches:
@@ -345,37 +434,60 @@ class BucketBatchSampler:
     def __iter__(self) -> Iterator[list[tuple[int, bool]]]:
         rng = np.random.default_rng(self.seed + self.epoch)
         indices = rng.permutation(len(self.lengths))
-        batch_number = 0
-        orientation_seed = self.seed + self.epoch * 1_000_003
         for bucket_start in range(0, len(indices), self.bucket_size):
-            bucket = indices[bucket_start : bucket_start + self.bucket_size]
+            bucket_stop = min(bucket_start + self.bucket_size, len(indices))
+            bucket = indices[bucket_start:bucket_stop]
             order = np.argsort(self.lengths[bucket], kind="stable")
-            bucket = bucket[order]
-            for start in range(0, len(bucket), self.batch_size):
-                batch = bucket[start : start + self.batch_size]
-                if batch_number >= self.start_batch:
-                    orientations = self._reverse_orientation(batch, orientation_seed)
-                    yield [
-                        (int(index), bool(reverse))
-                        for index, reverse in zip(batch, orientations)
-                    ]
-                batch_number += 1
+            indices[bucket_start:bucket_stop] = bucket[order]
+
+        orientation_seed = self.seed + self.epoch * 1_000_003
+        offset = 0
+        for batch_number, global_size in enumerate(self._step_sizes):
+            global_batch = indices[offset : offset + global_size]
+            offset += global_size
+            if batch_number < self.start_batch:
+                continue
+            local_batch = global_batch[self.rank :: self.world_size]
+            if not 0 < len(local_batch) <= self.batch_size:
+                raise RuntimeError(
+                    "Distributed sampler produced an invalid local batch"
+                )
+            orientations = self._reverse_orientation(local_batch, orientation_seed)
+            yield [
+                (int(index), bool(reverse))
+                for index, reverse in zip(local_batch, orientations)
+            ]
+        if offset != len(indices):
+            raise RuntimeError("Distributed sampler did not consume every example")
 
 
 class SymmetricEvaluationBatchSampler:
-    """Length-bucket every validation pair in both A/B orientations."""
+    """Length-bucket a rank's validation pairs in both A/B orientations."""
 
-    def __init__(self, lengths: Sequence[int], *, batch_size: int) -> None:
+    def __init__(
+        self,
+        lengths: Sequence[int],
+        *,
+        batch_size: int,
+        rank: int = 0,
+        world_size: int = 1,
+    ) -> None:
         if batch_size < 2:
             raise ValueError("eval-batch-size must be at least 2")
         self.lengths = np.asarray(lengths)
         self.pairs_per_batch = max(1, batch_size // 2)
+        self.rank = rank
+        self.world_size = world_size
+        if world_size <= 0 or not 0 <= rank < world_size:
+            raise ValueError("Invalid validation sampler rank/world_size")
 
     def __len__(self) -> int:
-        return math.ceil(len(self.lengths) / self.pairs_per_batch)
+        local_pairs = len(range(self.rank, len(self.lengths), self.world_size))
+        return math.ceil(local_pairs / self.pairs_per_batch)
 
     def __iter__(self) -> Iterator[list[tuple[int, bool]]]:
         indices = np.argsort(self.lengths, kind="stable")
+        indices = indices[self.rank :: self.world_size]
         for start in range(0, len(indices), self.pairs_per_batch):
             batch = indices[start : start + self.pairs_per_batch]
             yield [
@@ -524,7 +636,9 @@ def evaluate_human_validation(
     epoch: int,
     output_dir: Path,
     max_length: int,
-) -> dict[str, Any]:
+    distributed_context: DistributedContext | None = None,
+    dist_module: Any | None = None,
+) -> dict[str, Any] | None:
     """Evaluate IID/hard/OOD in both orientations and persist predictions."""
     import pandas as pd
     import torch
@@ -544,7 +658,7 @@ def evaluate_human_validation(
                 for key, value in packed.items()
             }
             with torch.autocast("cuda", dtype=amp_dtype):
-                logits = model(**model_inputs).logits.squeeze(-1)
+                logits = one_logit(model(**model_inputs))
             probabilities = logits.float().sigmoid().cpu().numpy()
             for index, reverse, score in zip(
                 pair_indices, orientations, probabilities
@@ -557,8 +671,36 @@ def evaluate_human_validation(
                     )
                 destination[pair_index] = float(score)
 
+    context = distributed_context or DistributedContext(0, 0, 1)
+    local_ab = np.isfinite(scores_ab)
+    local_ba = np.isfinite(scores_ba)
+    if not np.array_equal(local_ab, local_ba):
+        raise RuntimeError("Validation rank did not produce both pair orientations")
+    if context.distributed:
+        if dist_module is None:
+            raise RuntimeError("Distributed validation requires torch.distributed")
+        local_indices = np.flatnonzero(local_ab)
+        local_payload = (
+            local_indices,
+            scores_ab[local_indices],
+            scores_ba[local_indices],
+        )
+        gathered: list[Any] = [None] * context.world_size
+        dist_module.all_gather_object(gathered, local_payload)
+        if not context.is_main:
+            return None
+        scores_ab.fill(np.nan)
+        scores_ba.fill(np.nan)
+        for indices, part_ab, part_ba in gathered:
+            if np.isfinite(scores_ab[indices]).any():
+                raise RuntimeError("Duplicate validation pair across DDP ranks")
+            scores_ab[indices] = part_ab
+            scores_ba[indices] = part_ba
+
     if not np.isfinite(scores_ab).all() or not np.isfinite(scores_ba).all():
-        raise RuntimeError("Validation did not produce both orientations for every pair")
+        raise RuntimeError(
+            "Validation did not produce both orientations for every pair"
+        )
 
     epoch_dir = output_dir / "validation" / f"epoch-{epoch:02d}"
     epoch_dir.mkdir(parents=True, exist_ok=True)
@@ -627,7 +769,31 @@ def evaluate_human_validation(
 
 
 def model_for_saving(model: Any) -> Any:
-    return getattr(model, "_orig_mod", model)
+    try:
+        from torch.nn.parallel import DistributedDataParallel
+    except ImportError:
+        DistributedDataParallel = ()  # type: ignore[assignment]
+    while True:
+        if DistributedDataParallel and isinstance(model, DistributedDataParallel):
+            model = model.module
+            continue
+        original = getattr(model, "_orig_mod", None)
+        if original is not None:
+            model = original
+            continue
+        return model
+
+
+def one_logit(outputs: Any) -> Any:
+    """Validate the backend contract used by BCE, ELR, and AP scoring."""
+    logits = outputs.logits
+    if logits.ndim != 2 or logits.shape[1] != 1:
+        raise ValueError(
+            "--model must be an AutoModelForSequenceClassification checkpoint "
+            "with exactly one logit per pair; generative yes/no rerankers such as "
+            "Qwen3-Reranker require the dedicated causal-reranker backend"
+        )
+    return logits[:, 0]
 
 
 def write_json(path: Path, payload: Any) -> None:
@@ -647,6 +813,7 @@ def save_checkpoint(
     output_dir: Path,
     state: dict[str, Any],
     args: argparse.Namespace,
+    rng_states: list[dict[str, Any]],
 ) -> None:
     import torch
 
@@ -663,10 +830,7 @@ def save_checkpoint(
     torch.save(scheduler.state_dict(), staging / "scheduler.pt")
     torch.save(elr_targets.detach().cpu(), staging / "elr_targets.pt")
     torch.save(
-        {
-            "cpu": torch.get_rng_state(),
-            "cuda": torch.cuda.get_rng_state_all(),
-        },
+        {"world_size": len(rng_states), "states": rng_states},
         staging / "rng_state.pt",
     )
     write_json(staging / "training_state.json", state)
@@ -677,6 +841,109 @@ def save_checkpoint(
     if previous.exists():
         shutil.rmtree(previous)
     json_line({"checkpoint_saved": str(checkpoint), **state})
+
+
+def synchronize_elr_history(
+    target_history: Any,
+    synchronized_history: Any,
+    context: DistributedContext,
+    dist_module: Any | None,
+) -> None:
+    """Merge disjoint per-rank ELR updates since the previous synchronization."""
+    import torch
+
+    with torch.no_grad():
+        if context.distributed:
+            if dist_module is None:
+                raise RuntimeError("Distributed ELR synchronization is unavailable")
+            delta = target_history - synchronized_history
+            dist_module.all_reduce(delta, op=dist_module.ReduceOp.SUM)
+            target_history.copy_(synchronized_history + delta)
+        synchronized_history.copy_(target_history)
+
+
+def collect_rng_states(
+    torch: Any,
+    device: Any,
+    context: DistributedContext,
+    dist_module: Any | None,
+) -> list[dict[str, Any]]:
+    local_state = {
+        "cpu": torch.get_rng_state(),
+        "cuda": torch.cuda.get_rng_state(device),
+    }
+    if not context.distributed:
+        return [local_state]
+    if dist_module is None:
+        raise RuntimeError("Distributed RNG collection is unavailable")
+    gathered: list[Any] = [None] * context.world_size
+    dist_module.all_gather_object(gathered, local_state)
+    return gathered
+
+
+def restore_rng_state(
+    payload: dict[str, Any],
+    *,
+    torch: Any,
+    device: Any,
+    context: DistributedContext,
+) -> None:
+    if "states" in payload:
+        saved_world_size = int(payload.get("world_size", len(payload["states"])))
+        if saved_world_size != context.world_size:
+            raise ValueError(
+                "Checkpoint RNG state was created with a different world size: "
+                f"{saved_world_size} != {context.world_size}"
+            )
+        local_state = payload["states"][context.rank]
+    else:
+        if context.world_size != 1:
+            raise ValueError("Legacy single-GPU RNG state cannot resume under DDP")
+        local_state = payload
+    torch.set_rng_state(local_state["cpu"])
+    cuda_state = local_state["cuda"]
+    if isinstance(cuda_state, (list, tuple)):
+        if not cuda_state:
+            raise ValueError("Checkpoint CUDA RNG state is empty")
+        cuda_state = cuda_state[0]
+    torch.cuda.set_rng_state(cuda_state, device)
+
+
+def save_checkpoint_distributed(
+    *,
+    model: Any,
+    tokenizer: Any,
+    optimizer: Any,
+    scheduler: Any,
+    elr_targets: Any,
+    synchronized_elr_targets: Any,
+    output_dir: Path,
+    state: dict[str, Any],
+    args: argparse.Namespace,
+    torch: Any,
+    device: Any,
+    context: DistributedContext,
+    dist_module: Any | None,
+) -> None:
+    synchronize_elr_history(
+        elr_targets, synchronized_elr_targets, context, dist_module
+    )
+    rng_states = collect_rng_states(torch, device, context, dist_module)
+    if context.is_main:
+        save_checkpoint(
+            model=model,
+            tokenizer=tokenizer,
+            optimizer=optimizer,
+            scheduler=scheduler,
+            elr_targets=elr_targets,
+            output_dir=output_dir,
+            state=state,
+            args=args,
+            rng_states=rng_states,
+        )
+    if context.distributed:
+        assert dist_module is not None
+        dist_module.barrier()
 
 
 def snapshot_checkpoint(
@@ -737,6 +1004,7 @@ def validate_resume_args(args: argparse.Namespace, checkpoint: Path) -> None:
     current = json_safe(vars(args))
     immutable = (
         "model",
+        "trust_remote_code",
         "include_ood",
         "max_pairs",
         "human_validation_dir",
@@ -764,11 +1032,16 @@ def validate_resume_args(args: argparse.Namespace, checkpoint: Path) -> None:
         "pad_to_multiple_of",
         "best_validation_split",
         "seed",
+        "world_size",
     )
+    saved_defaults = {"trust_remote_code": False, "world_size": 1}
     changed = {
-        name: {"checkpoint": saved.get(name), "current": current.get(name)}
+        name: {
+            "checkpoint": saved.get(name, saved_defaults.get(name)),
+            "current": current.get(name),
+        }
         for name in immutable
-        if saved.get(name) != current.get(name)
+        if saved.get(name, saved_defaults.get(name)) != current.get(name)
     }
     if changed:
         raise ValueError(
@@ -777,16 +1050,78 @@ def validate_resume_args(args: argparse.Namespace, checkpoint: Path) -> None:
         )
 
 
+def build_shared_caches(
+    *,
+    args: argparse.Namespace,
+    item_paths: Sequence[Path],
+    pair_paths: Sequence[Path],
+    human_pair_paths: dict[str, Path],
+    tokenizer: Any,
+    context: DistributedContext,
+    dist_module: Any | None,
+) -> tuple[FullPairCache, FullPairCache]:
+    paths: list[str] | None = None
+    if context.is_main:
+        cache = build_full_pair_cache(
+            item_paths=item_paths,
+            pair_paths=pair_paths,
+            tokenizer=tokenizer,
+            model_name=args.model,
+            cache_root=args.cache_dir,
+            max_length=args.max_length,
+            serialization_variant=args.serialization_variant,
+            attribute_frequency_csv=args.attribute_frequency_csv,
+            frequent_keys_json=args.frequent_keys_json,
+            item_batch_size=args.item_tokenization_batch_size,
+            pair_batch_size=args.pair_cache_batch_size,
+            max_pairs=args.max_pairs,
+            rebuild=args.rebuild_cache,
+        )
+        validation_cache = build_full_pair_cache(
+            item_paths=[args.human_items],
+            pair_paths=list(human_pair_paths.values()),
+            tokenizer=tokenizer,
+            model_name=args.model,
+            cache_root=args.cache_dir / "human_validation",
+            max_length=args.max_length,
+            serialization_variant=args.serialization_variant,
+            attribute_frequency_csv=cache.directory
+            / "attribute_name_frequency.csv",
+            frequent_keys_json=cache.directory / "frequent_attribute_names.json",
+            item_batch_size=args.item_tokenization_batch_size,
+            pair_batch_size=args.pair_cache_batch_size,
+            max_pairs=None,
+            rebuild=args.rebuild_cache,
+        )
+        paths = [str(cache.directory), str(validation_cache.directory)]
+    if context.distributed:
+        if dist_module is None:
+            raise RuntimeError("Distributed cache coordination is unavailable")
+        payload: list[Any] = [paths]
+        dist_module.broadcast_object_list(payload, src=0)
+        paths = payload[0]
+    if paths is None:
+        raise RuntimeError("Cache paths were not initialized")
+    return FullPairCache.load(Path(paths[0])), FullPairCache.load(Path(paths[1]))
+
+
 def main() -> None:
     args = parse_args()
+    context = distributed_context_from_environment()
+    args.world_size = context.world_size
     validate_args(args)
-    random.seed(args.seed)
-    np.random.seed(args.seed)
+    random.seed(args.seed + context.rank)
+    np.random.seed(args.seed + context.rank)
     item_paths, pair_paths = data_paths(args)
     human_pair_paths = validation_pair_paths(args)
     missing_inputs = [
         str(path)
-        for path in (*item_paths, *pair_paths, args.human_items, *human_pair_paths.values())
+        for path in (
+            *item_paths,
+            *pair_paths,
+            args.human_items,
+            *human_pair_paths.values(),
+        )
         if not path.is_file()
     ]
     if missing_inputs:
@@ -814,6 +1149,8 @@ def main() -> None:
     # useful error before GPU-only dependencies are installed.
     try:
         import torch
+        import torch.distributed as dist
+        from torch.nn.parallel import DistributedDataParallel
         from torch.optim import AdamW
         from torch.utils.data import DataLoader
         from transformers import (
@@ -827,8 +1164,27 @@ def main() -> None:
             "pip install -r requirements-cross-encoder.txt"
         ) from error
 
+    dist_module: Any | None = None
+    device: Any | None = None
+    if context.distributed:
+        if not torch.cuda.is_available():
+            raise RuntimeError("CUDA is required for NCCL distributed training")
+        if context.local_rank >= torch.cuda.device_count():
+            raise RuntimeError(
+                f"LOCAL_RANK={context.local_rank} but only "
+                f"{torch.cuda.device_count()} CUDA devices are visible"
+            )
+        torch.cuda.set_device(context.local_rank)
+        device = torch.device("cuda", context.local_rank)
+        dist.init_process_group(backend="nccl", timeout=timedelta(hours=6))
+        dist_module = dist
+
     tokenizer_source = checkpoint_path or args.model
-    tokenizer = AutoTokenizer.from_pretrained(tokenizer_source, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+        tokenizer_source,
+        use_fast=True,
+        trust_remote_code=args.trust_remote_code,
+    )
     if tokenizer.pad_token_id is None:
         raise ValueError("Tokenizer must define pad_token_id")
     tokenizer_max_length = int(tokenizer.model_max_length)
@@ -842,60 +1198,40 @@ def main() -> None:
         raise RuntimeError("Tokenizer pair template is inconsistent")
 
     os.environ.setdefault("TOKENIZERS_PARALLELISM", "true")
-    cache = build_full_pair_cache(
+    cache, validation_cache = build_shared_caches(
+        args=args,
         item_paths=item_paths,
         pair_paths=pair_paths,
+        human_pair_paths=human_pair_paths,
         tokenizer=tokenizer,
-        model_name=args.model,
-        cache_root=args.cache_dir,
-        max_length=args.max_length,
-        serialization_variant=args.serialization_variant,
-        attribute_frequency_csv=args.attribute_frequency_csv,
-        frequent_keys_json=args.frequent_keys_json,
-        item_batch_size=args.item_tokenization_batch_size,
-        pair_batch_size=args.pair_cache_batch_size,
-        max_pairs=args.max_pairs,
-        rebuild=args.rebuild_cache,
-    )
-    validation_cache = build_full_pair_cache(
-        item_paths=[args.human_items],
-        pair_paths=list(human_pair_paths.values()),
-        tokenizer=tokenizer,
-        model_name=args.model,
-        cache_root=args.cache_dir / "human_validation",
-        max_length=args.max_length,
-        serialization_variant=args.serialization_variant,
-        attribute_frequency_csv=cache.directory / "attribute_name_frequency.csv",
-        frequent_keys_json=cache.directory / "frequent_attribute_names.json",
-        item_batch_size=args.item_tokenization_batch_size,
-        pair_batch_size=args.pair_cache_batch_size,
-        max_pairs=None,
-        rebuild=args.rebuild_cache,
+        context=context,
+        dist_module=dist_module,
     )
     if args.cache_only:
-        json_line(
-            {
-                "status": "cache_only_complete",
-                "training_cache": cache.directory,
-                "training_items": cache.item_count,
-                "training_pairs": cache.pair_count,
-                "validation_cache": validation_cache.directory,
-                "validation_items": validation_cache.item_count,
-                "validation_pairs": validation_cache.pair_count,
-            }
-        )
+        if context.is_main:
+            json_line(
+                {
+                    "status": "cache_only_complete",
+                    "training_cache": cache.directory,
+                    "training_items": cache.item_count,
+                    "training_pairs": cache.pair_count,
+                    "validation_cache": validation_cache.directory,
+                    "validation_items": validation_cache.item_count,
+                    "validation_pairs": validation_cache.pair_count,
+                }
+            )
+        if context.distributed:
+            assert dist_module is not None
+            dist_module.destroy_process_group()
         return
 
     if not torch.cuda.is_available():
         raise RuntimeError("CUDA is required for full LLM fine-tuning")
-    if torch.cuda.device_count() != 1:
-        raise RuntimeError(
-            f"This entry point expects exactly one visible GPU, found {torch.cuda.device_count()}"
-        )
-    device = torch.device("cuda", 0)
-    torch.cuda.set_device(device)
-    torch.manual_seed(args.seed)
-    torch.cuda.manual_seed_all(args.seed)
+    if device is None:
+        device = torch.device("cuda", 0)
+        torch.cuda.set_device(device)
+    torch.manual_seed(args.seed + context.rank)
+    torch.cuda.manual_seed(args.seed + context.rank)
     torch.backends.cuda.matmul.allow_tf32 = True
     torch.backends.cudnn.allow_tf32 = True
     torch.set_float32_matmul_precision("high")
@@ -926,6 +1262,8 @@ def main() -> None:
         batch_size=args.batch_size,
         bucket_size_multiplier=args.bucket_size_multiplier,
         seed=args.seed,
+        rank=context.rank,
+        world_size=context.world_size,
     )
     collator = PairCollator(
         template=template,
@@ -938,6 +1276,8 @@ def main() -> None:
     validation_sampler = SymmetricEvaluationBatchSampler(
         validation_cache.pair_lengths,
         batch_size=args.eval_batch_size,
+        rank=context.rank,
+        world_size=context.world_size,
     )
     validation_loader = DataLoader(
         validation_dataset,
@@ -951,6 +1291,7 @@ def main() -> None:
         model_source,
         num_labels=1,
         attn_implementation=args.attention_implementation,
+        trust_remote_code=args.trust_remote_code,
     )
     model.config.id2label = {0: "MATCH_SCORE"}
     model.config.label2id = {"MATCH_SCORE": 0}
@@ -1037,18 +1378,37 @@ def main() -> None:
         if restored_elr_targets.shape != elr_targets.shape:
             raise ValueError(
                 "Checkpoint ELR history has shape "
-                f"{tuple(restored_elr_targets.shape)}, expected {tuple(elr_targets.shape)}"
-            )
+                f"{tuple(restored_elr_targets.shape)}, "
+                f"expected {tuple(elr_targets.shape)}"
+        )
         elr_targets.copy_(restored_elr_targets)
-        json_line({"resumed_from": checkpoint_path, **saved_state})
+        if context.is_main:
+            json_line({"resumed_from": checkpoint_path, **saved_state})
 
     if args.torch_compile:
         model = torch.compile(model, dynamic=True)
+    if context.distributed:
+        model = DistributedDataParallel(
+            model,
+            device_ids=[context.local_rank],
+            output_device=context.local_rank,
+            broadcast_buffers=False,
+            gradient_as_bucket_view=True,
+        )
     if restored_rng_state is not None:
-        torch.set_rng_state(restored_rng_state["cpu"])
-        torch.cuda.set_rng_state_all(restored_rng_state["cuda"])
+        restore_rng_state(
+            restored_rng_state,
+            torch=torch,
+            device=device,
+            context=context,
+        )
+    synchronized_elr_targets = elr_targets.clone()
 
-    args.output_dir.mkdir(parents=True, exist_ok=True)
+    if context.is_main:
+        args.output_dir.mkdir(parents=True, exist_ok=True)
+    if context.distributed:
+        assert dist_module is not None
+        dist_module.barrier()
     validation_history_path = args.output_dir / "validation_history.json"
     if saved_state is not None:
         validation_history = saved_state.get("validation_history", [])
@@ -1062,10 +1422,15 @@ def main() -> None:
             f"history has {len(validation_history)} completed epochs, "
             f"checkpoint starts at epoch {start_epoch}"
         )
-    write_json(validation_history_path, validation_history)
+    if context.is_main:
+        write_json(validation_history_path, validation_history)
     best_score = max(
         (
-            float(entry["splits"][args.best_validation_split]["macro_average_precision"])
+            float(
+                entry["splits"][args.best_validation_split][
+                    "macro_average_precision"
+                ]
+            )
             for entry in validation_history
         ),
         default=-math.inf,
@@ -1084,7 +1449,7 @@ def main() -> None:
         None,
     )
     best_checkpoint_path = args.output_dir / "checkpoint-best"
-    if args.resume and start_epoch > 0 and start_batch == 0:
+    if context.is_main and args.resume and start_epoch > 0 and start_batch == 0:
         completed_epoch_path = (
             args.output_dir / f"checkpoint-epoch-{start_epoch:02d}"
         )
@@ -1094,7 +1459,12 @@ def main() -> None:
                 completed_epoch_path,
                 replace=False,
             )
-    if args.resume and best_epoch is not None and not best_checkpoint_path.exists():
+    if (
+        context.is_main
+        and args.resume
+        and best_epoch is not None
+        and not best_checkpoint_path.exists()
+    ):
         epoch_source = args.output_dir / f"checkpoint-epoch-{best_epoch:02d}"
         if not epoch_source.exists() and best_epoch == start_epoch:
             epoch_source = args.output_dir / "checkpoint-last"
@@ -1103,44 +1473,51 @@ def main() -> None:
                 f"Cannot reconstruct missing best checkpoint for epoch {best_epoch}"
             )
         snapshot_checkpoint(epoch_source, best_checkpoint_path, replace=False)
-    write_json(args.output_dir / "training_args.json", vars(args))
-    json_line(
-        {
-            "gpu": torch.cuda.get_device_name(device),
-            "compute_capability": torch.cuda.get_device_capability(device),
-            "model": args.model,
-            "trainable_parameters": sum(
-                parameter.numel() for parameter in model.parameters() if parameter.requires_grad
-            ),
-            "pairs": cache.pair_count,
-            "items": cache.item_count,
-            "all_soft_targets_retained": True,
-            "include_ood": args.include_ood,
-            "serialization": cache.metadata["serialization"],
-            "max_length": args.max_length,
-            "target_counts": cache.metadata["pairs"]["target_counts"],
-            "epochs": args.epochs,
-            "batch_size": args.batch_size,
-            "gradient_accumulation": args.gradient_accumulation,
-            "steps_per_epoch": total_batches,
-            "updates_per_epoch": updates_per_epoch,
-            "elr": {
-                "beta": args.elr_beta,
-                "lambda": args.elr_lambda,
-                "epsilon": args.elr_epsilon,
-                "target_history_mib": elr_targets.numel()
-                * elr_targets.element_size()
-                / 2**20,
-            },
-            "validation_pairs": {
-                name: len(frame) for name, frame in validations.items()
-            },
-            "validation_cache": validation_cache.directory,
-            "best_validation_split": args.best_validation_split,
-            "amp_dtype": str(amp_dtype),
-            "cache": cache.directory,
-        }
-    )
+    if context.is_main:
+        write_json(args.output_dir / "training_args.json", vars(args))
+        json_line(
+            {
+                "gpu": torch.cuda.get_device_name(device),
+                "compute_capability": torch.cuda.get_device_capability(device),
+                "world_size": context.world_size,
+                "model": args.model,
+                "trainable_parameters": sum(
+                    parameter.numel()
+                    for parameter in model.parameters()
+                    if parameter.requires_grad
+                ),
+                "pairs": cache.pair_count,
+                "items": cache.item_count,
+                "all_soft_targets_retained": True,
+                "include_ood": args.include_ood,
+                "serialization": cache.metadata["serialization"],
+                "max_length": args.max_length,
+                "target_counts": cache.metadata["pairs"]["target_counts"],
+                "epochs": args.epochs,
+                "per_device_batch_size": args.batch_size,
+                "effective_batch_size": args.batch_size
+                * context.world_size
+                * args.gradient_accumulation,
+                "gradient_accumulation": args.gradient_accumulation,
+                "steps_per_epoch": total_batches,
+                "updates_per_epoch": updates_per_epoch,
+                "elr": {
+                    "beta": args.elr_beta,
+                    "lambda": args.elr_lambda,
+                    "epsilon": args.elr_epsilon,
+                    "target_history_mib": elr_targets.numel()
+                    * elr_targets.element_size()
+                    / 2**20,
+                },
+                "validation_pairs": {
+                    name: len(frame) for name, frame in validations.items()
+                },
+                "validation_cache": validation_cache.directory,
+                "best_validation_split": args.best_validation_split,
+                "amp_dtype": str(amp_dtype),
+                "cache": cache.directory,
+            }
+        )
 
     trainable_parameters = [
         parameter for parameter in model.parameters() if parameter.requires_grad
@@ -1148,10 +1525,10 @@ def main() -> None:
     optimizer.zero_grad(set_to_none=True)
     training_started = time.perf_counter()
     interval_started = training_started
-    interval_loss = 0.0
-    interval_supervised_loss = 0.0
-    interval_elr_regularizer = 0.0
-    interval_elr_agreement = 0.0
+    interval_loss_sum = 0.0
+    interval_supervised_loss_sum = 0.0
+    interval_elr_regularizer_sum = 0.0
+    interval_elr_agreement_sum = 0.0
     interval_batches = 0
     interval_examples = 0
     interval_useful_tokens = 0
@@ -1159,8 +1536,9 @@ def main() -> None:
     completed_loss_sum = 0.0
     completed_supervised_loss_sum = 0.0
     completed_elr_regularizer_sum = 0.0
-    completed_batches = 0
+    completed_examples = 0
     run_examples = 0
+    last_checkpoint_update = global_update
     torch.cuda.reset_peak_memory_stats(device)
 
     for epoch in range(start_epoch, args.epochs):
@@ -1180,26 +1558,28 @@ def main() -> None:
             packed.pop("orientations")
             targets = packed.pop("targets").to(device, non_blocking=True)
             batch_examples = len(targets)
+            global_batch_examples = sampler.global_examples_at(batch_index)
             useful_tokens = int(packed["attention_mask"].sum())
             padded_tokens = packed["attention_mask"].numel()
             model_inputs = {
                 key: value.to(device, non_blocking=True)
                 for key, value in packed.items()
             }
-            accumulation_start = (
-                batch_index // args.gradient_accumulation
-            ) * args.gradient_accumulation
-            accumulation_size = min(
-                args.gradient_accumulation, total_batches - accumulation_start
+            accumulation_examples = sampler.accumulation_examples_at(
+                batch_index, args.gradient_accumulation
             )
             should_update = (
                 (batch_index + 1) % args.gradient_accumulation == 0
                 or batch_index + 1 == total_batches
             )
-            sync_context = nullcontext()
+            sync_context = (
+                model.no_sync()
+                if context.distributed and not should_update
+                else nullcontext()
+            )
             with sync_context:
                 with torch.autocast("cuda", dtype=amp_dtype):
-                    logits = model(**model_inputs).logits.squeeze(-1)
+                    logits = one_logit(model(**model_inputs))
                     elr = binary_elr_loss(
                         logits=logits,
                         labels=targets,
@@ -1209,7 +1589,15 @@ def main() -> None:
                         regularization_strength=args.elr_lambda,
                         epsilon=args.elr_epsilon,
                     )
-                    loss = elr.total / accumulation_size
+                    # DDP averages rank gradients. This scale recovers the exact
+                    # global-example mean even for uneven final local batches and
+                    # partial gradient-accumulation groups.
+                    loss_scale = (
+                        context.world_size
+                        * batch_examples
+                        / accumulation_examples
+                    )
+                    loss = elr.total * loss_scale
                 scaler.scale(loss).backward()
 
             if should_update:
@@ -1225,8 +1613,8 @@ def main() -> None:
                     global_update += 1
                 optimizer.zero_grad(set_to_none=True)
 
-            examples_seen += batch_examples
-            run_examples += batch_examples
+            examples_seen += global_batch_examples
+            run_examples += global_batch_examples
             interval_examples += batch_examples
             interval_useful_tokens += useful_tokens
             interval_padded_tokens += padded_tokens
@@ -1234,50 +1622,80 @@ def main() -> None:
             supervised_loss_value = float(elr.supervised.detach())
             elr_regularizer_value = float(elr.regularizer.detach())
             elr_agreement_value = float(elr.mean_agreement.detach())
-            interval_loss += loss_value
-            interval_supervised_loss += supervised_loss_value
-            interval_elr_regularizer += elr_regularizer_value
-            interval_elr_agreement += elr_agreement_value
+            interval_loss_sum += loss_value * batch_examples
+            interval_supervised_loss_sum += supervised_loss_value * batch_examples
+            interval_elr_regularizer_sum += elr_regularizer_value * batch_examples
+            interval_elr_agreement_sum += elr_agreement_value * batch_examples
             interval_batches += 1
-            completed_loss_sum += loss_value
-            completed_supervised_loss_sum += supervised_loss_value
-            completed_elr_regularizer_sum += elr_regularizer_value
-            completed_batches += 1
+            completed_loss_sum += loss_value * batch_examples
+            completed_supervised_loss_sum += supervised_loss_value * batch_examples
+            completed_elr_regularizer_sum += elr_regularizer_value * batch_examples
+            completed_examples += batch_examples
 
-            if (batch_index + 1) % args.log_every == 0 or batch_index + 1 == total_batches:
+            if (
+                (batch_index + 1) % args.log_every == 0
+                or batch_index + 1 == total_batches
+            ):
                 torch.cuda.synchronize(device)
-                elapsed = time.perf_counter() - interval_started
-                json_line(
-                    {
-                        "epoch": epoch + 1,
-                        "batch": batch_index + 1,
-                        "batches": total_batches,
-                        "global_update": global_update,
-                        "loss": interval_loss / interval_batches,
-                        "supervised_loss": interval_supervised_loss
-                        / interval_batches,
-                        "elr_regularizer": interval_elr_regularizer
-                        / interval_batches,
-                        "elr_mean_agreement": interval_elr_agreement
-                        / interval_batches,
-                        "examples_per_second": interval_examples / elapsed,
-                        "padding_efficiency": (
-                            interval_useful_tokens / interval_padded_tokens
-                        ),
-                        "learning_rate": scheduler.get_last_lr()[0],
-                        "peak_vram_gib": torch.cuda.max_memory_allocated(device)
-                        / 1024**3,
-                        "epoch_eta_minutes": (total_batches - batch_index - 1)
-                        * elapsed
-                        / interval_batches
-                        / 60,
-                    }
+                local_elapsed = time.perf_counter() - interval_started
+                statistics = torch.tensor(
+                    [
+                        interval_loss_sum,
+                        interval_supervised_loss_sum,
+                        interval_elr_regularizer_sum,
+                        interval_elr_agreement_sum,
+                        interval_examples,
+                        interval_useful_tokens,
+                        interval_padded_tokens,
+                    ],
+                    dtype=torch.float64,
+                    device=device,
                 )
+                elapsed_tensor = torch.tensor(
+                    local_elapsed, dtype=torch.float64, device=device
+                )
+                peak_tensor = torch.tensor(
+                    torch.cuda.max_memory_allocated(device) / 1024**3,
+                    dtype=torch.float64,
+                    device=device,
+                )
+                if context.distributed:
+                    assert dist_module is not None
+                    dist_module.all_reduce(statistics, op=dist_module.ReduceOp.SUM)
+                    dist_module.all_reduce(elapsed_tensor, op=dist_module.ReduceOp.MAX)
+                    dist_module.all_reduce(peak_tensor, op=dist_module.ReduceOp.MAX)
+                if context.is_main:
+                    reduced_examples = float(statistics[4].item())
+                    elapsed = float(elapsed_tensor.item())
+                    json_line(
+                        {
+                            "epoch": epoch + 1,
+                            "batch": batch_index + 1,
+                            "batches": total_batches,
+                            "global_update": global_update,
+                            "loss": float(statistics[0].item()) / reduced_examples,
+                            "supervised_loss": float(statistics[1].item())
+                            / reduced_examples,
+                            "elr_regularizer": float(statistics[2].item())
+                            / reduced_examples,
+                            "elr_mean_agreement": float(statistics[3].item())
+                            / reduced_examples,
+                            "examples_per_second": reduced_examples / elapsed,
+                            "padding_efficiency": float(statistics[5].item())
+                            / float(statistics[6].item()),
+                            "learning_rate": scheduler.get_last_lr()[0],
+                            "peak_vram_gib": float(peak_tensor.item()),
+                            "epoch_eta_minutes": (total_batches - batch_index - 1)
+                            * elapsed
+                            / interval_batches
+                            / 60,
+                        }
+                    )
                 interval_started = time.perf_counter()
-                interval_loss = 0.0
-                interval_supervised_loss = 0.0
-                interval_elr_regularizer = 0.0
-                interval_elr_agreement = 0.0
+                interval_loss_sum = 0.0
+                interval_supervised_loss_sum = 0.0
+                interval_elr_regularizer_sum = 0.0
+                interval_elr_agreement_sum = 0.0
                 interval_batches = 0
                 interval_examples = 0
                 interval_useful_tokens = 0
@@ -1286,14 +1704,17 @@ def main() -> None:
             if (
                 should_update
                 and args.save_every_updates
+                and global_update > 0
                 and global_update % args.save_every_updates == 0
+                and global_update != last_checkpoint_update
             ):
-                save_checkpoint(
+                save_checkpoint_distributed(
                     model=model,
                     tokenizer=tokenizer,
                     optimizer=optimizer,
                     scheduler=scheduler,
                     elr_targets=elr_targets,
+                    synchronized_elr_targets=synchronized_elr_targets,
                     output_dir=args.output_dir,
                     state={
                         "cache_fingerprint": cache.metadata["fingerprint"],
@@ -1311,11 +1732,16 @@ def main() -> None:
                         "best_epoch": best_epoch,
                     },
                     args=args,
+                    torch=torch,
+                    device=device,
+                    context=context,
+                    dist_module=dist_module,
                 )
+                last_checkpoint_update = global_update
 
         start_batch = 0
         validation_report = evaluate_human_validation(
-            model=model,
+            model=model_for_saving(model),
             loader=validation_loader,
             cache=validation_cache,
             validations=validations,
@@ -1324,18 +1750,31 @@ def main() -> None:
             epoch=epoch + 1,
             output_dir=args.output_dir,
             max_length=args.max_length,
+            distributed_context=context,
+            dist_module=dist_module,
         )
-        validation_report["learning_rate"] = scheduler.get_last_lr()[0]
-        validation_report["global_update"] = global_update
-        write_json(
-            args.output_dir
-            / "validation"
-            / f"epoch-{epoch + 1:02d}"
-            / "metrics.json",
-            validation_report,
-        )
+        if context.is_main:
+            if validation_report is None:
+                raise RuntimeError("Main rank did not receive validation metrics")
+            validation_report["learning_rate"] = scheduler.get_last_lr()[0]
+            validation_report["global_update"] = global_update
+            write_json(
+                args.output_dir
+                / "validation"
+                / f"epoch-{epoch + 1:02d}"
+                / "metrics.json",
+                validation_report,
+            )
+        if context.distributed:
+            assert dist_module is not None
+            payload: list[Any] = [validation_report]
+            dist_module.broadcast_object_list(payload, src=0)
+            validation_report = payload[0]
+        if validation_report is None:
+            raise RuntimeError("Validation report was not distributed to every rank")
         validation_history.append(validation_report)
-        write_json(validation_history_path, validation_history)
+        if context.is_main:
+            write_json(validation_history_path, validation_history)
         current_score = float(
             validation_report["splits"][args.best_validation_split][
                 "macro_average_precision"
@@ -1345,12 +1784,13 @@ def main() -> None:
         if improved:
             best_score = current_score
             best_epoch = epoch + 1
-        save_checkpoint(
+        save_checkpoint_distributed(
             model=model,
             tokenizer=tokenizer,
             optimizer=optimizer,
             scheduler=scheduler,
             elr_targets=elr_targets,
+            synchronized_elr_targets=synchronized_elr_targets,
             output_dir=args.output_dir,
             state={
                 "cache_fingerprint": cache.metadata["fingerprint"],
@@ -1366,74 +1806,122 @@ def main() -> None:
                 "best_epoch": best_epoch,
             },
             args=args,
+            torch=torch,
+            device=device,
+            context=context,
+            dist_module=dist_module,
         )
-        epoch_checkpoint = args.output_dir / f"checkpoint-epoch-{epoch + 1:02d}"
-        snapshot_checkpoint(
-            args.output_dir / "checkpoint-last",
-            epoch_checkpoint,
-            replace=False,
-        )
-        if improved:
+        last_checkpoint_update = global_update
+        if context.is_main:
+            epoch_checkpoint = args.output_dir / f"checkpoint-epoch-{epoch + 1:02d}"
             snapshot_checkpoint(
+                args.output_dir / "checkpoint-last",
                 epoch_checkpoint,
-                args.output_dir / "checkpoint-best",
-                replace=True,
+                replace=False,
             )
+            if improved:
+                snapshot_checkpoint(
+                    epoch_checkpoint,
+                    args.output_dir / "checkpoint-best",
+                    replace=True,
+                )
+        if context.distributed:
+            assert dist_module is not None
+            dist_module.barrier()
         interval_started = time.perf_counter()
 
     torch.cuda.synchronize(device)
-    training_seconds = time.perf_counter() - training_started
-    final_dir = args.output_dir / "model"
-    staging_final = args.output_dir / ".model.tmp"
-    if staging_final.exists():
-        shutil.rmtree(staging_final)
-    staging_final.mkdir(parents=True)
-    model_for_saving(model).save_pretrained(staging_final, safe_serialization=True)
-    tokenizer.save_pretrained(staging_final)
-    if final_dir.exists():
-        shutil.rmtree(final_dir)
-    os.replace(staging_final, final_dir)
-    report = {
-        "status": "complete",
-        "model": args.model,
-        "output_model": str(final_dir),
-        "cache": str(cache.directory),
-        "cache_fingerprint": cache.metadata["fingerprint"],
-        "validation_cache": str(validation_cache.directory),
-        "validation_cache_fingerprint": validation_cache.metadata["fingerprint"],
-        "training_pairs": cache.pair_count,
-        "training_items": cache.item_count,
-        "target_counts": cache.metadata["pairs"]["target_counts"],
-        "include_ood": args.include_ood,
-        "all_soft_targets_retained": True,
-        "elr": {
-            "beta": args.elr_beta,
-            "lambda": args.elr_lambda,
-            "epsilon": args.elr_epsilon,
-        },
-        "serialization": cache.metadata["serialization"],
-        "max_length": args.max_length,
-        "epochs": args.epochs,
-        "examples_seen": examples_seen,
-        "examples_processed_this_run": run_examples,
-        "optimizer_updates": global_update,
-        "training_seconds": training_seconds,
-        "examples_per_second": run_examples / training_seconds,
-        "mean_batch_loss": completed_loss_sum / max(1, completed_batches),
-        "mean_supervised_loss": completed_supervised_loss_sum
-        / max(1, completed_batches),
-        "mean_elr_regularizer": completed_elr_regularizer_sum
-        / max(1, completed_batches),
-        "validation_history": validation_history,
-        "best_validation_split": args.best_validation_split,
-        "best_validation_score": best_score,
-        "best_epoch": best_epoch,
-        "best_checkpoint": str(args.output_dir / "checkpoint-best"),
-        "peak_vram_gib": torch.cuda.max_memory_allocated(device) / 1024**3,
-        "args": vars(args),
-    }
-    write_json(args.output_dir / "training_report.json", report)
-    json_line(report)
+    local_training_seconds = time.perf_counter() - training_started
+    completed = torch.tensor(
+        [
+            completed_loss_sum,
+            completed_supervised_loss_sum,
+            completed_elr_regularizer_sum,
+            completed_examples,
+        ],
+        dtype=torch.float64,
+        device=device,
+    )
+    training_seconds_tensor = torch.tensor(
+        local_training_seconds, dtype=torch.float64, device=device
+    )
+    peak_vram_tensor = torch.tensor(
+        torch.cuda.max_memory_allocated(device) / 1024**3,
+        dtype=torch.float64,
+        device=device,
+    )
+    if context.distributed:
+        assert dist_module is not None
+        dist_module.all_reduce(completed, op=dist_module.ReduceOp.SUM)
+        dist_module.all_reduce(
+            training_seconds_tensor, op=dist_module.ReduceOp.MAX
+        )
+        dist_module.all_reduce(peak_vram_tensor, op=dist_module.ReduceOp.MAX)
+    training_seconds = float(training_seconds_tensor.item())
+
+    if context.is_main:
+        final_dir = args.output_dir / "model"
+        staging_final = args.output_dir / ".model.tmp"
+        if staging_final.exists():
+            shutil.rmtree(staging_final)
+        staging_final.mkdir(parents=True)
+        model_for_saving(model).save_pretrained(
+            staging_final, safe_serialization=True
+        )
+        tokenizer.save_pretrained(staging_final)
+        if final_dir.exists():
+            shutil.rmtree(final_dir)
+        os.replace(staging_final, final_dir)
+        reduced_examples = float(completed[3].item())
+        report = {
+            "status": "complete",
+            "model": args.model,
+            "output_model": str(final_dir),
+            "cache": str(cache.directory),
+            "cache_fingerprint": cache.metadata["fingerprint"],
+            "validation_cache": str(validation_cache.directory),
+            "validation_cache_fingerprint": validation_cache.metadata[
+                "fingerprint"
+            ],
+            "training_pairs": cache.pair_count,
+            "training_items": cache.item_count,
+            "target_counts": cache.metadata["pairs"]["target_counts"],
+            "include_ood": args.include_ood,
+            "all_soft_targets_retained": True,
+            "world_size": context.world_size,
+            "elr": {
+                "beta": args.elr_beta,
+                "lambda": args.elr_lambda,
+                "epsilon": args.elr_epsilon,
+            },
+            "serialization": cache.metadata["serialization"],
+            "max_length": args.max_length,
+            "epochs": args.epochs,
+            "examples_seen": examples_seen,
+            "examples_processed_this_run": run_examples,
+            "optimizer_updates": global_update,
+            "training_seconds": training_seconds,
+            "examples_per_second": run_examples / training_seconds,
+            "mean_batch_loss": float(completed[0].item())
+            / max(1.0, reduced_examples),
+            "mean_supervised_loss": float(completed[1].item())
+            / max(1.0, reduced_examples),
+            "mean_elr_regularizer": float(completed[2].item())
+            / max(1.0, reduced_examples),
+            "validation_history": validation_history,
+            "best_validation_split": args.best_validation_split,
+            "best_validation_score": best_score,
+            "best_epoch": best_epoch,
+            "best_checkpoint": str(args.output_dir / "checkpoint-best"),
+            "peak_vram_gib": float(peak_vram_tensor.item()),
+            "args": vars(args),
+        }
+        write_json(args.output_dir / "training_report.json", report)
+        json_line(report)
+    if context.distributed:
+        assert dist_module is not None
+        dist_module.barrier()
+        dist_module.destroy_process_group()
 
 
 if __name__ == "__main__":

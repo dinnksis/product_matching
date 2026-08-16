@@ -1,9 +1,13 @@
 from __future__ import annotations
 
 import unittest
+import tempfile
+from pathlib import Path
 
 import numpy as np
 import pandas as pd
+
+from scripts.prepare_validation_splits import split_llm_data
 
 from src.validation_splits import (
     hard_selection_targets,
@@ -73,6 +77,71 @@ class ValidationSplitsTest(unittest.TestCase):
         self.assertEqual(
             counts["model_disagreement_or_order_gap"], expected.diagnostic
         )
+
+    def test_llm_catalog_excludes_all_frozen_validation_items(self) -> None:
+        items = pd.DataFrame(
+            {
+                "id": [1, 2, 3, 4],
+                "category": ["A", "A", "OOD", "OOD"],
+            }
+        )
+        pairs = pd.DataFrame(
+            {
+                "id1": [1, 4],
+                "id2": [1, 4],
+                "target": [0.1, 0.9],
+            }
+        )
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            items_path = root / "items.parquet"
+            pairs_path = root / "pairs.parquet"
+            output = root / "output"
+            items.to_parquet(items_path, index=False)
+            pairs.to_parquet(pairs_path, index=False)
+
+            report = split_llm_data(
+                items_path,
+                pairs_path,
+                output,
+                ("OOD",),
+                np.array([2, 3], dtype=np.int64),
+            )
+
+            non_ood_ids = set(
+                pd.read_parquet(output / "non_ood_items.parquet")["id"]
+            )
+            ood_ids = set(pd.read_parquet(output / "ood_items.parquet")["id"])
+
+        self.assertEqual(non_ood_ids, {1})
+        self.assertEqual(ood_ids, {4})
+        self.assertEqual(
+            report["excluded_human_validation_items"],
+            {"non_ood": 1, "ood": 1},
+        )
+        self.assertEqual(report["pairs_touching_human_validation_items"], 0)
+
+    def test_llm_pair_touching_validation_item_is_rejected(self) -> None:
+        items = pd.DataFrame({"id": [1, 2], "category": ["A", "A"]})
+        pairs = pd.DataFrame({"id1": [1], "id2": [2], "target": [0.5]})
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            items_path = root / "items.parquet"
+            pairs_path = root / "pairs.parquet"
+            items.to_parquet(items_path, index=False)
+            pairs.to_parquet(pairs_path, index=False)
+
+            with self.assertRaisesRegex(
+                ValueError,
+                "touch frozen human validation items",
+            ):
+                split_llm_data(
+                    items_path,
+                    pairs_path,
+                    root / "output",
+                    ("OOD",),
+                    np.array([2], dtype=np.int64),
+                )
 
 
 if __name__ == "__main__":

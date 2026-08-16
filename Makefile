@@ -2,6 +2,7 @@
 
 CROSS_ENCODER_CONFIG ?= configs/cross_encoder_minilm.json
 VALIDATION_PREDICTIONS ?= data/runs/validation_predictions_v1.parquet
+LLM_NPROC ?= 1
 
 setup:
 	uv sync
@@ -52,7 +53,8 @@ train-cross-encoder:
 		--config "$(CROSS_ENCODER_CONFIG)" $(TRAIN_ARGS)
 
 train-llm-full:
-	python scripts/train_llm_full.py $(TRAIN_ARGS)
+	torchrun --standalone --nproc_per_node="$(LLM_NPROC)" \
+		scripts/train_llm_full.py $(TRAIN_ARGS)
 
 kaggle-google-credentials:
 	uv run python scripts/push_google_sheets_credentials_dataset.py
@@ -120,6 +122,18 @@ kaggle-minilm-validation-dry-run:
 
 kaggle-minilm-validation-run:
 	uv run python scripts/run_minilm_validation_baseline_kaggle.py
+
+kaggle-minilm-pretrain-checkpoint-dry-run:
+	uv run python scripts/push_minilm_pretrain_checkpoint_dataset.py --dry-run
+
+kaggle-minilm-pretrain-checkpoint:
+	uv run python scripts/push_minilm_pretrain_checkpoint_dataset.py
+
+kaggle-minilm-pretrain-human-ft-dry-run:
+	uv run python scripts/run_minilm_llm_pretrain_human_ft_kaggle.py --dry-run
+
+kaggle-minilm-pretrain-human-ft-run:
+	uv run python scripts/run_minilm_llm_pretrain_human_ft_kaggle.py
 
 kaggle-run:
 	@test -n "$(NOTEBOOK)" || (echo "Usage: make kaggle-run NOTEBOOK=notebooks/train.ipynb"; exit 2)

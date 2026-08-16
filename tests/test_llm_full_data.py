@@ -3,13 +3,16 @@ from __future__ import annotations
 import tempfile
 import unittest
 from pathlib import Path
+from types import SimpleNamespace
 
 import numpy as np
 import pandas as pd
 
 from scripts.train_llm_full import (
+    BucketBatchSampler,
     SymmetricEvaluationBatchSampler,
     infer_pair_template,
+    one_logit,
     snapshot_checkpoint,
 )
 from src.llm_full_data import balanced_prefix_lengths, build_full_pair_cache
@@ -69,6 +72,66 @@ class FullLlmDataTest(unittest.TestCase):
                 (2, True),
             ],
         )
+
+    def test_distributed_sampler_keeps_every_example_once_without_padding(self) -> None:
+        lengths = np.arange(25, dtype=np.int64) + 1
+        samplers = [
+            BucketBatchSampler(
+                lengths,
+                batch_size=3,
+                bucket_size_multiplier=2,
+                seed=17,
+                rank=rank,
+                world_size=4,
+            )
+            for rank in range(4)
+        ]
+        batches_by_rank = [list(sampler) for sampler in samplers]
+
+        self.assertEqual({len(batches) for batches in batches_by_rank}, {3})
+        all_indices: list[int] = []
+        for step in range(3):
+            step_indices: list[int] = []
+            for batches in batches_by_rank:
+                self.assertGreater(len(batches[step]), 0)
+                self.assertLessEqual(len(batches[step]), 3)
+                step_indices.extend(index for index, _ in batches[step])
+            self.assertEqual(len(step_indices), len(set(step_indices)))
+            all_indices.extend(step_indices)
+        self.assertCountEqual(all_indices, range(25))
+
+        samplers[2].set_epoch(0, start_batch=1)
+        self.assertEqual(list(samplers[2]), batches_by_rank[2][1:])
+
+    def test_distributed_validation_partitions_pairs_without_overlap(self) -> None:
+        lengths = [30, 10, 20, 60, 50, 40, 70]
+        rows_by_rank = []
+        for rank in range(3):
+            sampler = SymmetricEvaluationBatchSampler(
+                lengths,
+                batch_size=4,
+                rank=rank,
+                world_size=3,
+            )
+            rows_by_rank.append([row for batch in sampler for row in batch])
+        combined = [row for rows in rows_by_rank for row in rows]
+        self.assertCountEqual(
+            combined,
+            [
+                (index, reverse)
+                for index in range(len(lengths))
+                for reverse in (False, True)
+            ],
+        )
+        self.assertEqual(len(combined), len(set(combined)))
+
+    def test_one_logit_contract_rejects_causal_or_two_class_outputs(self) -> None:
+        outputs = SimpleNamespace(logits=np.asarray([[0.25], [-0.5]]))
+        np.testing.assert_array_equal(one_logit(outputs), [0.25, -0.5])
+        with self.assertRaisesRegex(ValueError, "exactly one logit"):
+            one_logit(SimpleNamespace(logits=np.zeros((2, 2))))
+        with self.assertRaisesRegex(ValueError, "exactly one logit"):
+            one_logit(SimpleNamespace(logits=np.zeros((2, 4, 100))))
 
     def test_checkpoint_snapshot_uses_hard_links(self) -> None:
         with tempfile.TemporaryDirectory() as directory:

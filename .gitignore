@@ -51,3 +51,5 @@ docker/embedding-catboost-runtime/st-wheels-linux/
 reports/**/*.parquet
 reports/**/*.cbm
 predicted/
+
+/model/

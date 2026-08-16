@@ -1,4 +1,4 @@
-# Full fine-tuning на LLM-корпусе на одной H100
+# Full fine-tuning на LLM-корпусе на одной или нескольких GPU
 
 [`scripts/train_llm_full.py`](../scripts/train_llm_full.py) обучает все параметры
 MiniLM cross-encoder на всех `10 043 007` парах из `llm/non_ood_pairs.parquet`.
@@ -14,8 +14,10 @@ MiniLM cross-encoder на всех `10 043 007` парах из `llm/non_ood_pai
 
 ## Установка на сервере
 
-Нужны Python 3.11–3.12, одна CUDA GPU и достаточно локального SSD для исходных
-parquet, mmap-кэша и checkpoints. Для H100 используется BF16.
+Нужны Python 3.11–3.12, одна или несколько CUDA GPU на одном сервере и
+достаточно локального SSD для исходных parquet, mmap-кэша и checkpoints. Для
+H100 используется BF16. `deepspeed` и `kernels` этому entry point не нужны и
+не входят в `requirements-cross-encoder.txt`.
 
 ```bash
 python -m venv .venv
@@ -35,7 +37,8 @@ python -c "import torch; print(torch.__version__, torch.cuda.get_device_name())"
 Из корня репозитория:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/train_llm_full.py \
+CUDA_VISIBLE_DEVICES=0 torchrun --standalone --nproc_per_node=1 \
+  scripts/train_llm_full.py \
   --data-dir prepared/validation_splits_v1/llm \
   --model cross-encoder/mmarco-mMiniLMv2-L12-H384-v1 \
   --human-validation-dir prepared/validation_splits_v1/human \
@@ -53,9 +56,50 @@ CUDA_VISIBLE_DEVICES=0 python scripts/train_llm_full.py \
   --num-workers 8
 ```
 
-`batch-size=256` — стартовая настройка для H100 80 GB. После проверки peak VRAM
-её можно увеличить; при OOM достаточно уменьшить batch. Gradient accumulation
-для одной эпохи по всем строкам не обязателен.
+`batch-size=256` задаётся **на одну GPU**. Effective batch равен
+`batch_size × world_size × gradient_accumulation`. После проверки peak VRAM
+per-device batch можно увеличить; при OOM достаточно уменьшить его. Скрипт не
+масштабирует LR автоматически.
+
+## Несколько GPU через torchrun
+
+Один процесс закрепляется за одной GPU, а градиенты синхронизируются DDP. Все
+пары глобально проходят ровно один раз за эпоху: sampler не дополняет последний
+batch дублями и не выбрасывает остаток. Validation также делится между ranks,
+но predictions и metrics записывает только rank 0.
+
+Например, запуск на четырёх H100:
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1,2,3 torchrun --standalone --nproc_per_node=4 \
+  scripts/train_llm_full.py \
+  --data-dir prepared/validation_splits_v1/llm \
+  --model cross-encoder/mmarco-mMiniLMv2-L12-H384-v1 \
+  --human-validation-dir prepared/validation_splits_v1/human \
+  --human-items data/items_human.parquet \
+  --output-dir models/minilm_llm_full_4gpu \
+  --cache-dir artifacts/llm_full_cache \
+  --epochs 10 \
+  --batch-size 256 \
+  --eval-batch-size 512 \
+  --learning-rate 5e-6 \
+  --elr-beta 0.7 \
+  --elr-lambda 3.0 \
+  --max-length 512 \
+  --serialization-variant S1_KEY_VALUE \
+  --num-workers 8
+```
+
+Эквивалент через Makefile:
+
+```bash
+make train-llm-full LLM_NPROC=4 TRAIN_ARGS="--output-dir models/minilm_llm_full_4gpu"
+```
+
+При `batch-size=256` effective batch для четырёх GPU равен `1024`. Для строгого
+сравнения с single-GPU effective batch `256` передайте `--batch-size 64`; для
+максимального throughput можно оставить `256`, но это уже другой optimizer
+schedule по числу примеров на update.
 
 `max_length=512` выбран намеренно. У XLM-R checkpoint из команды это штатный
 предел tokenizer (в конфигурации encoder — 514 позиций с учётом служебных
@@ -85,6 +129,9 @@ clamp `1e-4` совпадают с
 [официальной реализацией](https://github.com/shengliu66/ELR). ELR-history имеет
 форму `[10 043 007, 2]`, занимает около 77 MiB FP32 на GPU и сохраняется в
 `elr_targets.pt` каждого checkpoint. Без этого файла точный resume невозможен.
+В DDP каждая GPU держит реплику history. Между checkpoint синхронизируются
+накопленные rank-local изменения; перед сохранением все ranks получают
+одинаковую полную history.
 
 ## Human validation после каждой эпохи
 
@@ -194,7 +241,8 @@ python scripts/train_llm_full.py --cache-only
 Для быстрой сквозной проверки перед полным запуском:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/train_llm_full.py \
+CUDA_VISIBLE_DEVICES=0 torchrun --standalone --nproc_per_node=1 \
+  scripts/train_llm_full.py \
   --max-pairs 100000 \
   --output-dir models/minilm_llm_smoke \
   --cache-dir artifacts/llm_full_smoke_cache \
@@ -208,7 +256,8 @@ CUDA_VISIBLE_DEVICES=0 python scripts/train_llm_full.py \
 каждой эпохи. Для продолжения нужны те же data/cache/training параметры:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/train_llm_full.py \
+CUDA_VISIBLE_DEVICES=0 torchrun --standalone --nproc_per_node=1 \
+  scripts/train_llm_full.py \
   --output-dir models/minilm_llm_full \
   --cache-dir artifacts/llm_full_cache \
   --batch-size 256 \
@@ -216,14 +265,44 @@ CUDA_VISIBLE_DEVICES=0 python scripts/train_llm_full.py \
 ```
 
 Resume восстанавливает модель, optimizer, scheduler, ELR temporal targets, номер
-эпохи и следующий batch. Порядок пар и ориентация `A/B` также детерминированы.
+эпохи, следующий batch и отдельные RNG states каждого rank. Порядок пар и
+ориентация `A/B` также детерминированы. Для точного resume число процессов
+должно совпадать с checkpoint: single-GPU checkpoint нельзя продолжить как
+4-GPU DDP и наоборот.
+
+## Совместимость с другими backbone
+
+Текущий backend не привязан к XLM-R классами слоёв. `--model` может указывать на
+другой checkpoint, если одновременно выполняются условия:
+
+- он загружается через `AutoModelForSequenceClassification`;
+- выдаёт ровно один ranking logit на пару;
+- tokenizer поддерживает стандартный pair template
+  `build_inputs_with_special_tokens(first, second)`;
+- tokenizer/model поддерживает выбранный `max_length`.
+
+Это покрывает многие BERT/RoBERTa/XLM-R/DeBERTa-style cross-encoders. Для
+моделей с проверенным пользовательским Hub-кодом есть явный opt-in
+`--trust-remote-code`; без флага произвольный remote code не выполняется.
+
+`Qwen/Qwen3-Reranker-0.6B` напрямую этим контрактом **не покрывается**. Его
+исходный checkpoint — `AutoModelForCausalLM`: нужно собрать специальный chat
+prompt, использовать left padding и взять разность last-token logits токенов
+`yes`/`no`. Простой `--model Qwen/Qwen3-Reranker-0.6B` потерял бы оригинальный
+reranker prompt и был бы некорректен. Официальный `sentence_transformers.CrossEncoder`
+умеет оборачивать этот checkpoint для inference, но текущий custom training loop
+через эту обёртку не проходит. Правильный causal path уже реализован для
+human-обучения в `scripts/train_qwen_names.py`; перенос его на полный LLM-кэш с
+ELR должен быть отдельным backend, потому что потребует другого token cache и
+существенно меньшего per-device batch.
 
 ## Явное включение OOD
 
 Только для финальной модели, когда OOD уже не используется для выбора рецепта:
 
 ```bash
-CUDA_VISIBLE_DEVICES=0 python scripts/train_llm_full.py \
+CUDA_VISIBLE_DEVICES=0 torchrun --standalone --nproc_per_node=1 \
+  scripts/train_llm_full.py \
   --include-ood \
   --output-dir models/minilm_llm_all_categories \
   --cache-dir artifacts/llm_full_all_categories_cache

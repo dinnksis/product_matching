@@ -336,14 +336,20 @@ def split_llm_data(
     pairs_path: Path,
     output: Path,
     ood_categories: tuple[str, ...],
+    excluded_validation_item_ids: np.ndarray,
 ) -> dict[str, Any]:
     output.mkdir(parents=True)
     items_file = pq.ParquetFile(items_path)
     category_values = pa.array(ood_categories, type=pa.string())
+    excluded_ids = pa.array(
+        np.asarray(excluded_validation_item_ids, dtype=np.int64),
+        type=pa.int64(),
+    )
     non_ood_items_path = output / "non_ood_items.parquet"
     ood_items_path = output / "ood_items.parquet"
     ood_id_parts: list[pa.Array] = []
     item_counts = {"non_ood": 0, "ood": 0}
+    excluded_item_counts = {"non_ood": 0, "ood": 0}
 
     logging.info("Streaming and splitting %d LLM items", items_file.metadata.num_rows)
     non_ood_writer, ood_writer = _writers(
@@ -354,9 +360,19 @@ def split_llm_data(
     try:
         for batch_number, batch in enumerate(items_file.iter_batches(batch_size=262_144), 1):
             table = pa.Table.from_batches([batch])
-            is_ood = pc.is_in(table["category"], value_set=category_values)
-            ood_table = table.filter(is_ood)
-            non_ood_table = table.filter(pc.invert(is_ood))
+            category_is_ood = pc.is_in(table["category"], value_set=category_values)
+            is_excluded = pc.is_in(table["id"], value_set=excluded_ids)
+            eligible = pc.invert(is_excluded)
+            ood_table = table.filter(pc.and_(category_is_ood, eligible))
+            non_ood_table = table.filter(
+                pc.and_(pc.invert(category_is_ood), eligible)
+            )
+            excluded_item_counts["ood"] += int(
+                pc.sum(pc.and_(category_is_ood, is_excluded)).as_py() or 0
+            )
+            excluded_item_counts["non_ood"] += int(
+                pc.sum(pc.and_(pc.invert(category_is_ood), is_excluded)).as_py() or 0
+            )
             if len(ood_table):
                 ood_writer.write_table(ood_table)
                 ood_id_parts.extend(ood_table["id"].chunks)
@@ -373,7 +389,11 @@ def split_llm_data(
         non_ood_writer.close()
         ood_writer.close()
 
-    ood_ids = pa.chunked_array(ood_id_parts).combine_chunks()
+    ood_ids = (
+        pa.concat_arrays(ood_id_parts)
+        if ood_id_parts
+        else pa.array([], type=pa.int64())
+    )
     pairs_file = pq.ParquetFile(pairs_path)
     non_ood_pairs_path = output / "non_ood_pairs.parquet"
     ood_pairs_path = output / "ood_pairs.parquet"
@@ -391,6 +411,16 @@ def split_llm_data(
     try:
         for batch_number, batch in enumerate(pairs_file.iter_batches(batch_size=524_288), 1):
             table = pa.Table.from_batches([batch])
+            first_excluded = pc.is_in(table["id1"], value_set=excluded_ids)
+            second_excluded = pc.is_in(table["id2"], value_set=excluded_ids)
+            excluded_pair_rows = int(
+                pc.sum(pc.or_(first_excluded, second_excluded)).as_py() or 0
+            )
+            if excluded_pair_rows:
+                raise ValueError(
+                    "LLM pairs touch frozen human validation items: "
+                    f"{excluded_pair_rows} rows in batch {batch_number}"
+                )
             first_ood = pc.is_in(table["id1"], value_set=ood_ids)
             second_ood = pc.is_in(table["id2"], value_set=ood_ids)
             mismatch = pc.any(pc.not_equal(first_ood, second_ood)).as_py()
@@ -422,12 +452,14 @@ def split_llm_data(
         non_ood_writer.close()
         ood_writer.close()
 
-    if sum(item_counts.values()) != items_file.metadata.num_rows:
+    if sum(item_counts.values()) + sum(excluded_item_counts.values()) != items_file.metadata.num_rows:
         raise RuntimeError("LLM item split does not cover the source")
     if sum(pair_counts.values()) != pairs_file.metadata.num_rows:
         raise RuntimeError("LLM pair split does not cover the source")
     return {
         "items": item_counts,
+        "excluded_human_validation_items": excluded_item_counts,
+        "pairs_touching_human_validation_items": 0,
         "pairs": pair_counts,
         "target_counts": target_counts,
         "files": {
@@ -455,7 +487,19 @@ def main() -> None:
 
     staging = Path(tempfile.mkdtemp(prefix=f".{output.name}-", dir=output.parent))
     try:
-        human_report, _ = prepare_human_splits(args, staging, ood_categories)
+        human_report, human_splits = prepare_human_splits(args, staging, ood_categories)
+        validation_item_ids = np.unique(
+            np.concatenate(
+                [
+                    np.fromiter(item_ids(human_splits[name]), dtype=np.int64)
+                    for name in (
+                        "iid_validation",
+                        "hard_validation",
+                        "ood_validation",
+                    )
+                ]
+            )
+        )
         llm_report = None
         if not args.skip_llm:
             llm_report = split_llm_data(
@@ -463,6 +507,7 @@ def main() -> None:
                 args.llm_pairs,
                 staging / "llm",
                 ood_categories,
+                validation_item_ids,
             )
 
         source_paths = [
