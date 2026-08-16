@@ -19,7 +19,6 @@ import numpy as np
 import pandas as pd
 import torch
 import torch.distributed as dist
-import torch.nn.functional as F
 from sklearn.metrics import average_precision_score
 from torch.nn.parallel import DistributedDataParallel
 from torch.optim import AdamW
@@ -38,6 +37,7 @@ from src.cross_encoder_training import (
     PairTokenCache,
     build_pair_token_cache,
 )
+from src.cross_encoder_experiment_hooks import load_loss_hook
 from src.data_pipeline import attach_item_fields
 from src.experiment_protocol import validation_split_paths
 from src.pair_features import (
@@ -57,6 +57,7 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "configs" / "cross_encoder_minilm.json"
 CONFIG_KEYS = {
     "model",
+    "trust_remote_code",
     "epochs",
     "batch_size",
     "eval_batch_size",
@@ -118,9 +119,23 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--config", type=Path, default=config_path)
     parser.add_argument("--model", default=configured("model", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"))
+    parser.add_argument(
+        "--trust-remote-code",
+        action=argparse.BooleanOptionalAction,
+        default=configured("trust_remote_code", False),
+        help="Allow Hugging Face model/tokenizer repositories to execute custom code",
+    )
     parser.add_argument("--prepared-dir", type=Path, default=Path("prepared/human"))
     parser.add_argument("--output-dir", type=Path, default=Path("models/cross_encoder_minilm"))
     parser.add_argument("--token-cache-dir", type=Path)
+    parser.add_argument(
+        "--loss-hook",
+        type=Path,
+        help=(
+            "Optional Python module defining compute_loss(...), and optionally "
+            "initialize_loss(...), for controlled loss ablations"
+        ),
+    )
     parser.add_argument(
         "--validation-split",
         action="append",
@@ -518,8 +533,13 @@ def main() -> None:
     original_train_pairs = len(train)
     if args.train_subset == "category_label_downsample":
         train = category_label_downsample(train, seed=args.seed)
+    train = train.reset_index(drop=True)
 
-    tokenizer = AutoTokenizer.from_pretrained(args.model, use_fast=True)
+    tokenizer = AutoTokenizer.from_pretrained(
+        args.model,
+        use_fast=True,
+        trust_remote_code=args.trust_remote_code,
+    )
     if tokenizer.pad_token_id is None:
         raise ValueError("Cross-encoder tokenizer must define pad_token_id")
     train_cache, validation_caches = create_caches(
@@ -626,6 +646,13 @@ def main() -> None:
         )
         for name in validations
     }
+    loss_hook = load_loss_hook(args.loss_hook)
+    loss_hook.initialize(
+        train_frame=train,
+        device=device,
+        rank=rank,
+        world_size=world_size,
+    )
     del train, items
 
     amp_dtype = preferred_cuda_dtype()
@@ -633,6 +660,7 @@ def main() -> None:
         args.model,
         num_labels=1,
         attn_implementation=args.attention_implementation,
+        trust_remote_code=args.trust_remote_code,
     )
     model.config.id2label = {0: "MATCH_SCORE"}
     model.config.label2id = {"MATCH_SCORE": 0}
@@ -709,6 +737,7 @@ def main() -> None:
                     "validation_schedule": "after_training",
                     "sampling": args.sampling,
                     "loss_weighting": args.loss_weighting,
+                    "loss_hook": loss_hook.metadata,
                     "sampler_unique_coverage_per_epoch": (
                         1.0 if args.sampling == "none" else None
                     ),
@@ -751,6 +780,7 @@ def main() -> None:
         training_model.train()
         interval_started = time.perf_counter()
         interval_loss = torch.zeros((), dtype=torch.float32, device=device)
+        interval_loss_metrics: dict[str, torch.Tensor] = {}
         interval_steps = interval_examples = 0
         interval_useful_tokens = interval_padded_tokens = 0
         previous_step_finished = interval_started
@@ -759,8 +789,8 @@ def main() -> None:
         for step, packed in enumerate(train_loader):
             batch_ready = time.perf_counter()
             interval_data_seconds += batch_ready - previous_step_finished
-            packed.pop("pair_indices")
-            packed.pop("orientations")
+            pair_indices = packed.pop("pair_indices").to(device, non_blocking=True)
+            orientations = packed.pop("orientations").to(device, non_blocking=True)
             cpu_targets = packed.pop("targets")
             batch_examples = len(cpu_targets)
             useful_tokens = int(packed["attention_mask"].sum())
@@ -789,10 +819,15 @@ def main() -> None:
             with sync_context:
                 with torch.autocast(device_type="cuda", dtype=amp_dtype):
                     logits = training_model(**batch).logits.squeeze(-1)
-                    per_example_loss = F.binary_cross_entropy_with_logits(
-                        logits.float(), targets, reduction="none"
+                    raw_loss, loss_metrics = loss_hook.compute(
+                        logits=logits.float(),
+                        targets=targets,
+                        sample_weights=weights,
+                        pair_indices=pair_indices,
+                        orientations=orientations,
+                        epoch=epoch,
+                        step=step,
                     )
-                    raw_loss = (per_example_loss * weights).sum() / weights.sum()
                     loss = raw_loss / group_size
                 scaler.scale(loss).backward()
 
@@ -817,6 +852,10 @@ def main() -> None:
             interval_useful_tokens += useful_tokens
             interval_padded_tokens += padded_tokens
             interval_loss += raw_loss.detach()
+            for name, value in loss_metrics.items():
+                interval_loss_metrics[name] = (
+                    interval_loss_metrics.get(name, torch.zeros_like(value)) + value
+                )
             interval_steps += 1
             previous_step_finished = time.perf_counter()
 
@@ -826,9 +865,7 @@ def main() -> None:
                 torch.cuda.synchronize(device)
                 interval_seconds = time.perf_counter() - interval_started
                 seconds_per_step = interval_seconds / interval_steps
-                print(
-                    json.dumps(
-                        {
+                log_record = {
                             "epoch": epoch + 1,
                             "step": step + 1,
                             "steps": len(train_loader),
@@ -848,11 +885,15 @@ def main() -> None:
                             / 2**30,
                             "learning_rate": scheduler.get_last_lr()[0],
                         }
-                    ),
-                    flush=True,
-                )
+                if interval_loss_metrics:
+                    log_record["loss_metrics"] = {
+                        name: float(value) / interval_steps
+                        for name, value in sorted(interval_loss_metrics.items())
+                    }
+                print(json.dumps(log_record), flush=True)
                 interval_started = time.perf_counter()
                 interval_loss = torch.zeros((), dtype=torch.float32, device=device)
+                interval_loss_metrics = {}
                 interval_steps = interval_examples = 0
                 interval_useful_tokens = interval_padded_tokens = 0
                 interval_data_seconds = 0.0
@@ -954,6 +995,7 @@ def main() -> None:
             "training_subset": args.train_subset,
             "training_sampling": args.sampling,
             "training_loss_weighting": args.loss_weighting,
+            "loss_hook": loss_hook.metadata,
             "training_unique_coverage_per_epoch": (
                 1.0 if args.sampling == "none" else None
             ),

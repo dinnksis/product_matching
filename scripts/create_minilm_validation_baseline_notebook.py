@@ -32,6 +32,7 @@ EMBEDDED_FILES = (
     Path("requirements-cross-encoder.txt"),
     Path("src/__init__.py"),
     Path("src/cross_encoder_training.py"),
+    Path("src/cross_encoder_experiment_hooks.py"),
     Path("src/data_pipeline.py"),
     Path("src/experiment_protocol.py"),
     Path("src/pair_features.py"),
