@@ -81,9 +81,6 @@ class LoadedLossHook:
             raise TypeError("Loss hook must return a scalar tensor or a mapping with 'loss'")
         if not isinstance(loss, torch.Tensor) or loss.ndim != 0:
             raise ValueError("Loss hook 'loss' must be a scalar torch.Tensor")
-        if not torch.isfinite(loss).item():
-            raise FloatingPointError("Loss hook returned a non-finite loss")
-
         metrics: dict[str, torch.Tensor] = {}
         for name, value in raw_metrics.items():
             if not isinstance(name, str) or _METRIC_NAME.fullmatch(name) is None:

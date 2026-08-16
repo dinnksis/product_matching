@@ -789,8 +789,11 @@ def main() -> None:
         for step, packed in enumerate(train_loader):
             batch_ready = time.perf_counter()
             interval_data_seconds += batch_ready - previous_step_finished
-            pair_indices = packed.pop("pair_indices").to(device, non_blocking=True)
-            orientations = packed.pop("orientations").to(device, non_blocking=True)
+            pair_indices = packed.pop("pair_indices")
+            orientations = packed.pop("orientations")
+            if loss_hook.path is not None:
+                pair_indices = pair_indices.to(device, non_blocking=True)
+                orientations = orientations.to(device, non_blocking=True)
             cpu_targets = packed.pop("targets")
             batch_examples = len(cpu_targets)
             useful_tokens = int(packed["attention_mask"].sum())
@@ -866,25 +869,25 @@ def main() -> None:
                 interval_seconds = time.perf_counter() - interval_started
                 seconds_per_step = interval_seconds / interval_steps
                 log_record = {
-                            "epoch": epoch + 1,
-                            "step": step + 1,
-                            "steps": len(train_loader),
-                            "loss": float(interval_loss) / interval_steps,
-                            "examples_per_second": interval_examples
-                            * world_size
-                            / interval_seconds,
-                            "seconds_per_step": seconds_per_step,
-                            "epoch_eta_minutes": (len(train_loader) - step - 1)
-                            * seconds_per_step
-                            / 60,
-                            "data_wait_fraction_approx": interval_data_seconds
-                            / interval_seconds,
-                            "padding_efficiency": interval_useful_tokens
-                            / interval_padded_tokens,
-                            "peak_vram_gib": torch.cuda.max_memory_allocated(device)
-                            / 2**30,
-                            "learning_rate": scheduler.get_last_lr()[0],
-                        }
+                    "epoch": epoch + 1,
+                    "step": step + 1,
+                    "steps": len(train_loader),
+                    "loss": float(interval_loss) / interval_steps,
+                    "examples_per_second": interval_examples
+                    * world_size
+                    / interval_seconds,
+                    "seconds_per_step": seconds_per_step,
+                    "epoch_eta_minutes": (len(train_loader) - step - 1)
+                    * seconds_per_step
+                    / 60,
+                    "data_wait_fraction_approx": interval_data_seconds
+                    / interval_seconds,
+                    "padding_efficiency": interval_useful_tokens
+                    / interval_padded_tokens,
+                    "peak_vram_gib": torch.cuda.max_memory_allocated(device)
+                    / 2**30,
+                    "learning_rate": scheduler.get_last_lr()[0],
+                }
                 if interval_loss_metrics:
                     log_record["loss_metrics"] = {
                         name: float(value) / interval_steps

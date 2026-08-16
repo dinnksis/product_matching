@@ -143,6 +143,12 @@ Checkpoint Dataset —
 Kaggle kernel:
 `alexproger23/product-matching-minilm-5ep-human-ft-v1`.
 
+Для командных экспериментов, в которых разрешено менять только train-данные и
+loss при неизменных гиперпараметрах, используйте отдельный шаблон
+[`notebooks/minilm_5ep_team_ablation/`](../notebooks/minilm_5ep_team_ablation/README.md).
+В нём зафиксированы checkpoint, training recipe и три validation split, а две
+редактируемые ячейки помечены тегом `team-editable`.
+
 ## Google Sheets
 
 Новые запуски записываются в компактный лист `experiments_v2`: одна строка на
