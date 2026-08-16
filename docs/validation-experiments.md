@@ -149,6 +149,140 @@ loss при неизменных гиперпараметрах, использ�
 В нём зафиксированы checkpoint, training recipe и три validation split, а две
 редактируемые ячейки помечены тегом `team-editable`.
 
+## Серверные baseline-запуски разных reranker-моделей
+
+Для одной H100 80GB есть единый launcher
+[`scripts/run_human_reranker_baseline.sh`](../scripts/run_human_reranker_baseline.sh).
+Каждый запуск использует только `human/train_pairs.parquet`, затем считает один
+checkpoint на frozen `iid`, `hard` и `ood` в обоих порядках пары. После успешной
+валидации launcher автоматически делает idempotent upsert одной строки в
+`experiments_v2`.
+
+Установить общий набор GPU-зависимостей и показать доступные профили:
+
+```bash
+python -m pip install -r requirements-reranker-baselines.txt
+scripts/run_human_reranker_baseline.sh --list
+```
+
+Примеры отдельных запусков:
+
+```bash
+scripts/run_human_reranker_baseline.sh gte
+scripts/run_human_reranker_baseline.sh jina-v3.5
+scripts/run_human_reranker_baseline.sh jina-v2
+scripts/run_human_reranker_baseline.sh bge-v2-m3
+scripts/run_human_reranker_baseline.sh qwen-0.6b
+scripts/run_human_reranker_baseline.sh qwen-4b
+scripts/run_human_reranker_baseline.sh rumodernbert
+```
+
+Чтобы последовательно выполнить всю очередь на одной GPU и останавливать её при
+первой ошибке:
+
+```bash
+scripts/run_human_reranker_baseline.sh all
+```
+
+Это долгий запуск, особенно из-за Qwen-4B и его OOD validation; перед ним стоит
+проверить все команды через `DRY_RUN=1`.
+
+Launcher сам находит данные сначала в
+`prepared/validation_splits_v1/human`, затем в
+`data/validation_splits_v1/human`. Явный путь и GPU задаются через environment:
+
+```bash
+PREPARED_DIR=data/validation_splits_v1/human \
+CUDA_VISIBLE_DEVICES=0 \
+scripts/run_human_reranker_baseline.sh bge-v2-m3
+```
+
+Аргументы после alias добавляются в конец команды и позволяют сделать разовый
+override без редактирования скрипта:
+
+```bash
+scripts/run_human_reranker_baseline.sh gte \
+  --batch-size 160 \
+  --eval-batch-size 384
+```
+
+Перед настоящим запуском профиль можно полностью просмотреть без загрузки модели:
+
+```bash
+DRY_RUN=1 scripts/run_human_reranker_baseline.sh qwen-4b
+```
+
+Профили различаются только там, где этого требует архитектура или память:
+
+Во всех профилях зафиксированы одна эпоха, `max_length=384`, `sampling=none` и
+effective batch `192`; для более крупных моделей он набирается через gradient
+accumulation. Per-device batch, learning rate, attention backend и режим
+checkpointing остаются model-specific. Полный config сохраняется в report, а
+batch/LR — также в компактной строке таблицы.
+
+| Alias | Checkpoint | Backend и режим |
+| --- | --- | --- |
+| `gte` | `Alibaba-NLP/gte-multilingual-reranker-base` | sequence classification, full FT, `eager` из-за воспроизводимого non-finite loss в SDPA на H100 |
+| `jina-v3.5` | `jinaai/jina-reranker-v3.5` | custom LBNL prompt с одним document, full FT |
+| `jina-v2` | `jinaai/jina-reranker-v2-base-multilingual` | sequence classification, full FT без optional Jina flash-attention extension |
+| `bge-v2-m3` | `BAAI/bge-reranker-v2-m3` | sequence classification, full FT |
+| `qwen-0.6b` | `Qwen/Qwen3-Reranker-0.6B` | causal yes/no reranker, full FT |
+| `qwen-4b` | `Qwen/Qwen3-Reranker-4B` | causal yes/no reranker, LoRA rank 16, чтобы оставить запас памяти на одной H100 80GB |
+| `rumodernbert` | `deepvk/RuModernBERT-base` | encoder full FT с новой случайно инициализированной binary classification head |
+
+`Jina v3.5` — listwise LBNL-модель, поэтому её нельзя загружать через
+`AutoModelForSequenceClassification`. Профиль сохраняет её штатные специальные
+query/document tokens и оптимизирует выдаваемый cosine score на binary human
+labels. Jina v2 и v3.5 имеют лицензию CC BY-NC 4.0; до использования в финальной
+competition submission нужно отдельно подтвердить допустимость лицензии.
+
+По умолчанию outputs складываются в
+`model/baseline_<alias>_<UTC timestamp>/`, а переиспользуемый token cache — в
+`artifacts/token_cache/<profile>/` (для GTE сохраняется уже использованный путь
+`gte_multilingual_reranker_base`). В output остаются checkpoint,
+`training_report.json`, три `*_validation_predictions.parquet`, полный
+`training.log`, `server_run_completed.json` и `google_sheets_sync.json`.
+
+### Автовыгрузка локальной валидации в experiments_v2
+
+Для локального sync нужен тот же service-account, которому открыт spreadsheet.
+Рекомендуемый вариант — путь в корневом `.env` (он читается без выполнения
+shell-кода):
+
+```dotenv
+GOOGLE_SERVICE_ACCOUNT_JSON_PATH=/secure/path/google-service-account.json
+```
+
+После этого обычный запуск сам подхватит файл:
+
+```bash
+scripts/run_human_reranker_baseline.sh gte
+```
+
+Уже экспортированная environment variable имеет приоритет над `.env`. Также
+поддерживается ignored-файл
+`secrets/google-service-account.json` или raw JSON в
+`GOOGLE_SERVICE_ACCOUNT_JSON`. Секрет не выводится в лог и не попадает в
+completion artifact. Другой spreadsheet можно задать через
+`EXPERIMENT_SPREADSHEET_ID`.
+
+Если обучение завершилось, но Google API или credentials недоступны, модель и
+все validation artifacts сохраняются, `google_sheets_sync.json` получает статус
+`pending`, а launcher завершается с кодом `3`. После исправления доступа тот же
+`run_id` безопасно синхронизируется повторной командой, напечатанной перед
+обучением. Для уже готового стороннего отчёта:
+
+```bash
+.venv/bin/python scripts/sync_local_experiment_to_google_sheet.py \
+  --report model/my_run/training_report.json \
+  --experiment my_human_baseline
+```
+
+Sync до обращения к Google проверяет наличие всех трёх секций
+`validation_splits.{iid,hard,ood}` и их macro/overall AP. Неполный single-split
+report в таблицу не попадёт. Если таблица временно не нужна, запуск можно сделать
+с `SYNC_GOOGLE_SHEETS=0` и синхронизировать отчёт позднее.
+
 ## Google Sheets
 
 Новые запуски записываются в компактный лист `experiments_v2`: одна строка на

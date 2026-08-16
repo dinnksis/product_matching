@@ -24,6 +24,7 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from transformers import (
+    AutoModel,
     AutoModelForSequenceClassification,
     AutoTokenizer,
     get_cosine_schedule_with_warmup,
@@ -57,6 +58,8 @@ ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_CONFIG = ROOT / "configs" / "cross_encoder_minilm.json"
 CONFIG_KEYS = {
     "model",
+    "model_backend",
+    "model_load_kwargs",
     "trust_remote_code",
     "epochs",
     "batch_size",
@@ -120,10 +123,29 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--config", type=Path, default=config_path)
     parser.add_argument("--model", default=configured("model", "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"))
     parser.add_argument(
+        "--model-backend",
+        choices=["sequence_classification", "jina_lbnl"],
+        default=configured("model_backend", "sequence_classification"),
+        help=(
+            "Model output contract. jina_lbnl uses Jina v3/v3.5's custom "
+            "single-document listwise prompt and cosine relevance score."
+        ),
+    )
+    parser.add_argument(
         "--trust-remote-code",
         action=argparse.BooleanOptionalAction,
         default=configured("trust_remote_code", False),
         help="Allow Hugging Face model/tokenizer repositories to execute custom code",
+    )
+    parser.add_argument(
+        "--model-load-kwarg",
+        action="append",
+        default=[],
+        metavar="NAME=JSON_VALUE",
+        help=(
+            "Extra model-specific from_pretrained keyword; repeat as needed. "
+            "For example: use_flash_attn=false"
+        ),
     )
     parser.add_argument("--prepared-dir", type=Path, default=Path("prepared/human"))
     parser.add_argument("--output-dir", type=Path, default=Path("models/cross_encoder_minilm"))
@@ -256,6 +278,37 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("label-smoothing must be in [0, 1)")
 
 
+def model_load_kwargs(args: argparse.Namespace) -> dict[str, Any]:
+    configured = json.loads(args.config.read_text(encoding="utf-8")).get(
+        "model_load_kwargs", {}
+    )
+    if not isinstance(configured, dict):
+        raise ValueError("model_load_kwargs in the config must be a JSON object")
+    result = dict(configured)
+    for spec in args.model_load_kwarg:
+        name, separator, raw_value = spec.partition("=")
+        name = name.strip()
+        if not separator or not name:
+            raise ValueError(
+                f"Invalid --model-load-kwarg {spec!r}; expected NAME=JSON_VALUE"
+            )
+        try:
+            result[name] = json.loads(raw_value)
+        except json.JSONDecodeError as error:
+            raise ValueError(
+                f"Invalid JSON value in --model-load-kwarg {spec!r}"
+            ) from error
+    reserved = {
+        "pretrained_model_name_or_path",
+        "num_labels",
+        "attn_implementation",
+        "trust_remote_code",
+    }
+    if conflict := reserved & set(result):
+        raise ValueError(f"Reserved model-load kwargs cannot be overridden: {sorted(conflict)}")
+    return result
+
+
 def loader_options(args: argparse.Namespace, *, persistent: bool) -> dict[str, Any]:
     options: dict[str, Any] = {
         "num_workers": args.dataloader_workers,
@@ -294,6 +347,11 @@ def create_caches(
                 args.max_length,
                 args.tokenization_batch_size,
                 args.tokenization_log_every,
+                pair_format=(
+                    "jina_lbnl"
+                    if args.model_backend == "jina_lbnl"
+                    else "cross_encoder"
+                ),
             )
             validation_caches = {
                 name: build_pair_token_cache(
@@ -305,6 +363,11 @@ def create_caches(
                     args.max_length,
                     args.tokenization_batch_size,
                     args.tokenization_log_every,
+                    pair_format=(
+                        "jina_lbnl"
+                        if args.model_backend == "jina_lbnl"
+                        else "cross_encoder"
+                    ),
                 )
                 for name, validation in validations.items()
             }
@@ -357,6 +420,7 @@ def evaluate(
     amp_dtype: torch.dtype,
     distributed: bool,
     world_size: int,
+    model_backend: str,
 ) -> ValidationResult | None:
     model.eval()
     local: list[tuple[int, bool, float]] = []
@@ -371,7 +435,7 @@ def evaluate(
                 for key, value in packed.items()
             }
             with torch.autocast(device_type="cuda", dtype=amp_dtype):
-                logits = model(**batch).logits.squeeze(-1)
+                logits = relevance_logits(model(**batch), model_backend)
             probabilities = logits.float().sigmoid().cpu().tolist()
             local.extend(
                 (int(index), bool(reverse), float(probability))
@@ -427,6 +491,27 @@ def evaluate(
         scores_ab=scores_ab,
         scores_ba=scores_ba,
     )
+
+
+def relevance_logits(outputs: Any, model_backend: str) -> torch.Tensor:
+    if model_backend == "sequence_classification":
+        logits = getattr(outputs, "logits", None)
+    elif model_backend == "jina_lbnl":
+        logits = getattr(outputs, "scores", None)
+    else:
+        raise ValueError(f"Unknown model backend: {model_backend!r}")
+    if logits is None:
+        raise RuntimeError(
+            f"Model backend {model_backend!r} did not return its expected score tensor"
+        )
+    if logits.ndim == 2 and logits.shape[-1] == 1:
+        logits = logits[:, 0]
+    if logits.ndim != 1:
+        raise RuntimeError(
+            f"Model backend {model_backend!r} returned scores with shape "
+            f"{tuple(logits.shape)}; expected one score per pair"
+        )
+    return logits
 
 
 def build_validation_predictions(
@@ -541,7 +626,10 @@ def main() -> None:
         trust_remote_code=args.trust_remote_code,
     )
     if tokenizer.pad_token_id is None:
-        raise ValueError("Cross-encoder tokenizer must define pad_token_id")
+        if args.model_backend == "jina_lbnl" and tokenizer.unk_token_id is not None:
+            tokenizer.pad_token = tokenizer.unk_token
+        else:
+            raise ValueError("Cross-encoder tokenizer must define pad_token_id")
     train_cache, validation_caches = create_caches(
         train,
         validations,
@@ -656,16 +744,35 @@ def main() -> None:
     del train, items
 
     amp_dtype = preferred_cuda_dtype()
-    model = AutoModelForSequenceClassification.from_pretrained(
-        args.model,
-        num_labels=1,
-        attn_implementation=args.attention_implementation,
-        trust_remote_code=args.trust_remote_code,
-    )
-    model.config.id2label = {0: "MATCH_SCORE"}
-    model.config.label2id = {"MATCH_SCORE": 0}
+    extra_model_load_kwargs = model_load_kwargs(args)
+    if args.model_backend == "sequence_classification":
+        model = AutoModelForSequenceClassification.from_pretrained(
+            args.model,
+            num_labels=1,
+            attn_implementation=args.attention_implementation,
+            trust_remote_code=args.trust_remote_code,
+            **extra_model_load_kwargs,
+        )
+        model.config.id2label = {0: "MATCH_SCORE"}
+        model.config.label2id = {"MATCH_SCORE": 0}
+    else:
+        if not args.trust_remote_code:
+            raise ValueError("jina_lbnl backend requires --trust-remote-code")
+        model = AutoModel.from_pretrained(
+            args.model,
+            attn_implementation=args.attention_implementation,
+            trust_remote_code=True,
+            **extra_model_load_kwargs,
+        )
+        # Jina's remote forward replaces the unused causal LM head with Identity.
+        # Do it before optimizer construction so those parameters never consume
+        # optimizer state during pairwise fine-tuning.
+        if hasattr(model, "lm_head"):
+            model.lm_head = torch.nn.Identity()
     model = model.to(device)
     if args.gradient_checkpointing:
+        if hasattr(model.config, "use_cache"):
+            model.config.use_cache = False
         model.gradient_checkpointing_enable(
             gradient_checkpointing_kwargs={"use_reentrant": False}
         )
@@ -718,6 +825,7 @@ def main() -> None:
                     "gpu": torch.cuda.get_device_name(device),
                     "world_size": world_size,
                     "model": args.model,
+                    "model_backend": args.model_backend,
                     "architecture": type(model).__name__,
                     "amp_dtype": str(amp_dtype),
                     "trainable_parameters": sum(p.numel() for p in trainable_parameters),
@@ -821,7 +929,9 @@ def main() -> None:
             )
             with sync_context:
                 with torch.autocast(device_type="cuda", dtype=amp_dtype):
-                    logits = training_model(**batch).logits.squeeze(-1)
+                    logits = relevance_logits(
+                        training_model(**batch), args.model_backend
+                    )
                     raw_loss, loss_metrics = loss_hook.compute(
                         logits=logits.float(),
                         targets=targets,
@@ -931,6 +1041,7 @@ def main() -> None:
             amp_dtype,
             distributed,
             world_size,
+            args.model_backend,
         )
         torch.cuda.synchronize(device)
         validation_seconds_by_split[name] = time.perf_counter() - split_started

@@ -23,6 +23,7 @@ __pycache__/
 .env
 .env.*
 !.env.example
+secrets/
 
 # Competition data are large and must be downloaded separately.
 data/*.parquet

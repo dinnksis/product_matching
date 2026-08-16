@@ -22,6 +22,9 @@ SPREADSHEETS_SCOPE = "https://www.googleapis.com/auth/spreadsheets"
 DEFAULT_SECRET_NAME = "GOOGLE_SERVICE_ACCOUNT_JSON"
 DEFAULT_CREDENTIAL_DATASET_SLUG = "ecom-matching-google-sheets-credentials"
 DEFAULT_CREDENTIAL_FILENAME = "google-service-account.json"
+DEFAULT_EXPERIMENT_SPREADSHEET_ID = (
+    "1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA"
+)
 EXPERIMENTS_SHEET = "experiments_v2"
 CATEGORY_METRICS_SHEET = "category_metrics"
 

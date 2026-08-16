@@ -14,6 +14,29 @@ import torch
 from torch.utils.data import Dataset
 
 
+JINA_LBNL_DOC_TOKEN = "<|embed_token|>"
+JINA_LBNL_QUERY_TOKEN = "<|rerank_token|>"
+JINA_LBNL_PREFIX = (
+    "<|im_start|>system\n"
+    "You are a search relevance expert who can determine a ranking of the passages "
+    "based on how relevant they are to the query. If the query is a question, how "
+    "relevant a passage is depends on how well it answers the question. If not, try "
+    "to analyze the intent of the query and assess how well each passage satisfies "
+    "the intent. If an instruction is provided, you should follow the instruction "
+    "when determining the ranking.<|im_end|>\n<|im_start|>user\n"
+    "I will provide you with 1 passages, each indicated by a numerical identifier. "
+    "Rank the passages based on their relevance to query: "
+)
+JINA_LBNL_QUERY_TO_DOCUMENT = '\n<passage id="0">\n'
+JINA_LBNL_DOCUMENT_TO_QUERY = (
+    f"{JINA_LBNL_DOC_TOKEN}\n</passage>\n<query>\n"
+)
+JINA_LBNL_SUFFIX = (
+    f"{JINA_LBNL_QUERY_TOKEN}\n</query><|im_end|>\n"
+    "<|im_start|>assistant\n<think>\n\n</think>\n\n"
+)
+
+
 def _frame_fingerprint(frame: pd.DataFrame, configuration: dict[str, Any]) -> str:
     digest = hashlib.sha256(
         json.dumps(configuration, ensure_ascii=False, sort_keys=True).encode("utf-8")
@@ -107,6 +130,74 @@ def _cache_is_complete(directory: Path, configuration: dict[str, Any], rows: int
     )
 
 
+def _jina_lbnl_product_prefixes(
+    query_tokens: Sequence[int],
+    document_tokens: Sequence[int],
+    budget: int,
+) -> tuple[Sequence[int], Sequence[int]]:
+    """Allocate a fair budget when the LBNL prompt repeats the query twice."""
+    query_keep = min(len(query_tokens), budget // 4)
+    document_keep = min(len(document_tokens), budget // 2)
+    remaining = budget - 2 * query_keep - document_keep
+
+    if remaining and document_keep == len(document_tokens):
+        extra_query = min(len(query_tokens) - query_keep, remaining // 2)
+        query_keep += extra_query
+        remaining -= 2 * extra_query
+    if remaining and query_keep == len(query_tokens):
+        extra_document = min(len(document_tokens) - document_keep, remaining)
+        document_keep += extra_document
+        remaining -= extra_document
+    if remaining >= 2:
+        extra_query = min(len(query_tokens) - query_keep, remaining // 2)
+        query_keep += extra_query
+        remaining -= 2 * extra_query
+    if remaining:
+        document_keep += min(len(document_tokens) - document_keep, remaining)
+    return query_tokens[:query_keep], document_tokens[:document_keep]
+
+
+def _jina_lbnl_static_tokens(tokenizer: Any) -> tuple[list[list[int]], int, int, int]:
+    pieces = [
+        tokenizer.encode(JINA_LBNL_PREFIX, add_special_tokens=False),
+        tokenizer.encode(JINA_LBNL_QUERY_TO_DOCUMENT, add_special_tokens=False),
+        tokenizer.encode(JINA_LBNL_DOCUMENT_TO_QUERY, add_special_tokens=False),
+        tokenizer.encode(JINA_LBNL_SUFFIX, add_special_tokens=False),
+    ]
+    doc_token_id = int(tokenizer.convert_tokens_to_ids(JINA_LBNL_DOC_TOKEN))
+    query_token_id = int(tokenizer.convert_tokens_to_ids(JINA_LBNL_QUERY_TOKEN))
+    if doc_token_id < 0 or query_token_id < 0 or doc_token_id == query_token_id:
+        raise ValueError("Jina LBNL tokenizer does not define distinct reranker tokens")
+    static = list(chain.from_iterable(pieces))
+    if static.count(doc_token_id) != 1 or static.count(query_token_id) != 1:
+        raise ValueError(
+            "Jina LBNL prompt must contain exactly one document and one query marker"
+        )
+    return pieces, doc_token_id, query_token_id, len(static)
+
+
+def _jina_lbnl_sequence(
+    query_tokens: Sequence[int],
+    document_tokens: Sequence[int],
+    static_pieces: Sequence[Sequence[int]],
+    product_budget: int,
+) -> list[int]:
+    query, document = _jina_lbnl_product_prefixes(
+        query_tokens, document_tokens, product_budget
+    )
+    return list(
+        chain(
+            static_pieces[0],
+            query,
+            static_pieces[1],
+            document,
+            static_pieces[2],
+            query,
+            static_pieces[3],
+        )
+    )
+
+
 def build_pair_token_cache(
     frame: pd.DataFrame,
     tokenizer: Any,
@@ -116,8 +207,11 @@ def build_pair_token_cache(
     max_length: int,
     tokenization_batch_size: int = 512,
     log_every: int = 50,
+    pair_format: str = "cross_encoder",
 ) -> PairTokenCache:
     """Tokenize both pair orientations once and store compact mmap arrays."""
+    if pair_format not in {"cross_encoder", "jina_lbnl"}:
+        raise ValueError(f"Unknown pair tokenization format: {pair_format!r}")
     configuration = {
         "version": 1,
         "model": model_name,
@@ -125,6 +219,8 @@ def build_pair_token_cache(
         "tokenizer_size": len(tokenizer) if hasattr(tokenizer, "__len__") else None,
         "max_length": max_length,
     }
+    if pair_format == "jina_lbnl":
+        configuration.update(version=2, pair_format=pair_format)
     fingerprint = _frame_fingerprint(frame, configuration)
     directory = cache_root / f"{split_name}-{fingerprint}"
     if _cache_is_complete(directory, configuration, len(frame)):
@@ -141,6 +237,22 @@ def build_pair_token_cache(
     forward_position = reverse_position = 0
     has_token_types: bool | None = None
     started = time.perf_counter()
+    jina_static: list[list[int]] | None = None
+    jina_doc_token_id = jina_query_token_id = -1
+    product_budget = None
+    if pair_format == "jina_lbnl":
+        (
+            jina_static,
+            jina_doc_token_id,
+            jina_query_token_id,
+            static_length,
+        ) = _jina_lbnl_static_tokens(tokenizer)
+        product_budget = max_length - static_length
+        if product_budget < 16:
+            raise ValueError(
+                f"max_length={max_length} leaves only {product_budget} product tokens "
+                "for the Jina LBNL prompt"
+            )
 
     for batch_number, start in enumerate(
         range(0, len(frame), tokenization_batch_size), start=1
@@ -149,23 +261,59 @@ def build_pair_token_cache(
         first_texts = part["product_text_1"].astype(str).tolist()
         second_texts = part["product_text_2"].astype(str).tolist()
         part_size = len(part)
-        encoded = tokenizer(
-            first_texts + second_texts,
-            second_texts + first_texts,
-            add_special_tokens=True,
-            padding=False,
-            truncation="longest_first",
-            max_length=max_length,
-            return_attention_mask=False,
-        )
-        current_has_token_types = "token_type_ids" in encoded
+        if pair_format == "cross_encoder":
+            encoded = tokenizer(
+                first_texts + second_texts,
+                second_texts + first_texts,
+                add_special_tokens=True,
+                padding=False,
+                truncation="longest_first",
+                max_length=max_length,
+                return_attention_mask=False,
+            )
+            forward_sequences = encoded["input_ids"][:part_size]
+            reverse_sequences = encoded["input_ids"][part_size:]
+            current_has_token_types = "token_type_ids" in encoded
+        else:
+            assert jina_static is not None and product_budget is not None
+            sanitized = [
+                text.replace(JINA_LBNL_DOC_TOKEN, "").replace(
+                    JINA_LBNL_QUERY_TOKEN, ""
+                )
+                for text in first_texts + second_texts
+            ]
+            product_tokens = tokenizer(
+                sanitized,
+                add_special_tokens=False,
+                padding=False,
+                truncation=False,
+                return_attention_mask=False,
+            )["input_ids"]
+            first_tokens = product_tokens[:part_size]
+            second_tokens = product_tokens[part_size:]
+            forward_sequences = [
+                _jina_lbnl_sequence(first, second, jina_static, product_budget)
+                for first, second in zip(first_tokens, second_tokens)
+            ]
+            reverse_sequences = [
+                _jina_lbnl_sequence(second, first, jina_static, product_budget)
+                for first, second in zip(first_tokens, second_tokens)
+            ]
+            for sequence in chain(forward_sequences, reverse_sequences):
+                if len(sequence) > max_length:
+                    raise RuntimeError("Jina LBNL token budget exceeded max_length")
+                if (
+                    sequence.count(jina_doc_token_id) != 1
+                    or sequence.count(jina_query_token_id) != 1
+                ):
+                    raise RuntimeError("Jina LBNL reranker marker was lost during tokenization")
+            encoded = {}
+            current_has_token_types = False
         if has_token_types is None:
             has_token_types = current_has_token_types
         elif has_token_types != current_has_token_types:
             raise RuntimeError("Tokenizer changed token_type_ids behavior between batches")
 
-        forward_sequences = encoded["input_ids"][:part_size]
-        reverse_sequences = encoded["input_ids"][part_size:]
         for offset, (forward, reverse) in enumerate(
             zip(forward_sequences, reverse_sequences), start=1
         ):
@@ -226,6 +374,7 @@ def build_pair_token_cache(
         "elapsed_seconds": time.perf_counter() - started,
         "forward_tokens": int(forward_position),
         "reverse_tokens": int(reverse_position),
+        "product_token_budget": product_budget,
     }
     (directory / "metadata.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"

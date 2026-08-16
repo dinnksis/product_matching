@@ -1,0 +1,13 @@
+# Unified one-H100 environment for scripts/run_human_reranker_baseline.sh.
+# Jina v3.5's published config targets this exact Transformers release. Pinning
+# it also keeps all remote-code model interfaces reproducible across runs.
+transformers==4.57.3
+peft>=0.15,<1
+torch>=2.5,<3
+einops>=0.8,<1
+google-auth>=2.38,<3
+requests>=2.32,<3
+pandas>=2.2,<3
+pyarrow>=18,<24
+scikit-learn>=1.6,<2
+numpy>=1.26,<3
