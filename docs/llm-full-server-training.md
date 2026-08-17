@@ -133,6 +133,88 @@ clamp `1e-4` совпадают с
 накопленные rank-local изменения; перед сохранением все ranks получают
 одинаковую полную history.
 
+## Альтернатива: soft BCE + pairwise margin distillation
+
+Для отдельного контролируемого эксперимента есть launcher
+[`scripts/run_llm_full_margin_distillation.sh`](../scripts/run_llm_full_margin_distillation.sh).
+Он сохраняет ELR как регуляризацию, но уменьшает его коэффициент с `3.0` до
+`1.0`, и оптимизирует
+
+```text
+tᵢ = log(clamp(qᵢ) / (1 - clamp(qᵢ)))
+L = BCEWithLogits(zᵢ, qᵢ)
+    + 1.0 · ELR(zᵢ, historyᵢ)
+    + λ · Huber((zᵢ - zⱼ) - (tᵢ - tⱼ) / T)
+```
+
+Здесь `q` — soft probability LLM teacher, `t` — её logit, `z` — logit
+student. Сравнения строятся **только между парами одной товарной категории**.
+Внутри каждого mini-batch примеры категории сортируются по teacher logit, после
+чего нижняя половина попарно сравнивается с верхней. Равные teacher scores не
+дают comparison. Такое deterministic extreme pairing не тратит основную часть
+вычислений на многочисленные пары `0` против `0` и имеет линейную стоимость по
+batch size.
+
+Первый запуск с этим loss достроит рядом с существующим токен-кэшем
+`pair_category_ids.npy` и `pair_categories.json`. Для 10 млн строк sidecar
+занимает примерно 20 MiB; item-тексты не токенизируются повторно. Последующие
+запуски переиспользуют его по fingerprint исходного item parquet.
+
+Рекомендуемый первый прогон на одной H100:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 scripts/run_llm_full_margin_distillation.sh
+```
+
+Defaults этого launcher зафиксированы как отдельная абляция:
+
+- 5 эпох, `learning_rate=5e-6`, `batch_size=256`;
+- `λ=0.1`, `T=1`, Huber `delta=1`;
+- ELR `β=0.7`, ELR coefficient `1.0` вместо прежнего `3.0`;
+- teacher probabilities `0/1` clamp до `1e-4 / (1-1e-4)` перед logit;
+- `max_length=512`, `S1_KEY_VALUE`, тот же human validation после эпохи;
+- output — `models/minilm_llm_full_elr1_margin_l01_5ep`.
+
+Для второго эксперимента с `λ=0.2` обязательно используйте другой output:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 \
+PAIRWISE_MARGIN_LAMBDA=0.2 \
+LLM_OUTPUT_DIR=models/minilm_llm_full_elr1_margin_l02_5ep \
+scripts/run_llm_full_margin_distillation.sh
+```
+
+Resume сохраняет обычную семантику полного trainer:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 scripts/run_llm_full_margin_distillation.sh --resume
+```
+
+В train JSON дополнительно выводятся `pairwise_margin_loss`, число сравнений,
+comparisons per example и средние абсолютные teacher/student margins. Полный
+loss в этой конфигурации равен
+`supervised_loss + elr_regularizer + λ * pairwise_margin_loss`, где уже
+выведенный `elr_regularizer` умножен на коэффициент `1.0`. Поскольку ELR-терм
+логарифмический и отрицательный, суммарный loss всё ещё может стать
+отрицательным; для сравнения качества нужно отдельно следить за
+`supervised_loss`, `pairwise_margin_loss` и human AP.
+
+На нескольких GPU comparisons строятся внутри local mini-batch каждого rank,
+но никогда между ranks. Поэтому для строгой абляции сначала лучше сравнить
+обычный loss и margin loss на одной H100 с одинаковым batch size. Multi-GPU
+запуск поддержан через `LLM_NPROC`, например:
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 \
+LLM_NPROC=8 \
+LLM_BATCH_SIZE=32 \
+scripts/run_llm_full_margin_distillation.sh
+```
+
+Так global batch останется равен single-GPU batch `256`. Если оставить
+`LLM_BATCH_SIZE=256`, global batch станет `2048`, а набор внутриранговых
+comparisons и optimizer schedule уже будут другим экспериментом.
+
 ## Human validation после каждой эпохи
 
 После каждой эпохи checkpoint оценивается на frozen `iid`, `hard` и `ood` в

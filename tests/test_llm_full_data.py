@@ -15,7 +15,11 @@ from scripts.train_llm_full import (
     one_logit,
     snapshot_checkpoint,
 )
-from src.llm_full_data import balanced_prefix_lengths, build_full_pair_cache
+from src.llm_full_data import (
+    balanced_prefix_lengths,
+    build_full_pair_cache,
+    build_pair_category_cache,
+)
 
 
 class FakePairTokenizer:
@@ -188,6 +192,25 @@ class FullLlmDataTest(unittest.TestCase):
             self.assertEqual(cache.metadata["serialization"]["variant"], "S1_KEY_VALUE")
             self.assertFalse(cache.metadata["serialization"]["category_included"])
             self.assertTrue((cache.directory / "attribute_name_frequency.csv").is_file())
+
+            category_cache = build_pair_category_cache(
+                cache,
+                item_paths=[item_path],
+                batch_size=2,
+            )
+            np.testing.assert_array_equal(category_cache.values, [0, 0, 0, 0, 0])
+            self.assertEqual(category_cache.metadata["category_names"], ["test"])
+            self.assertEqual(category_cache.metadata["pair_counts"], {"test": 5})
+
+            reused_categories = build_pair_category_cache(
+                cache,
+                item_paths=[item_path],
+                batch_size=2,
+            )
+            self.assertEqual(
+                reused_categories.metadata["cache_fingerprint"],
+                cache.metadata["fingerprint"],
+            )
 
             reused = build_full_pair_cache(
                 item_paths=[item_path],

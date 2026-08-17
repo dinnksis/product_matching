@@ -34,12 +34,17 @@ from src.llm_full_data import (  # noqa: E402
     FullPairCache,
     balanced_prefix_lengths,
     build_full_pair_cache,
+    build_pair_category_cache,
 )
 from src.early_learning_regularization import (  # noqa: E402
     binary_elr_loss,
     make_binary_elr_targets,
 )
 from src.minilm_serialization import DEFAULT_VARIANT, VARIANTS  # noqa: E402
+from src.pairwise_margin_distillation import (  # noqa: E402
+    PairwiseMarginResult,
+    pairwise_margin_huber_loss,
+)
 
 
 DEFAULT_MODEL = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
@@ -145,6 +150,38 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--elr-beta", type=float, default=0.7)
     parser.add_argument("--elr-lambda", type=float, default=3.0)
     parser.add_argument("--elr-epsilon", type=float, default=1e-4)
+    parser.add_argument(
+        "--pairwise-margin-lambda",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight of same-category Huber distillation on student/teacher "
+            "logit differences; zero preserves the original objective"
+        ),
+    )
+    parser.add_argument(
+        "--pairwise-margin-temperature",
+        type=float,
+        default=1.0,
+        help="Divide teacher logit margins by this temperature",
+    )
+    parser.add_argument(
+        "--pairwise-margin-huber-delta",
+        type=float,
+        default=1.0,
+    )
+    parser.add_argument(
+        "--pairwise-margin-logit-epsilon",
+        type=float,
+        default=1e-4,
+        help="Clamp soft teacher probabilities before converting them to logits",
+    )
+    parser.add_argument(
+        "--pairwise-margin-min-teacher-gap",
+        type=float,
+        default=0.0,
+        help="Ignore comparisons whose absolute teacher-logit gap is not larger",
+    )
     parser.add_argument("--max-length", type=int, default=512)
     parser.add_argument(
         "--serialization-variant",
@@ -231,6 +268,16 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("elr-lambda must be non-negative")
     if not 0 < args.elr_epsilon < 0.5:
         raise ValueError("elr-epsilon must be in (0, 0.5)")
+    if args.pairwise_margin_lambda < 0:
+        raise ValueError("pairwise-margin-lambda must be non-negative")
+    if args.pairwise_margin_temperature <= 0:
+        raise ValueError("pairwise-margin-temperature must be positive")
+    if args.pairwise_margin_huber_delta <= 0:
+        raise ValueError("pairwise-margin-huber-delta must be positive")
+    if not 0 < args.pairwise_margin_logit_epsilon < 0.5:
+        raise ValueError("pairwise-margin-logit-epsilon must be in (0, 0.5)")
+    if args.pairwise_margin_min_teacher_gap < 0:
+        raise ValueError("pairwise-margin-min-teacher-gap must be non-negative")
     if not 0 <= args.warmup_ratio < 1:
         raise ValueError("warmup-ratio must be in [0, 1)")
     if args.max_pairs is not None and args.max_pairs <= 0:
@@ -1020,6 +1067,11 @@ def validate_resume_args(args: argparse.Namespace, checkpoint: Path) -> None:
         "elr_beta",
         "elr_lambda",
         "elr_epsilon",
+        "pairwise_margin_lambda",
+        "pairwise_margin_temperature",
+        "pairwise_margin_huber_delta",
+        "pairwise_margin_logit_epsilon",
+        "pairwise_margin_min_teacher_gap",
         "max_length",
         "serialization_variant",
         "attribute_frequency_csv",
@@ -1034,7 +1086,15 @@ def validate_resume_args(args: argparse.Namespace, checkpoint: Path) -> None:
         "seed",
         "world_size",
     )
-    saved_defaults = {"trust_remote_code": False, "world_size": 1}
+    saved_defaults = {
+        "trust_remote_code": False,
+        "pairwise_margin_lambda": 0.0,
+        "pairwise_margin_temperature": 1.0,
+        "pairwise_margin_huber_delta": 1.0,
+        "pairwise_margin_logit_epsilon": 1e-4,
+        "pairwise_margin_min_teacher_gap": 0.0,
+        "world_size": 1,
+    }
     changed = {
         name: {
             "checkpoint": saved.get(name, saved_defaults.get(name)),
@@ -1103,6 +1163,42 @@ def build_shared_caches(
     if paths is None:
         raise RuntimeError("Cache paths were not initialized")
     return FullPairCache.load(Path(paths[0])), FullPairCache.load(Path(paths[1]))
+
+
+def build_shared_pair_categories(
+    *,
+    cache: FullPairCache,
+    item_paths: Sequence[Path],
+    args: argparse.Namespace,
+    context: DistributedContext,
+    dist_module: Any | None,
+) -> tuple[np.ndarray, dict[str, Any]]:
+    payload: dict[str, Any] | None = None
+    if context.is_main:
+        category_cache = build_pair_category_cache(
+            cache,
+            item_paths=item_paths,
+            batch_size=args.item_tokenization_batch_size,
+            rebuild=args.rebuild_cache,
+        )
+        payload = {
+            "path": str(category_cache.values.filename),
+            "metadata": category_cache.metadata,
+        }
+    if context.distributed:
+        if dist_module is None:
+            raise RuntimeError("Distributed category-cache coordination is unavailable")
+        messages: list[Any] = [payload]
+        dist_module.broadcast_object_list(messages, src=0)
+        payload = messages[0]
+    if payload is None:
+        raise RuntimeError("Pair-category cache was not initialized")
+    categories = np.load(Path(payload["path"]), mmap_mode="r")
+    if len(categories) != cache.pair_count:
+        raise RuntimeError(
+            "Pair-category cache and training cache have different sizes"
+        )
+    return categories, payload["metadata"]
 
 
 def main() -> None:
@@ -1207,6 +1303,16 @@ def main() -> None:
         context=context,
         dist_module=dist_module,
     )
+    pair_category_ids: np.ndarray | None = None
+    pair_category_metadata: dict[str, Any] | None = None
+    if args.pairwise_margin_lambda > 0:
+        pair_category_ids, pair_category_metadata = build_shared_pair_categories(
+            cache=cache,
+            item_paths=item_paths,
+            args=args,
+            context=context,
+            dist_module=dist_module,
+        )
     if args.cache_only:
         if context.is_main:
             json_line(
@@ -1218,6 +1324,7 @@ def main() -> None:
                     "validation_cache": validation_cache.directory,
                     "validation_items": validation_cache.item_count,
                     "validation_pairs": validation_cache.pair_count,
+                    "pair_categories": pair_category_metadata,
                 }
             )
         if context.distributed:
@@ -1509,6 +1616,16 @@ def main() -> None:
                     * elr_targets.element_size()
                     / 2**20,
                 },
+                "pairwise_margin_distillation": {
+                    "enabled": args.pairwise_margin_lambda > 0,
+                    "lambda": args.pairwise_margin_lambda,
+                    "temperature": args.pairwise_margin_temperature,
+                    "huber_delta": args.pairwise_margin_huber_delta,
+                    "logit_epsilon": args.pairwise_margin_logit_epsilon,
+                    "min_teacher_gap": args.pairwise_margin_min_teacher_gap,
+                    "pairing": "same_category_lower_half_vs_upper_half",
+                    "category_cache": pair_category_metadata,
+                },
                 "validation_pairs": {
                     name: len(frame) for name, frame in validations.items()
                 },
@@ -1529,6 +1646,10 @@ def main() -> None:
     interval_supervised_loss_sum = 0.0
     interval_elr_regularizer_sum = 0.0
     interval_elr_agreement_sum = 0.0
+    interval_margin_loss_sum = 0.0
+    interval_margin_pair_count = 0
+    interval_teacher_abs_margin_sum = 0.0
+    interval_student_abs_margin_sum = 0.0
     interval_batches = 0
     interval_examples = 0
     interval_useful_tokens = 0
@@ -1536,6 +1657,8 @@ def main() -> None:
     completed_loss_sum = 0.0
     completed_supervised_loss_sum = 0.0
     completed_elr_regularizer_sum = 0.0
+    completed_margin_loss_sum = 0.0
+    completed_margin_pair_count = 0
     completed_examples = 0
     run_examples = 0
     last_checkpoint_update = global_update
@@ -1552,9 +1675,17 @@ def main() -> None:
         )
         model.train()
         for batch_index, packed in enumerate(loader, start=epoch_start_batch):
-            pair_indices = packed.pop("pair_indices").to(
-                device, non_blocking=True
-            )
+            cpu_pair_indices = packed.pop("pair_indices")
+            pair_indices = cpu_pair_indices.to(device, non_blocking=True)
+            category_ids = None
+            if pair_category_ids is not None:
+                category_values = np.asarray(
+                    pair_category_ids[cpu_pair_indices.numpy()],
+                    dtype=np.int64,
+                )
+                category_ids = torch.from_numpy(category_values).to(
+                    device, non_blocking=True
+                )
             packed.pop("orientations")
             targets = packed.pop("targets").to(device, non_blocking=True)
             batch_examples = len(targets)
@@ -1589,6 +1720,29 @@ def main() -> None:
                         regularization_strength=args.elr_lambda,
                         epsilon=args.elr_epsilon,
                     )
+                    if category_ids is not None:
+                        margin = pairwise_margin_huber_loss(
+                            student_logits=logits,
+                            teacher_probabilities=targets,
+                            category_ids=category_ids,
+                            temperature=args.pairwise_margin_temperature,
+                            huber_delta=args.pairwise_margin_huber_delta,
+                            logit_epsilon=args.pairwise_margin_logit_epsilon,
+                            min_teacher_gap=args.pairwise_margin_min_teacher_gap,
+                        )
+                    else:
+                        zero = logits.sum() * 0.0
+                        margin = PairwiseMarginResult(
+                            loss=zero,
+                            pair_count=torch.zeros(
+                                (), dtype=torch.int64, device=device
+                            ),
+                            mean_teacher_abs_margin=zero.detach(),
+                            mean_student_abs_margin=zero.detach(),
+                        )
+                    combined_loss = (
+                        elr.total + args.pairwise_margin_lambda * margin.loss
+                    )
                     # DDP averages rank gradients. This scale recovers the exact
                     # global-example mean even for uneven final local batches and
                     # partial gradient-accumulation groups.
@@ -1597,7 +1751,7 @@ def main() -> None:
                         * batch_examples
                         / accumulation_examples
                     )
-                    loss = elr.total * loss_scale
+                    loss = combined_loss * loss_scale
                 scaler.scale(loss).backward()
 
             if should_update:
@@ -1618,18 +1772,32 @@ def main() -> None:
             interval_examples += batch_examples
             interval_useful_tokens += useful_tokens
             interval_padded_tokens += padded_tokens
-            loss_value = float(elr.total.detach())
+            loss_value = float(combined_loss.detach())
             supervised_loss_value = float(elr.supervised.detach())
             elr_regularizer_value = float(elr.regularizer.detach())
             elr_agreement_value = float(elr.mean_agreement.detach())
+            margin_loss_value = float(margin.loss.detach())
+            margin_pair_count = int(margin.pair_count)
+            teacher_abs_margin_value = float(margin.mean_teacher_abs_margin)
+            student_abs_margin_value = float(margin.mean_student_abs_margin)
             interval_loss_sum += loss_value * batch_examples
             interval_supervised_loss_sum += supervised_loss_value * batch_examples
             interval_elr_regularizer_sum += elr_regularizer_value * batch_examples
             interval_elr_agreement_sum += elr_agreement_value * batch_examples
+            interval_margin_loss_sum += margin_loss_value * batch_examples
+            interval_margin_pair_count += margin_pair_count
+            interval_teacher_abs_margin_sum += (
+                teacher_abs_margin_value * margin_pair_count
+            )
+            interval_student_abs_margin_sum += (
+                student_abs_margin_value * margin_pair_count
+            )
             interval_batches += 1
             completed_loss_sum += loss_value * batch_examples
             completed_supervised_loss_sum += supervised_loss_value * batch_examples
             completed_elr_regularizer_sum += elr_regularizer_value * batch_examples
+            completed_margin_loss_sum += margin_loss_value * batch_examples
+            completed_margin_pair_count += margin_pair_count
             completed_examples += batch_examples
 
             if (
@@ -1644,6 +1812,10 @@ def main() -> None:
                         interval_supervised_loss_sum,
                         interval_elr_regularizer_sum,
                         interval_elr_agreement_sum,
+                        interval_margin_loss_sum,
+                        interval_margin_pair_count,
+                        interval_teacher_abs_margin_sum,
+                        interval_student_abs_margin_sum,
                         interval_examples,
                         interval_useful_tokens,
                         interval_padded_tokens,
@@ -1665,7 +1837,8 @@ def main() -> None:
                     dist_module.all_reduce(elapsed_tensor, op=dist_module.ReduceOp.MAX)
                     dist_module.all_reduce(peak_tensor, op=dist_module.ReduceOp.MAX)
                 if context.is_main:
-                    reduced_examples = float(statistics[4].item())
+                    reduced_margin_pairs = float(statistics[5].item())
+                    reduced_examples = float(statistics[8].item())
                     elapsed = float(elapsed_tensor.item())
                     json_line(
                         {
@@ -1680,9 +1853,18 @@ def main() -> None:
                             / reduced_examples,
                             "elr_mean_agreement": float(statistics[3].item())
                             / reduced_examples,
+                            "pairwise_margin_loss": float(statistics[4].item())
+                            / reduced_examples,
+                            "pairwise_margin_pairs": int(reduced_margin_pairs),
+                            "pairwise_margin_pairs_per_example": reduced_margin_pairs
+                            / reduced_examples,
+                            "teacher_mean_abs_margin": float(statistics[6].item())
+                            / max(1.0, reduced_margin_pairs),
+                            "student_mean_abs_margin": float(statistics[7].item())
+                            / max(1.0, reduced_margin_pairs),
                             "examples_per_second": reduced_examples / elapsed,
-                            "padding_efficiency": float(statistics[5].item())
-                            / float(statistics[6].item()),
+                            "padding_efficiency": float(statistics[9].item())
+                            / float(statistics[10].item()),
                             "learning_rate": scheduler.get_last_lr()[0],
                             "peak_vram_gib": float(peak_tensor.item()),
                             "epoch_eta_minutes": (total_batches - batch_index - 1)
@@ -1696,6 +1878,10 @@ def main() -> None:
                 interval_supervised_loss_sum = 0.0
                 interval_elr_regularizer_sum = 0.0
                 interval_elr_agreement_sum = 0.0
+                interval_margin_loss_sum = 0.0
+                interval_margin_pair_count = 0
+                interval_teacher_abs_margin_sum = 0.0
+                interval_student_abs_margin_sum = 0.0
                 interval_batches = 0
                 interval_examples = 0
                 interval_useful_tokens = 0
@@ -1837,6 +2023,8 @@ def main() -> None:
             completed_loss_sum,
             completed_supervised_loss_sum,
             completed_elr_regularizer_sum,
+            completed_margin_loss_sum,
+            completed_margin_pair_count,
             completed_examples,
         ],
         dtype=torch.float64,
@@ -1872,7 +2060,8 @@ def main() -> None:
         if final_dir.exists():
             shutil.rmtree(final_dir)
         os.replace(staging_final, final_dir)
-        reduced_examples = float(completed[3].item())
+        reduced_margin_pairs = float(completed[4].item())
+        reduced_examples = float(completed[5].item())
         report = {
             "status": "complete",
             "model": args.model,
@@ -1894,6 +2083,16 @@ def main() -> None:
                 "lambda": args.elr_lambda,
                 "epsilon": args.elr_epsilon,
             },
+            "pairwise_margin_distillation": {
+                "enabled": args.pairwise_margin_lambda > 0,
+                "lambda": args.pairwise_margin_lambda,
+                "temperature": args.pairwise_margin_temperature,
+                "huber_delta": args.pairwise_margin_huber_delta,
+                "logit_epsilon": args.pairwise_margin_logit_epsilon,
+                "min_teacher_gap": args.pairwise_margin_min_teacher_gap,
+                "pairing": "same_category_lower_half_vs_upper_half",
+                "category_cache": pair_category_metadata,
+            },
             "serialization": cache.metadata["serialization"],
             "max_length": args.max_length,
             "epochs": args.epochs,
@@ -1907,6 +2106,11 @@ def main() -> None:
             "mean_supervised_loss": float(completed[1].item())
             / max(1.0, reduced_examples),
             "mean_elr_regularizer": float(completed[2].item())
+            / max(1.0, reduced_examples),
+            "mean_pairwise_margin_loss": float(completed[3].item())
+            / max(1.0, reduced_examples),
+            "pairwise_margin_pairs": int(reduced_margin_pairs),
+            "pairwise_margin_pairs_per_example": reduced_margin_pairs
             / max(1.0, reduced_examples),
             "validation_history": validation_history,
             "best_validation_split": args.best_validation_split,

@@ -38,6 +38,9 @@ from src.minilm_serialization import (
 CACHE_VERSION = 2
 POSITION_DTYPE = np.int32
 TOKEN_DTYPE = np.int32
+PAIR_CATEGORY_DTYPE = np.int16
+PAIR_CATEGORY_VALUES = "pair_category_ids.npy"
+PAIR_CATEGORY_METADATA = "pair_categories.json"
 
 
 def _json_line(payload: dict[str, Any]) -> None:
@@ -208,6 +211,171 @@ class FullPairCache:
         start = int(self.item_offsets[position])
         stop = int(self.item_offsets[position + 1])
         return self.item_tokens[start:stop]
+
+
+@dataclass(frozen=True)
+class PairCategoryCache:
+    values: np.ndarray
+    metadata: dict[str, Any]
+
+
+def _load_pair_category_cache(directory: Path) -> PairCategoryCache:
+    metadata_path = directory / PAIR_CATEGORY_METADATA
+    values_path = directory / PAIR_CATEGORY_VALUES
+    metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+    values = np.load(values_path, mmap_mode="r")
+    if (
+        not metadata.get("complete")
+        or values.ndim != 1
+        or len(values) != int(metadata.get("pairs", -1))
+        or values.dtype != PAIR_CATEGORY_DTYPE
+    ):
+        raise ValueError(f"Invalid pair-category sidecar in {directory}")
+    return PairCategoryCache(values=values, metadata=metadata)
+
+
+def build_pair_category_cache(
+    cache: FullPairCache,
+    *,
+    item_paths: Sequence[Path],
+    batch_size: int = 8192,
+    rebuild: bool = False,
+) -> PairCategoryCache:
+    """Build a small reusable category ID sidecar without retokenizing items."""
+    if batch_size <= 0:
+        raise ValueError("batch_size must be positive")
+    item_paths = tuple(Path(path) for path in item_paths)
+    item_signatures = [_path_signature(path) for path in item_paths]
+    metadata_path = cache.directory / PAIR_CATEGORY_METADATA
+    values_path = cache.directory / PAIR_CATEGORY_VALUES
+    if metadata_path.is_file() and values_path.is_file() and not rebuild:
+        existing = _load_pair_category_cache(cache.directory)
+        if (
+            existing.metadata.get("cache_fingerprint")
+            == cache.metadata.get("fingerprint")
+            and existing.metadata.get("item_sources") == item_signatures
+        ):
+            _json_line(
+                {
+                    "pair_category_cache_reused": str(values_path),
+                    "categories": len(existing.metadata["category_names"]),
+                }
+            )
+            return existing
+
+    sorted_ids = np.load(cache.directory / "sorted_item_ids.npy", mmap_mode="r")
+    sorted_positions = np.load(
+        cache.directory / "sorted_item_positions.npy", mmap_mode="r"
+    )
+    item_category_ids = np.full(
+        cache.item_count,
+        -1,
+        dtype=PAIR_CATEGORY_DTYPE,
+    )
+    category_to_id: dict[str, int] = {}
+    selected_items = 0
+    input_rows = 0
+    started = time.perf_counter()
+    for item_path in item_paths:
+        parquet = pq.ParquetFile(item_path)
+        required_columns = {"id", "category"}
+        if not required_columns.issubset(parquet.schema_arrow.names):
+            raise ValueError(
+                f"Item source must contain id/category columns: {item_path}"
+            )
+        for batch in parquet.iter_batches(
+            columns=["id", "category"], batch_size=batch_size
+        ):
+            ids = batch.column(0).to_numpy(zero_copy_only=False).astype(
+                np.int64, copy=False
+            )
+            sorted_indices, found = _membership_positions(sorted_ids, ids)
+            input_rows += len(batch)
+            if not found.any():
+                continue
+            selected_indices = np.flatnonzero(found)
+            item_positions = sorted_positions[sorted_indices[found]]
+            if (item_category_ids[item_positions] >= 0).any():
+                raise ValueError("Item category sources contain duplicate required IDs")
+            categories = batch.column(1).take(
+                pa.array(selected_indices, type=pa.int64())
+            ).to_pylist()
+            encoded = np.empty(len(categories), dtype=PAIR_CATEGORY_DTYPE)
+            for index, raw_category in enumerate(categories):
+                if raw_category is None:
+                    raise ValueError("Required item has a null category")
+                category = str(raw_category).strip()
+                if not category:
+                    raise ValueError("Required item has an empty category")
+                if category not in category_to_id:
+                    if len(category_to_id) >= np.iinfo(PAIR_CATEGORY_DTYPE).max:
+                        raise ValueError("Too many categories for pair-category cache")
+                    category_to_id[category] = len(category_to_id)
+                encoded[index] = category_to_id[category]
+            item_category_ids[item_positions] = encoded
+            selected_items += len(item_positions)
+
+    if selected_items != cache.item_count or (item_category_ids < 0).any():
+        raise ValueError(
+            "Cannot build pair categories: item sources are missing or duplicate "
+            f"endpoints (selected={selected_items}, required={cache.item_count})"
+        )
+
+    staging_values = cache.directory / f".{PAIR_CATEGORY_VALUES}.{os.getpid()}.tmp"
+    staging_metadata = cache.directory / f".{PAIR_CATEGORY_METADATA}.{os.getpid()}.tmp"
+    counts = np.zeros(len(category_to_id), dtype=np.int64)
+    try:
+        pair_categories = np.lib.format.open_memmap(
+            staging_values,
+            mode="w+",
+            dtype=PAIR_CATEGORY_DTYPE,
+            shape=(cache.pair_count,),
+        )
+        for start in range(0, cache.pair_count, batch_size * 16):
+            stop = min(start + batch_size * 16, cache.pair_count)
+            left = item_category_ids[cache.left_positions[start:stop]]
+            right = item_category_ids[cache.right_positions[start:stop]]
+            if not np.array_equal(left, right):
+                raise ValueError("Training data contains a cross-category pair")
+            pair_categories[start:stop] = left
+            counts += np.bincount(left, minlength=len(counts))
+        pair_categories.flush()
+        category_names = [""] * len(category_to_id)
+        for name, category_id in category_to_id.items():
+            category_names[category_id] = name
+        metadata = {
+            "complete": True,
+            "cache_fingerprint": cache.metadata["fingerprint"],
+            "item_sources": item_signatures,
+            "pairs": cache.pair_count,
+            "items": cache.item_count,
+            "input_item_rows": input_rows,
+            "category_names": category_names,
+            "pair_counts": {
+                name: int(counts[category_id])
+                for category_id, name in enumerate(category_names)
+            },
+            "elapsed_seconds": time.perf_counter() - started,
+        }
+        staging_metadata.write_text(
+            json.dumps(metadata, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        os.replace(staging_values, values_path)
+        os.replace(staging_metadata, metadata_path)
+    except BaseException:
+        staging_values.unlink(missing_ok=True)
+        staging_metadata.unlink(missing_ok=True)
+        raise
+
+    _json_line(
+        {
+            "pair_category_cache_ready": str(values_path),
+            "categories": len(category_to_id),
+            "pairs": cache.pair_count,
+            "elapsed_seconds": metadata["elapsed_seconds"],
+        }
+    )
+    return _load_pair_category_cache(cache.directory)
 
 
 def _cache_complete(directory: Path) -> bool:
