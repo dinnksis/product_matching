@@ -1,0 +1,17 @@
+{
+  "rows": 91,
+  "patterns": {
+    "code_conflict": 16,
+    "color_conflict": 17,
+    "memory_conflict": 1,
+    "model_conflict": 20,
+    "numeric_or_unit_conflict": 19,
+    "sku_human_asymmetry": 18
+  },
+  "minimum_analogy_score": 0.3,
+  "mean_analogy_score": 0.7977874898518925,
+  "output": "C:\\Users\\Professional\\product_matching\\reports\\minilm_s2_hard_audit\\label_policy_contradiction_pairs.csv",
+  "full_output": "C:\\Users\\Professional\\product_matching\\reports\\minilm_s2_hard_audit\\label_policy_contradiction_pairs_full.csv",
+  "target0_output": "C:\\Users\\Professional\\product_matching\\reports\\minilm_s2_hard_audit\\label_policy_target_0.csv",
+  "target1_output": "C:\\Users\\Professional\\product_matching\\reports\\minilm_s2_hard_audit\\label_policy_target_1.csv"
+}

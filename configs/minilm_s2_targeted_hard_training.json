@@ -1,0 +1,50 @@
+{
+  "experiment": "minilm_s2_targeted_hard_training",
+  "model": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+  "variant": "S2_VALUES_ONLY",
+  "variants": ["S2_VALUES_ONLY"],
+  "validation_splits": {
+    "iid": "iid_pairs.parquet",
+    "hard_clean": "hard_clean_pairs.parquet",
+    "ood": "ood_pairs.parquet"
+  },
+  "expected_pairs": {
+    "train": 306669,
+    "iid": 12000,
+    "hard": 5814,
+    "hard_all": 5814,
+    "hard_clean": 4929,
+    "ood": 41171
+  },
+  "oof_folds": 3,
+  "oof_group_seed": 20260816,
+  "hard_quantile": 0.85,
+  "hard_oversample_factor": 2,
+  "maximum_iid_macro_ap_drop": 0.01,
+  "epochs": 1,
+  "batch_size": 64,
+  "eval_batch_size": 192,
+  "gradient_accumulation": 1,
+  "learning_rate": 0.00002,
+  "weight_decay": 0.01,
+  "warmup_ratio": 0.05,
+  "max_length": 256,
+  "attention_implementation": "sdpa",
+  "bucket_size_multiplier": 50,
+  "dataloader_workers": 2,
+  "prefetch_factor": 2,
+  "tokenization_batch_size": 512,
+  "tokenization_log_every": 50,
+  "gradient_checkpointing": false,
+  "symmetric_validation": true,
+  "label_smoothing": 0.0,
+  "max_grad_norm": 1.0,
+  "log_every": 50,
+  "hybrid_frequency": {
+    "strategy": "occurrence_coverage",
+    "target_coverage": 0.8,
+    "minimum_item_support": 100,
+    "maximum_frequent_keys": 1024
+  },
+  "seed": 42
+}

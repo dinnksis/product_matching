@@ -1,0 +1,5 @@
+subset,pairs,positives,prevalence,categories,definite_label_conflicts,unordered_id_pair_target_conflicts,representation_pair_target_conflicts,suspicious_negative_identity,suspicious_positive_conflict,sku_vs_human_title
+hard_all,5814,1481,0.2547299621603027,18,3,0,3,204,679,622
+hard_clean,4929,802,0.16271048894299048,18,0,0,0,0,0,494
+hard_suspicious,882,678,0.7687074829931972,18,0,0,0,204,678,128
+hard_conflicting,3,1,0.3333333333333333,1,3,0,3,0,1,0

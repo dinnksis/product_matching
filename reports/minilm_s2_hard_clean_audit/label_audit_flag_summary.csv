@@ -1,0 +1,11 @@
+flag,support,positive_count,prevalence
+definite_label_conflict,3,1,0.3333333333333333
+negative_identical_full_representation,0,0,
+negative_exact_normalized_title,204,0,0.0
+positive_numeric_conflict,259,259,1.0
+positive_code_conflict,109,109,1.0
+positive_model_code_conflict,95,95,1.0
+positive_critical_attribute_conflict,403,403,1.0
+sku_vs_human_title,622,267,0.4292604501607717
+very_high_lexical_similarity_negative,501,0,0.0
+very_low_lexical_similarity_positive,468,468,1.0
