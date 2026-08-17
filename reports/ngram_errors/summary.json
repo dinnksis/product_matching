@@ -1,0 +1,29 @@
+[
+  {
+    "split": "iid",
+    "pairs": 12000,
+    "threshold": 0.5,
+    "fp": 587,
+    "fn": 868,
+    "vocabulary": 43201,
+    "ranked_ngrams": 40983
+  },
+  {
+    "split": "hard",
+    "pairs": 5814,
+    "threshold": 0.5,
+    "fp": 903,
+    "fn": 781,
+    "vocabulary": 20040,
+    "ranked_ngrams": 18248
+  },
+  {
+    "split": "ood",
+    "pairs": 41171,
+    "threshold": 0.5,
+    "fp": 1167,
+    "fn": 4407,
+    "vocabulary": 50000,
+    "ranked_ngrams": 84557
+  }
+]
