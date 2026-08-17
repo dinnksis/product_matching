@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import json
 import os
 import time
 from pathlib import Path
@@ -33,21 +34,46 @@ def parse_args() -> argparse.Namespace:
     return parser.parse_args()
 
 
-def wait_until_ready(cli: list[str], dataset_ref: str, timeout: int = 900) -> None:
+def dataset_status(cli: list[str], dataset_ref: str) -> dict[str, object] | None:
+    result = kaggle.run_command(
+        cli + ["datasets", "status", dataset_ref, "--format", "json"],
+        check=False,
+    )
+    if result.returncode:
+        return None
+    try:
+        payload = json.loads(result.stdout)
+    except json.JSONDecodeError:
+        return None
+    return payload if isinstance(payload, dict) else None
+
+
+def wait_until_ready(
+    cli: list[str],
+    dataset_ref: str,
+    timeout: int = 900,
+    minimum_version: int | None = None,
+) -> dict[str, object]:
     deadline = time.monotonic() + timeout
     while time.monotonic() < deadline:
-        result = kaggle.run_command(
-            cli + ["datasets", "status", dataset_ref], check=False
-        )
-        status = result.stdout.strip().lower()
-        if result.returncode == 0 and any(
+        payload = dataset_status(cli, dataset_ref)
+        status = str(payload.get("status", "")).lower() if payload else ""
+        version = int(payload.get("current_version_number", 0)) if payload else 0
+        version_is_current = minimum_version is None or version >= minimum_version
+        if version_is_current and any(
             marker in status for marker in ("ready", "complete", "successful")
         ):
-            return
+            return payload
         if any(marker in status for marker in ("error", "failed", "failure")):
             kaggle.fail(f"Kaggle dataset processing failed with status {status!r}", 1)
         time.sleep(5)
-    kaggle.fail(f"Kaggle dataset was not ready after {timeout} seconds", 124)
+    version_hint = (
+        f" at version >= {minimum_version}" if minimum_version is not None else ""
+    )
+    kaggle.fail(
+        f"Kaggle dataset was not ready{version_hint} after {timeout} seconds",
+        124,
+    )
 
 
 def main() -> None:
@@ -82,10 +108,13 @@ def main() -> None:
 
     cli = kaggle.kaggle_command()
     print("Checking whether the Kaggle dataset already exists...")
-    status = kaggle.run_command(
-        cli + ["datasets", "status", dataset_ref], check=False
+    previous_status = dataset_status(cli, dataset_ref)
+    previous_version = (
+        int(previous_status.get("current_version_number", 0))
+        if previous_status
+        else 0
     )
-    if status.returncode == 0:
+    if previous_status is not None:
         command = cli + [
             "datasets",
             "version",
@@ -104,7 +133,11 @@ def main() -> None:
             "--keep-tabular",
         ]
     kaggle.run_command(command)
-    wait_until_ready(cli, dataset_ref)
+    wait_until_ready(
+        cli,
+        dataset_ref,
+        minimum_version=previous_version + 1,
+    )
     print(f"Private dataset is ready: https://www.kaggle.com/datasets/{dataset_ref}")
 
 

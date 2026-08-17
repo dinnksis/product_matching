@@ -131,12 +131,17 @@ Kaggle, перед запуском необходимо одновременн�
 ## Автоматический журнал экспериментов в Google Sheets
 
 Сгенерированные training notebooks после успешного сохранения модели записывают
-`training_report.json` в таблицу
+основные результаты из `training_report.json` в таблицу
 <https://docs.google.com/spreadsheets/d/1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA/edit>:
 
-- `experiments` содержит одну строку на запуск, основные метрики, конфиг и полный
-  JSON-отчёт;
-- `category_metrics` содержит AP каждой категории отдельными строками.
+- `experiments_v2` содержит одну строку на запуск и отдельные macro/overall AP
+  для IID, hard и OOD;
+- технические тайминги, throughput, VRAM, per-category метрики и полный JSON
+  остаются в Kaggle outputs и не засоряют таблицу;
+- прежние `experiments` и `category_metrics` сохранены только как история.
+
+Контракт frozen validation и готовый запуск MiniLM описаны в
+[`docs/validation-experiments.md`](validation-experiments.md).
 
 Для автоматической авторизации используется отдельный приватный Kaggle Dataset
 `alexproger23/ecom-matching-google-sheets-credentials`. Создать или безопасно
@@ -173,6 +178,16 @@ Kaggle Secret `GOOGLE_SERVICE_ACCOUNT_JSON` также поддерживает�
 успешным, а в `/kaggle/working` сохраняются `google_sheets_sync.json` и
 `sheets_sync_pending.json`. После исправления доступа достаточно повторно
 выполнить последнюю ячейку.
+
+Без повторного обучения pending-отчёт можно синхронизировать локально:
+
+```bash
+make kaggle-sheets-retry KERNEL=owner/kernel-slug
+```
+
+Logger поддерживает оба формата монтирования приватного credential Dataset:
+`/kaggle/input/<dataset-slug>` и новый
+`/kaggle/input/datasets/<owner>/<dataset-slug>`.
 
 Logger встраивается в notebook при генерации, а `google-auth` при необходимости
 устанавливается только в финальной ячейке. Поэтому для изменений самого журнала

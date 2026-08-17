@@ -82,7 +82,6 @@ class PairTokenCache:
             result["token_type_ids"] = token_types[start:end]
         return result
 
-
 def _cache_is_complete(directory: Path, configuration: dict[str, Any], rows: int) -> bool:
     metadata_path = directory / "metadata.json"
     if not metadata_path.is_file():
@@ -287,14 +286,14 @@ class CrossEncoderBatchCollator:
         )
         for row_index, row in enumerate(rows):
             length = len(row["input_ids"])
-            input_ids[row_index, :length] = torch.as_tensor(
-                row["input_ids"], dtype=torch.long
-            )
+            input_ids[row_index, :length] = torch.from_numpy(
+                np.asarray(row["input_ids"]).copy()
+            ).to(dtype=torch.long)
             attention_mask[row_index, :length] = 1
             if token_type_ids is not None:
-                token_type_ids[row_index, :length] = torch.as_tensor(
-                    row["token_type_ids"], dtype=torch.long
-                )
+                token_type_ids[row_index, :length] = torch.from_numpy(
+                    np.asarray(row["token_type_ids"]).copy()
+                ).to(dtype=torch.long)
         batch = {
             "input_ids": input_ids,
             "attention_mask": attention_mask,

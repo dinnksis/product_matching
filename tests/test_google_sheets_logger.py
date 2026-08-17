@@ -78,6 +78,20 @@ def sample_completion() -> dict[str, object]:
             "validation_positive_rate": 0.25,
             "macro_average_precision": 0.8125,
             "overall_average_precision": 0.845,
+            "validation_splits": {
+                "iid": {
+                    "macro_average_precision": 0.8125,
+                    "overall_average_precision": 0.845,
+                },
+                "hard": {
+                    "macro_average_precision": 0.4321,
+                    "overall_average_precision": 0.4567,
+                },
+                "ood": {
+                    "macro_average_precision": 0.6789,
+                    "overall_average_precision": 0.7012,
+                },
+            },
             "examples_per_second": 10.214,
             "padding_efficiency": 0.91,
             "peak_vram_gib_by_rank": [10.25, 11.75],
@@ -128,7 +142,7 @@ def sheet_metadata(*, experiments_columns: int = 50) -> dict[str, object]:
             {
                 "properties": {
                     "sheetId": 101,
-                    "title": "experiments",
+                    "title": "experiments_v2",
                     "gridProperties": {"columnCount": experiments_columns},
                 }
             },
@@ -144,7 +158,7 @@ def sheet_metadata(*, experiments_columns: int = 50) -> dict[str, object]:
 
 
 class RowBuildingTest(unittest.TestCase):
-    def test_experiment_row_preserves_report_and_native_cell_types(self) -> None:
+    def test_experiment_row_contains_three_protocol_scores_and_core_config(self) -> None:
         completion = sample_completion()
         row = build_experiment_row(
             completion,
@@ -153,23 +167,19 @@ class RowBuildingTest(unittest.TestCase):
         values = dict(zip(EXPERIMENT_HEADERS, row, strict=True))
 
         self.assertEqual(values["run_id"], "run-20260813-001")
-        self.assertEqual(values["synced_at_utc"], "2026-08-13T10:16:00Z")
         self.assertEqual(
             values["model"], "mixedbread-ai/mxbai-rerank-xsmall-v1"
         )
-        self.assertEqual(values["training_examples"], 1024)
-        self.assertIsInstance(values["overall_average_precision"], float)
-        self.assertIs(values["symmetric_validation"], True)
-        self.assertEqual(values["peak_vram_gib"], 11.75)
-        self.assertEqual(values["mean_score_order_gap"], "")
-
-        report = json.loads(values["report_json"])
-        self.assertIsNone(report["mean_score_order_gap"])
-        self.assertIsNone(report["per_category_average_precision"]["Пустая"])
-        self.assertEqual(report["args"]["batch_size"], 64)
-        self.assertIn("Телефоны", values["report_json"])
-        self.assertNotIn("NaN", values["report_json"])
-        self.assertNotIn("Infinity", values["report_json"])
+        self.assertEqual(values["iid_macro_ap"], 0.8125)
+        self.assertEqual(values["hard_macro_ap"], 0.4321)
+        self.assertEqual(values["ood_macro_ap"], 0.6789)
+        self.assertEqual(values["iid_overall_ap"], 0.845)
+        self.assertEqual(values["hard_overall_ap"], 0.4567)
+        self.assertEqual(values["ood_overall_ap"], 0.7012)
+        self.assertEqual(values["train_pairs"], 900)
+        self.assertEqual(values["batch_size"], 64)
+        self.assertNotIn("validation_seconds", EXPERIMENT_HEADERS)
+        self.assertNotIn("report_json", EXPERIMENT_HEADERS)
 
     def test_category_rows_are_sorted_and_non_finite_scores_are_blank(self) -> None:
         rows = build_category_rows(sample_completion())
@@ -239,6 +249,31 @@ class CredentialLoadingTest(unittest.TestCase):
                 Path(directory)
                 / "ecom-matching-google-sheets-credentials"
                 / "expanded-version"
+            )
+            dataset_dir.mkdir(parents=True)
+            (dataset_dir / "google-service-account.json").write_text(
+                expected,
+                encoding="utf-8",
+            )
+
+            actual = kaggle_service_account_json(input_root=Path(directory))
+
+        self.assertEqual(actual, expected)
+
+    @patch("src.google_sheets_logger.kaggle_secret")
+    def test_private_dataset_uses_new_kaggle_owner_layout(
+        self,
+        secret: Mock,
+    ) -> None:
+        secret.side_effect = SheetsLoggerError("secret unavailable")
+        expected = sample_service_account_json()
+
+        with tempfile.TemporaryDirectory() as directory:
+            dataset_dir = (
+                Path(directory)
+                / "datasets"
+                / "alexproger23"
+                / "ecom-matching-google-sheets-credentials"
             )
             dataset_dir.mkdir(parents=True)
             (dataset_dir / "google-service-account.json").write_text(
@@ -372,40 +407,32 @@ class TableSetupTest(unittest.TestCase):
     def test_missing_tables_are_created_and_headers_are_initialized(self) -> None:
         client = Mock()
         client.metadata.side_effect = [{"sheets": []}, sheet_metadata()]
-        client.get_values.side_effect = [[], []]
+        client.get_values.return_value = []
 
         sheet_ids = ensure_tables(client)
 
-        self.assertEqual(sheet_ids, {"experiments": 101, "category_metrics": 202})
+        self.assertEqual(sheet_ids, {"experiments_v2": 101})
         creation_requests = client.batch_update_spreadsheet.call_args_list[0].args[0]
         self.assertEqual(
             [request["addSheet"]["properties"]["title"] for request in creation_requests],
-            ["experiments", "category_metrics"],
+            ["experiments_v2"],
         )
         self.assertEqual(
             client.update_values.call_args_list[0],
-            call("'experiments'!A1:AQ1", [EXPERIMENT_HEADERS]),
-        )
-        self.assertEqual(
-            client.update_values.call_args_list[1],
-            call("'category_metrics'!A1:F1", [CATEGORY_HEADERS]),
+            call("'experiments_v2'!A1:U1", [EXPERIMENT_HEADERS]),
         )
 
     def test_existing_prefix_headers_are_extended_without_shifting_columns(self) -> None:
         client = Mock()
         client.metadata.return_value = sheet_metadata()
-        client.get_values.side_effect = [
-            [list(EXPERIMENT_HEADERS[:5])],
-            [list(CATEGORY_HEADERS[:2])],
-        ]
+        client.get_values.return_value = [list(EXPERIMENT_HEADERS[:5])]
 
         ensure_tables(client)
 
         self.assertEqual(
             client.update_values.call_args_list,
             [
-                call("'experiments'!A1:AQ1", [EXPERIMENT_HEADERS]),
-                call("'category_metrics'!A1:F1", [CATEGORY_HEADERS]),
+                call("'experiments_v2'!A1:U1", [EXPERIMENT_HEADERS]),
             ],
         )
 
@@ -420,11 +447,11 @@ class TableSetupTest(unittest.TestCase):
         client.update_values.assert_not_called()
         client.batch_update_spreadsheet.assert_not_called()
 
-    def test_experiment_header_range_crosses_z_to_aa(self) -> None:
-        self.assertGreater(len(EXPERIMENT_HEADERS), 26)
+    def test_compact_experiment_header_stays_below_z(self) -> None:
+        self.assertLessEqual(len(EXPERIMENT_HEADERS), 26)
         self.assertEqual(column_letter(26), "Z")
         self.assertEqual(column_letter(27), "AA")
-        self.assertEqual(column_letter(len(EXPERIMENT_HEADERS)), "AQ")
+        self.assertEqual(column_letter(len(EXPERIMENT_HEADERS)), "U")
 
 
 class UpsertTest(unittest.TestCase):
@@ -443,10 +470,10 @@ class UpsertTest(unittest.TestCase):
         self.assertEqual(first, "appended")
         self.assertEqual(second, "updated")
         client.append_values_once.assert_called_once_with(
-            "'experiments'!A:AQ", [row]
+            "'experiments_v2'!A:U", [row]
         )
         client.update_values.assert_called_once_with(
-            "'experiments'!A2:AQ2", [row]
+            "'experiments_v2'!A2:U2", [row]
         )
 
     def test_uncertain_append_is_not_repeated_when_run_id_was_committed(self) -> None:
