@@ -5,7 +5,10 @@ checkpoint `alexproger23/product-matching-minilm-llm-pretrain-5ep` и оцени
 итоговую модель на неизменных IID, hard и OOD split-ах human-разметки.
 
 Цель шаблона — сравнивать изменения train-данных и loss, не смешивая их со
-сменой training recipe. Зафиксированы:
+сменой training recipe. После обучения notebook автоматически сравнивает
+candidate с общим baseline `67f4fe76886b43d6b52ed5cb49068e1e`, считает
+p-value/95% CI на трёх split и отправляет результат в `experiments_v2` и один
+выбранный тематический лист. Зафиксированы:
 
 - начальный MiniLM checkpoint после пяти эпох LLM pretraining;
 - одна эпоха downstream fine-tune;
@@ -14,12 +17,35 @@ checkpoint `alexproger23/product-matching-minilm-llm-pretrain-5ep` и оцени
 - `max_length=384`, сериализация карточек и tokenizer;
 - seed, sampling, clipping и остальные параметры;
 - IID, hard и OOD validation-файлы и их SHA-256.
+- baseline predictions для статистического сравнения и их SHA-256.
 
 Notebook: [`minilm_5ep_team_ablation_2xt4.ipynb`](minilm_5ep_team_ablation_2xt4.ipynb).
 
-## Что разрешено менять
+## Что нужно задать перед запуском
 
-В notebook есть ровно две группы ячеек с тегом `team-editable`.
+В ячейке `RUN SETUP — label and comparison sheet` задаются только три поля:
+
+```python
+EXPERIMENT_LABEL = "minilm_5ep_my_ablation"
+EXPERIMENT_SHEET = "data_exps"  # pretrain_exps | sft_exps | data_exps
+EXPERIMENT_NOTES = "Короткое описание проверяемой гипотезы"
+```
+
+`EXPERIMENT_LABEL` должен быть уникальным и состоять из строчных латинских букв,
+цифр, `_` и `-`. В `experiments_v2` запуск записывается всегда. Значение
+`EXPERIMENT_SHEET` выбирает дополнительный лист со статистическим сравнением:
+
+- `pretrain_exps` — изменение pretraining или начального checkpoint;
+- `sft_exps` — изменение loss/оптимизации supervised fine-tune;
+- `data_exps` — изменение состава или подготовки train-данных.
+
+Эта routing-ячейка имеет тег `run-configurable`. Она не считается изменением
+frozen training recipe.
+
+## Что разрешено менять в эксперименте
+
+Кроме routing-ячейки в notebook есть ровно две алгоритмические группы ячеек с
+тегом `team-editable`.
 
 ### `EDIT 1/2 — DATA HOOK`
 
@@ -81,14 +107,16 @@ per-pair history для ELR, используя число строк `train_fra
 ## Что менять нельзя
 
 Не редактируйте ячейки с тегом `frozen`, JSON config, команды `torchrun`,
-validation paths и код сохранения отчёта. Перед обучением notebook повторно
-проверяет frozen recipe. Если требуется другой LR, число эпох, backbone,
-`max_length` или validation protocol, это уже отдельный экспериментальный
-протокол, а не data/loss-абляция этого baseline.
+validation paths, baseline manifest и код сохранения отчёта. Перед обучением
+notebook повторно проверяет frozen recipe и все baseline prediction-файлы. Если
+требуется другой LR, число эпох, backbone, `max_length` или validation protocol,
+это уже отдельный экспериментальный протокол, а не data/loss-абляция этого
+baseline.
 
 Технически защиту notebook можно намеренно обойти, изменив одновременно guard и
 ожидаемый hash. Она предназначена для предотвращения случайных изменений; при
-ревью сравнивайте diff и убеждайтесь, что изменены только две разрешённые ячейки.
+ревью сравнивайте diff и убеждайтесь, что изменены только routing-ячейка и две
+разрешённые алгоритмические ячейки.
 
 ## Сопоставимость data-экспериментов
 
@@ -107,11 +135,28 @@ git pull --ff-only
 uv sync
 ```
 
-Нужен доступ к трём приватным Dataset:
+Нужен доступ к четырём приватным Dataset:
 
 - `alexproger23/product-matching-validation-splits-v1`;
 - `alexproger23/product-matching-minilm-llm-pretrain-5ep`;
+- `alexproger23/product-matching-minilm-5ep-significance-v1`;
 - `alexproger23/ecom-matching-google-sheets-credentials`.
+
+Третий Dataset содержит только `id1,id2,target,category_1,score` для frozen
+IID/hard/OOD baseline — около 1 MiB, без текстов товаров, модели и credential.
+Последний Dataset содержит только Google service-account key; смешивать эти два
+Dataset нельзя. Владелец даёт коллеге доступ к каждому private Dataset по его
+Kaggle username через настройки доступа Dataset.
+
+Перед первым общим запуском владелец создаёт или обновляет slim baseline Dataset:
+
+```bash
+make kaggle-significance-baseline-dry-run
+make kaggle-significance-baseline
+```
+
+Dry-run собирает payload локально и не обращается к Kaggle. Обычная команда —
+внешнее изменение Kaggle и выполняется только владельцем после проверки.
 
 Для общего credential Dataset добавьте в локальный `.env`:
 
@@ -128,6 +173,7 @@ uv run python scripts/run_kaggle_notebook.py \
   --title "MiniLM 5ep: <experiment-name>" \
   --dataset alexproger23/product-matching-validation-splits-v1 \
   --dataset alexproger23/product-matching-minilm-llm-pretrain-5ep \
+  --dataset alexproger23/product-matching-minilm-5ep-significance-v1 \
   --no-env-sources \
   --no-wait
 ```
@@ -137,8 +183,23 @@ uv run python scripts/run_kaggle_notebook.py \
 
 Notebook рассчитан на две T4 и запускает DDP через `torchrun` с двумя
 процессами. Он сохраняет checkpoint, predictions для трёх validation split,
-training log, `training_report.json` и `notebook_completed.json` в
-`/kaggle/working` и отправляет итог в `experiments_v2`.
+training log, `training_report.json`, `baseline_comparison.json` и
+`notebook_completed.json` в `/kaggle/working`. Затем один idempotent upsert
+отправляет итог в `experiments_v2` и выбранный тематический лист.
+
+Статистика считается по совпадающим frozen парам, а не по трём итоговым AP:
+
+- двухсторонний paired permutation test меняет baseline/candidate scores внутри
+  целых связных компонент товаров;
+- 95% CI строится paired component bootstrap;
+- raw p-value трёх split корректируются методом Holm;
+- строка таблицы окрашивается по IID delta только когда IID Holm p-value не выше
+  alpha листа. Baseline хранится в `B2`, alpha — в `E2`.
+
+По умолчанию используются 2 000 permutations и 2 000 bootstrap resamples.
+Расчёт выполняется после validation и может добавить несколько минут CPU-времени.
+Повторный запуск ячеек significance + Google Sheets не переобучает модель и
+обновляет строку по тому же `run_id`, не создавая дубль.
 
 ## Воспроизводимость
 
@@ -151,8 +212,12 @@ training log, `training_report.json` и `notebook_completed.json` в
 - SHA embedded code bundle и начального checkpoint manifest;
 - IID/hard/OOD macro AP, overall AP и predictions.
 
-Сгенерировать committed notebook заново после изменения инфраструктуры:
+Сгенерировать committed notebook заново после изменения инфраструктуры. Лист,
+label и notes можно сразу передать в generator либо изменить в routing-ячейке:
 
 ```bash
-uv run python scripts/create_minilm_5ep_team_ablation_notebook.py
+uv run python scripts/create_minilm_5ep_team_ablation_notebook.py \
+  --experiment-label minilm_5ep_my_ablation \
+  --experiment-sheet data_exps \
+  --notes "Проверка новых train-пар"
 ```

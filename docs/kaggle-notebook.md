@@ -101,13 +101,19 @@ notebook, так и к notebook с новым slug.
    синхронизации с Google Sheets. Она должна передавать как минимум `run_id`,
    время старта и завершения, статус, название эксперимента, модель,
    `dataset_ref`, `kaggle_kernel_ref`, SHA code bundle, конфигурацию, итоговые и
-   покатегорийные метрики.
+   покатегорийные метрики. Для попадания в тематический лист она также явно
+   задаёт `experiment_group`: `pretrain`, `sft` или `data`. Logger специально
+   не угадывает группу по имени эксперимента.
 4. К notebook подключён private Dataset
    `alexproger23/ecom-matching-google-sheets-credentials`, а сам notebook также
    остаётся приватным.
 5. Сбой Google Sheets не отменяет успешно завершённый эксперимент: финальная
    ячейка не делает `raise`, а сохраняет `google_sheets_sync.json` и при ошибке
    `sheets_sync_pending.json`.
+6. Если notebook должен заполнять p-value/CI тематического листа, до обучения он
+   проверяет frozen baseline predictions и их manifest. Финальная статистическая
+   ячейка выполняется до Google Sheets sync и добавляет `baseline_comparison` в
+   completion report. Scalar AP без парных predictions недостаточно.
 
 Для notebook, генерируемых кодом, нельзя создавать собственную копию логики
 синхронизации. Новый generator должен переиспользовать
@@ -134,8 +140,14 @@ Kaggle, перед запуском необходимо одновременн�
 основные результаты из `training_report.json` в таблицу
 <https://docs.google.com/spreadsheets/d/1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA/edit>:
 
-- `experiments_v2` содержит одну строку на запуск и отдельные macro/overall AP
-  для IID, hard и OOD;
+- `experiments_v2` содержит одну строку на запуск, macro AP для IID/hard/OOD,
+  `hard_recall_at_p99`, `hard_roc_auc` и `ood_log_loss`. Поля
+  `kaggle_kernel_ref` и `code_bundle_sha256` остаются в JSON artifacts, но не
+  занимают колонки компактной таблицы;
+- `pretrain_exps`, `sft_exps` и `data_exps` служат для сравнения экспериментов
+  одного типа. Baseline каждого листа задаётся вручную в ячейке `B2`, а уровень
+  значимости — в `E2`. Первые 19 колонок полностью совпадают с
+  `experiments_v2`, а notes/baseline/statistics расположены после них;
 - технические тайминги, throughput, VRAM, per-category метрики и полный JSON
   остаются в Kaggle outputs и не засоряют таблицу;
 - прежние `experiments` и `category_metrics` сохранены только как история.
@@ -188,6 +200,45 @@ make kaggle-sheets-retry KERNEL=owner/kernel-slug
 Logger поддерживает оба формата монтирования приватного credential Dataset:
 `/kaggle/input/<dataset-slug>` и новый
 `/kaggle/input/datasets/<owner>/<dataset-slug>`.
+
+### Статистическая значимость в тематических листах
+
+Одних трёх итоговых AP недостаточно для честного `p-value`. Сравнение должно
+использовать парные predictions кандидата и baseline на одних и тех же frozen
+IID/hard/OOD парах. Контракт тематических листов предусматривает для каждого
+split колонки `delta`, raw `p_value`, Holm-скорректированный `p_value` и границы
+95% confidence interval. Реализация использует парную перестановку на уровне
+связной компоненты, component bootstrap для CI и Holm correction для трёх split.
+
+Строка окрашивается целиком в приглушённый зелёный или красный только когда её
+`baseline_run_id` совпадает с `B2` и изменение основной IID macro AP значимо по
+Holm-скорректированному `p-value <= E2`. Baseline, незавершённое сравнение,
+несовпадающий baseline и статистически незначимое изменение остаются белыми.
+До выбора baseline это намеренно делает все строки белыми.
+
+После выбора baseline сравнение и синхронизация запускаются командой:
+
+```bash
+uv run python scripts/compare_experiment_significance.py \
+  --baseline-dir artifacts/path/to/baseline-run \
+  --candidate-dir artifacts/path/to/candidate-run \
+  --baseline-run-id BASELINE_RUN_ID \
+  --candidate-completion artifacts/path/to/candidate-run/notebook_completed.json \
+  --experiment-group pretrain \
+  --sync-google-sheets
+```
+
+Исходный completion не перезаписывается: рядом сохраняются
+`baseline_comparison.json` и `completion_with_comparison.json`.
+
+Locked шаблон
+[`notebooks/minilm_5ep_team_ablation/`](../notebooks/minilm_5ep_team_ablation/README.md)
+делает это автоматически внутри Kaggle. Он требует дополнительный private
+Dataset `alexproger23/product-matching-minilm-5ep-significance-v1`,
+содержащий только slim predictions baseline run
+`67f4fe76886b43d6b52ed5cb49068e1e`. В routing-ячейке выбирается точное имя
+листа: `pretrain_exps`, `sft_exps` или `data_exps`; `experiments_v2` при этом
+заполняется всегда.
 
 Logger встраивается в notebook при генерации, а `google-auth` при необходимости
 устанавливается только в финальной ячейке. Поэтому для изменений самого журнала

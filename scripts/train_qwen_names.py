@@ -44,6 +44,7 @@ from src.qwen_training import (
     balanced_sampling_weights,
     build_token_cache,
 )
+from src.validation_metrics import binary_probability_metrics
 
 
 def parse_args() -> argparse.Namespace:
@@ -287,6 +288,10 @@ class BinaryReranker(torch.nn.Module):
 class ValidationResult:
     macro_average_precision: float
     overall_average_precision: float
+    recall_at_precision_0_99: float
+    threshold_at_precision_0_99: float | None
+    roc_auc: float
+    log_loss: float
     per_category_average_precision: dict[str, float]
     scores: np.ndarray
     scores_ab: np.ndarray
@@ -358,9 +363,18 @@ def evaluate(
         lambda group: average_precision_score(group["target"], group["predict"]),
         include_groups=False,
     )
+    probability_metrics = binary_probability_metrics(targets, scores)
     return ValidationResult(
         macro_average_precision=float(per_category.mean()),
         overall_average_precision=float(average_precision_score(targets, scores)),
+        recall_at_precision_0_99=probability_metrics[
+            "recall_at_precision_0_99"
+        ],
+        threshold_at_precision_0_99=probability_metrics[
+            "threshold_at_precision_0_99"
+        ],
+        roc_auc=probability_metrics["roc_auc"],
+        log_loss=probability_metrics["log_loss"],
         per_category_average_precision={
             str(key): float(value) for key, value in per_category.items()
         },
@@ -821,6 +835,12 @@ def main() -> None:
                 "positive_rate": float(validation_targets[name].mean()),
                 "macro_average_precision": result.macro_average_precision,
                 "overall_average_precision": result.overall_average_precision,
+                "recall_at_precision_0_99": result.recall_at_precision_0_99,
+                "threshold_at_precision_0_99": (
+                    result.threshold_at_precision_0_99
+                ),
+                "roc_auc": result.roc_auc,
+                "log_loss": result.log_loss,
                 "per_category_average_precision": (
                     result.per_category_average_precision
                 ),

@@ -34,10 +34,12 @@ EMBEDDED_FILES = (
     Path("src/cross_encoder_training.py"),
     Path("src/cross_encoder_experiment_hooks.py"),
     Path("src/data_pipeline.py"),
+    Path("src/experiment_significance.py"),
     Path("src/experiment_protocol.py"),
     Path("src/pair_features.py"),
     Path("src/qwen_reranker.py"),
     Path("src/qwen_training.py"),
+    Path("src/validation_metrics.py"),
     Path("scripts/train_cross_encoder.py"),
 )
 

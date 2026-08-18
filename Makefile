@@ -1,4 +1,4 @@
-.PHONY: setup notebook attributes-notebook validation-audit-notebooks validation-split-audit error-pattern-audit report prepare-human prepare-mxbai-balanced analyze-validation train-qwen train-cross-encoder train-llm-full train-llm-full-margin kaggle-google-credentials kaggle-google-credentials-dry-run kaggle-sheets-init kaggle-sheets-retry kaggle-train-build kaggle-train-data kaggle-cross-build kaggle-cross-dry-run kaggle-cross-run kaggle-mxbai-build kaggle-mxbai-data-dry-run kaggle-mxbai-dry-run kaggle-mxbai-run kaggle-minilm-balanced-build kaggle-minilm-balanced-dry-run kaggle-minilm-balanced-run kaggle-validation-data-dry-run kaggle-validation-data kaggle-minilm-validation-build kaggle-minilm-validation-dry-run kaggle-minilm-validation-run kaggle-run kaggle-dry-run serialization-ablation-build serialization-ablation-dry-run serialization-ablation-run serialization-ablation-monitor submit-build submit-archive submit-jina-build submit-jina-archive submit-minilm-s2 embedding-boosting-dry-run embedding-boosting-run embedding-boosting-monitor submit-embedding-build submit-embedding-archive
+.PHONY: setup notebook attributes-notebook validation-audit-notebooks validation-split-audit error-pattern-audit report prepare-human prepare-mxbai-balanced analyze-validation train-qwen train-cross-encoder train-llm-full train-llm-full-margin kaggle-google-credentials kaggle-google-credentials-dry-run kaggle-significance-baseline kaggle-significance-baseline-dry-run kaggle-sheets-init kaggle-sheets-retry kaggle-train-build kaggle-train-data kaggle-cross-build kaggle-cross-dry-run kaggle-cross-run kaggle-mxbai-build kaggle-mxbai-data-dry-run kaggle-mxbai-dry-run kaggle-mxbai-run kaggle-minilm-balanced-build kaggle-minilm-balanced-dry-run kaggle-minilm-balanced-run kaggle-validation-data-dry-run kaggle-validation-data kaggle-minilm-validation-build kaggle-minilm-validation-dry-run kaggle-minilm-validation-run kaggle-run kaggle-dry-run serialization-ablation-build serialization-ablation-dry-run serialization-ablation-run serialization-ablation-monitor submit-build submit-archive submit-jina-build submit-jina-archive submit-minilm-s2 embedding-boosting-dry-run embedding-boosting-run embedding-boosting-monitor submit-embedding-build submit-embedding-archive
 
 CROSS_ENCODER_CONFIG ?= configs/cross_encoder_minilm.json
 VALIDATION_PREDICTIONS ?= data/runs/validation_predictions_v1.parquet
@@ -65,6 +65,12 @@ kaggle-google-credentials:
 
 kaggle-google-credentials-dry-run:
 	uv run python scripts/push_google_sheets_credentials_dataset.py --dry-run
+
+kaggle-significance-baseline:
+	uv run python scripts/push_minilm_significance_baseline_dataset.py
+
+kaggle-significance-baseline-dry-run:
+	uv run python scripts/push_minilm_significance_baseline_dataset.py --dry-run
 
 kaggle-sheets-init:
 	uv run python scripts/initialize_google_sheets_schema.py

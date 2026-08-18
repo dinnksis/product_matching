@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create or validate the compact experiment leaderboard worksheet."""
+"""Create or validate the experiment leaderboard worksheets."""
 
 from __future__ import annotations
 
@@ -13,9 +13,12 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 from scripts.create_qwen_training_notebook import EXPERIMENT_SPREADSHEET_ID
 from scripts.push_google_sheets_credentials_dataset import DEFAULT_KEY_PATH
 from src.google_sheets_logger import (
+    COMPARISON_HEADERS,
+    COMPARISON_SHEET_TITLES,
     EXPERIMENTS_SHEET,
     EXPERIMENT_HEADERS,
     SheetsRestClient,
+    ensure_comparison_tables,
     ensure_tables,
     service_account_token,
 )
@@ -39,6 +42,7 @@ def main() -> None:
         request=requests.request,
     )
     sheet_ids = ensure_tables(client)
+    comparison_sheet_ids = ensure_comparison_tables(client)
     print(
         json.dumps(
             {
@@ -48,6 +52,13 @@ def main() -> None:
                 "worksheet": EXPERIMENTS_SHEET,
                 "sheet_id": sheet_ids[EXPERIMENTS_SHEET],
                 "columns": list(EXPERIMENT_HEADERS),
+                "comparison_worksheets": {
+                    title: {
+                        "sheet_id": comparison_sheet_ids[title],
+                        "columns": list(COMPARISON_HEADERS),
+                    }
+                    for title in COMPARISON_SHEET_TITLES
+                },
             },
             ensure_ascii=False,
             indent=2,

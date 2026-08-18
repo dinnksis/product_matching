@@ -13,16 +13,25 @@ from unittest.mock import Mock, call, patch
 
 from src.google_sheets_logger import (
     CATEGORY_HEADERS,
+    COMPARISON_DATA_START_ROW,
+    COMPARISON_HEADERS,
+    COMPARISON_SHEET_TITLES,
     EXPERIMENT_HEADERS,
+    LEGACY_EXPERIMENT_HEADERS_V2,
     SheetsApiError,
     SheetsLoggerError,
     SheetsRestClient,
+    _comparison_format_requests,
     _upsert_categories,
+    _upsert_comparison_experiment,
     _upsert_experiment,
     build_category_rows,
+    build_comparison_row,
     build_experiment_row,
     column_letter,
+    ensure_comparison_tables,
     ensure_tables,
+    experiment_group,
     kaggle_service_account_json,
     safe_error_message,
 )
@@ -86,10 +95,13 @@ def sample_completion() -> dict[str, object]:
                 "hard": {
                     "macro_average_precision": 0.4321,
                     "overall_average_precision": 0.4567,
+                    "recall_at_precision_0_99": 0.1234,
+                    "roc_auc": 0.7654,
                 },
                 "ood": {
                     "macro_average_precision": 0.6789,
                     "overall_average_precision": 0.7012,
+                    "log_loss": 0.3456,
                 },
             },
             "examples_per_second": 10.214,
@@ -173,13 +185,65 @@ class RowBuildingTest(unittest.TestCase):
         self.assertEqual(values["iid_macro_ap"], 0.8125)
         self.assertEqual(values["hard_macro_ap"], 0.4321)
         self.assertEqual(values["ood_macro_ap"], 0.6789)
-        self.assertEqual(values["iid_overall_ap"], 0.845)
-        self.assertEqual(values["hard_overall_ap"], 0.4567)
-        self.assertEqual(values["ood_overall_ap"], 0.7012)
+        self.assertEqual(values["hard_recall_at_p99"], 0.1234)
+        self.assertEqual(values["hard_roc_auc"], 0.7654)
+        self.assertEqual(values["ood_log_loss"], 0.3456)
+        self.assertNotIn("kaggle_kernel_ref", EXPERIMENT_HEADERS)
+        self.assertNotIn("code_bundle_sha256", EXPERIMENT_HEADERS)
         self.assertEqual(values["train_pairs"], 900)
         self.assertEqual(values["batch_size"], 64)
         self.assertNotIn("validation_seconds", EXPERIMENT_HEADERS)
         self.assertNotIn("report_json", EXPERIMENT_HEADERS)
+
+    def test_comparison_row_contains_paired_results_for_three_splits(self) -> None:
+        completion = sample_completion()
+        completion["experiment_group"] = "pretrain"
+        completion["notes"] = "five epoch checkpoint"
+        completion["baseline_comparison"] = {
+            "baseline_run_id": "baseline-run",
+            "method": "paired_component_permutation",
+            "splits": {
+                "iid": {
+                    "delta": 0.02,
+                    "p_value": 0.004,
+                    "p_value_holm": 0.012,
+                    "ci95_low": 0.01,
+                    "ci95_high": 0.03,
+                },
+                "hard": {
+                    "delta": 0.01,
+                    "p_value": 0.02,
+                    "p_value_holm": 0.04,
+                },
+                "ood": {
+                    "delta": 0.03,
+                    "p_value": 0.001,
+                    "p_value_holm": 0.003,
+                },
+            },
+        }
+
+        row = build_comparison_row(completion)
+        values = dict(zip(COMPARISON_HEADERS, row, strict=True))
+
+        self.assertEqual(experiment_group(completion), "pretrain")
+        self.assertEqual(values["baseline_run_id"], "baseline-run")
+        self.assertEqual(values["iid_delta"], 0.02)
+        self.assertEqual(values["iid_p_holm"], 0.012)
+        self.assertEqual(values["comparison_status"], "ready")
+        self.assertEqual(values["notes"], "five epoch checkpoint")
+        self.assertEqual(
+            tuple(COMPARISON_HEADERS[: len(EXPERIMENT_HEADERS)]),
+            EXPERIMENT_HEADERS,
+        )
+
+    def test_comparison_group_must_be_explicit_and_known(self) -> None:
+        completion = sample_completion()
+        self.assertIsNone(experiment_group(completion))
+
+        completion["experiment_group"] = "unknown"
+        with self.assertRaisesRegex(SheetsLoggerError, "experiment_group"):
+            experiment_group(completion)
 
     def test_category_rows_are_sorted_and_non_finite_scores_are_blank(self) -> None:
         rows = build_category_rows(sample_completion())
@@ -419,7 +483,7 @@ class TableSetupTest(unittest.TestCase):
         )
         self.assertEqual(
             client.update_values.call_args_list[0],
-            call("'experiments_v2'!A1:U1", [EXPERIMENT_HEADERS]),
+            call("'experiments_v2'!A1:S1", [EXPERIMENT_HEADERS]),
         )
 
     def test_existing_prefix_headers_are_extended_without_shifting_columns(self) -> None:
@@ -432,7 +496,7 @@ class TableSetupTest(unittest.TestCase):
         self.assertEqual(
             client.update_values.call_args_list,
             [
-                call("'experiments_v2'!A1:U1", [EXPERIMENT_HEADERS]),
+                call("'experiments_v2'!A1:S1", [EXPERIMENT_HEADERS]),
             ],
         )
 
@@ -447,11 +511,109 @@ class TableSetupTest(unittest.TestCase):
         client.update_values.assert_not_called()
         client.batch_update_spreadsheet.assert_not_called()
 
+    def test_legacy_compact_sheet_is_migrated_without_relabeling_old_metrics(self) -> None:
+        client = Mock()
+        client.metadata.return_value = sheet_metadata()
+        legacy_row = list(range(len(LEGACY_EXPERIMENT_HEADERS_V2)))
+        client.get_values.side_effect = [
+            [list(LEGACY_EXPERIMENT_HEADERS_V2)],
+            [legacy_row],
+        ]
+
+        ensure_tables(client)
+
+        migration = client.update_values.call_args_list[0]
+        self.assertEqual(migration.args[0], "'experiments_v2'!A1:U2")
+        migrated_header, migrated_row = migration.args[1]
+        self.assertEqual(
+            migrated_header[: len(EXPERIMENT_HEADERS)],
+            list(EXPERIMENT_HEADERS),
+        )
+        values = dict(
+            zip(
+                EXPERIMENT_HEADERS,
+                migrated_row[: len(EXPERIMENT_HEADERS)],
+                strict=True,
+            )
+        )
+        self.assertEqual(values["dataset_ref"], legacy_row[5])
+        self.assertEqual(values["iid_macro_ap"], legacy_row[8])
+        self.assertEqual(values["hard_macro_ap"], legacy_row[9])
+        self.assertEqual(values["ood_macro_ap"], legacy_row[10])
+        self.assertEqual(values["hard_recall_at_p99"], "")
+        self.assertEqual(values["hard_roc_auc"], "")
+        self.assertEqual(values["ood_log_loss"], "")
+        self.assertEqual(values["train_pairs"], legacy_row[14])
+
     def test_compact_experiment_header_stays_below_z(self) -> None:
         self.assertLessEqual(len(EXPERIMENT_HEADERS), 26)
         self.assertEqual(column_letter(26), "Z")
         self.assertEqual(column_letter(27), "AA")
-        self.assertEqual(column_letter(len(EXPERIMENT_HEADERS)), "U")
+        self.assertEqual(column_letter(len(EXPERIMENT_HEADERS)), "S")
+
+    def test_comparison_tables_have_baseline_block_and_conditional_colors(self) -> None:
+        client = Mock()
+        created_sheets = {
+            "sheets": [
+                {
+                    "properties": {
+                        "sheetId": index,
+                        "title": title,
+                        "gridProperties": {
+                            "columnCount": 50,
+                            "rowCount": 1000,
+                        },
+                    }
+                }
+                for index, title in enumerate(COMPARISON_SHEET_TITLES, start=301)
+            ]
+        }
+        client.metadata.side_effect = [{"sheets": []}, created_sheets]
+        client.get_values.return_value = []
+
+        sheet_ids = ensure_comparison_tables(client)
+
+        self.assertEqual(set(sheet_ids), set(COMPARISON_SHEET_TITLES))
+        create_requests = client.batch_update_spreadsheet.call_args_list[0].args[0]
+        self.assertEqual(
+            [request["addSheet"]["properties"]["title"] for request in create_requests],
+            list(COMPARISON_SHEET_TITLES),
+        )
+        first_updates = dict(client.batch_update_values.call_args_list[0].args[0])
+        self.assertEqual(first_updates["'pretrain_exps'!A2"], ["baseline_run_id"])
+        self.assertEqual(first_updates["'pretrain_exps'!E2"], [0.05])
+        self.assertEqual(
+            first_updates["'pretrain_exps'!A5:AL5"],
+            COMPARISON_HEADERS,
+        )
+
+        format_requests = client.batch_update_spreadsheet.call_args_list[-1].args[0]
+        formulas = [
+            request["addConditionalFormatRule"]["rule"]["booleanRule"]
+            ["condition"]["values"][0]["userEnteredValue"]
+            for request in format_requests
+            if "addConditionalFormatRule" in request
+        ]
+        self.assertEqual(len(formulas), 6)
+        self.assertTrue(all("($X6<=$E$2)" in formula for formula in formulas))
+        self.assertTrue(all("($U6=$B$2)" in formula for formula in formulas))
+
+    def test_comparison_colors_are_muted(self) -> None:
+        requests = _comparison_format_requests(
+            301,
+            len(COMPARISON_HEADERS),
+            conditional_format_count=0,
+            replace_merges=False,
+        )
+        colors = [
+            request["addConditionalFormatRule"]["rule"]["booleanRule"]
+            ["format"]["backgroundColor"]
+            for request in requests
+            if "addConditionalFormatRule" in request
+        ]
+
+        self.assertEqual(len(colors), 2)
+        self.assertTrue(all(max(color.values()) < 1.0 for color in colors))
 
 
 class UpsertTest(unittest.TestCase):
@@ -470,10 +632,10 @@ class UpsertTest(unittest.TestCase):
         self.assertEqual(first, "appended")
         self.assertEqual(second, "updated")
         client.append_values_once.assert_called_once_with(
-            "'experiments_v2'!A:U", [row]
+            "'experiments_v2'!A:S", [row]
         )
         client.update_values.assert_called_once_with(
-            "'experiments_v2'!A2:U2", [row]
+            "'experiments_v2'!A2:S2", [row]
         )
 
     def test_uncertain_append_is_not_repeated_when_run_id_was_committed(self) -> None:
@@ -506,6 +668,23 @@ class UpsertTest(unittest.TestCase):
 
         client.update_values.assert_not_called()
         client.append_values_once.assert_not_called()
+
+    def test_grouped_experiment_appends_below_configuration_rows(self) -> None:
+        completion = sample_completion()
+        completion["experiment_group"] = "data"
+        row = build_comparison_row(completion)
+        client = Mock()
+        client.max_attempts = 4
+        client.sleep = Mock()
+        client.get_values.return_value = []
+
+        action = _upsert_comparison_experiment(client, "data_exps", row)
+
+        self.assertEqual(action, "appended")
+        client.append_values_once.assert_called_once_with(
+            f"'data_exps'!A{COMPARISON_DATA_START_ROW}:AL",
+            [row],
+        )
 
 
     def test_category_rows_append_then_update_without_duplicate_append(self) -> None:
