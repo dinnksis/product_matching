@@ -279,15 +279,57 @@ completion artifact. Другой spreadsheet можно задать через
 ```
 
 Sync до обращения к Google проверяет наличие всех трёх секций
-`validation_splits.{iid,hard,ood}` и их macro/overall AP. Неполный single-split
-report в таблицу не попадёт. Если таблица временно не нужна, запуск можно сделать
-с `SYNC_GOOGLE_SHEETS=0` и синхронизировать отчёт позднее.
+`validation_splits.{iid,hard,ood}`, macro AP каждого split, Hard R@P99,
+Hard ROC-AUC и OOD LogLoss. Неполный single-split report в таблицу не попадёт.
+Если таблица временно не нужна, запуск можно сделать с `SYNC_GOOGLE_SHEETS=0` и
+синхронизировать отчёт позднее.
 
 ## Google Sheets
 
 Новые запуски записываются в компактный лист `experiments_v2`: одна строка на
-`run_id`. В нём остаются ссылки и идентификаторы воспроизводимости, macro AP и
-overall AP для IID/hard/OOD, число train-пар и основные гиперпараметры.
+`run_id`. В нём остаются `dataset_ref`, macro AP для IID/hard/OOD, три
+диагностические метрики, число train-пар и основные гиперпараметры.
+`kaggle_kernel_ref` и `code_bundle_sha256` сохраняются в completion/report JSON,
+но из компактной таблицы удалены.
+
+Диагностические колонки считаются по общим probabilities на соответствующем
+frozen split:
+
+- `hard_recall_at_p99` — максимальный recall среди score-threshold, для которых
+  precision на hard не ниже `0.99`;
+- `hard_roc_auc` — стандартный `roc_auc_score(y_true, y_score)` на всём hard;
+- `ood_log_loss` — binary cross-entropy на OOD после clipping probabilities в
+  `[1e-15, 1 - 1e-15]`; здесь меньше — лучше.
+
+Для сравнения родственных запусков заведены ещё три листа:
+
+- `pretrain_exps` — изменения pretraining/checkpoint;
+- `sft_exps` — изменения supervised fine-tuning recipe;
+- `data_exps` — изменения состава и подготовки train-данных.
+
+При синхронизации группа задаётся явно полем `experiment_group` со значением
+`pretrain`, `sft` или `data`; автоматической классификации по названию нет.
+Baseline фиксируется отдельно в `B2` каждого листа. Пока `B2` пустая, строки не
+подсвечиваются. Колонки `A:S` повторяют `experiments_v2` в том же порядке; все
+поля baseline/statistical comparison добавлены только справа от них.
+
+Статистику нельзя восстанавливать из одной пары scalar AP. Для каждой пары
+candidate/baseline используются сохранённые
+`iid_validation_predictions.parquet`, `hard_validation_predictions.parquet` и
+`ood_validation_predictions.parquet`: парный component-level permutation test,
+95% paired confidence interval и Holm correction для трёх split. Цвет строки
+определяется по основной IID macro AP: приглушённый зелёный для значимого роста,
+приглушённый красный для значимого падения и белый при отсутствии значимости.
+
+В `minilm_5ep_team_ablation` это сравнение выполняется автоматически после
+создания candidate predictions и до Sheets sync. Пользователь задаёт
+`EXPERIMENT_SHEET` равным `pretrain_exps`, `sft_exps` или `data_exps`; notebook
+проверяет manifest отдельного private Dataset
+`alexproger23/product-matching-minilm-5ep-significance-v1` и сравнивает
+с run `67f4fe76886b43d6b52ed5cb49068e1e`. Dataset содержит только пять нужных
+колонок frozen predictions и собирается командами
+`make kaggle-significance-baseline-dry-run` и
+`make kaggle-significance-baseline`.
 
 Время validation, throughput, VRAM, padding efficiency, per-category строки и
 полный JSON больше не отправляются в таблицу. Эти подробности остаются в

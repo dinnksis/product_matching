@@ -41,6 +41,7 @@ BUNDLE_FILES = (
     Path("src/pair_features.py"),
     Path("src/qwen_reranker.py"),
     Path("src/qwen_training.py"),
+    Path("src/validation_metrics.py"),
     Path("src/embedding_boosting.py"),
     Path("src/attribute_boosting_v2.py"),
     Path("scripts/prepare_human_data.py"),

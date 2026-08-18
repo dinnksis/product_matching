@@ -185,10 +185,16 @@ H100 добавлен отдельный потоковый trainer. Он сох
 [`docs/llm-full-server-training.md`](docs/llm-full-server-training.md).
 
 Завершённые Kaggle training runs автоматически журналируются в Google Sheets:
-одна строка на запуск плюс отдельные AP по категориям. Отдельный private
-credential Dataset автоматически подключается даже к новым notebook slug;
-настройка описана в
+компактная строка с IID/hard/OOD macro AP, Hard R@P99, Hard ROC-AUC и OOD
+LogLoss попадает в `experiments_v2`. Родственные запуски дополнительно можно
+направить в `pretrain_exps`, `sft_exps` или `data_exps`, где сохраняются paired
+p-value, Holm correction и 95% CI. Отдельный private credential Dataset
+автоматически подключается даже к новым notebook slug; настройка описана в
 [`docs/kaggle-notebook.md`](docs/kaggle-notebook.md#автоматический-журнал-экспериментов-в-google-sheets).
+
+Для командных MiniLM 5ep data/loss-абляций готов locked notebook с явным выбором
+тематического листа и автоматическим сравнением с общим frozen baseline:
+[`notebooks/minilm_5ep_team_ablation/`](notebooks/minilm_5ep_team_ablation/README.md).
 
 Отдельный эксперимент с `mixedbread-ai/mxbai-rerank-xsmall-v1` физически
 выравнивает все категории и классы, сохраняя весь human train и дополняя его

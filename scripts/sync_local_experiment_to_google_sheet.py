@@ -100,7 +100,15 @@ def load_training_report(path: Path) -> dict[str, Any]:
         metrics = validation_splits[split]
         if not isinstance(metrics, Mapping):
             raise SheetsLoggerError(f"Validation split {split!r} must be a JSON object")
-        required_metrics = ("macro_average_precision", "overall_average_precision")
+        required_metrics = {
+            "iid": ("macro_average_precision",),
+            "hard": (
+                "macro_average_precision",
+                "recall_at_precision_0_99",
+                "roc_auc",
+            ),
+            "ood": ("macro_average_precision", "log_loss"),
+        }[split]
         absent = [name for name in required_metrics if name not in metrics]
         if absent:
             raise SheetsLoggerError(
@@ -154,8 +162,6 @@ def build_local_completion(
         "experiment": experiment,
         "model": resolved_model,
         "dataset_ref": dataset_ref.strip(),
-        "kaggle_kernel_ref": "",
-        "code_bundle_sha256": "",
         "training_report": dict(report),
     }
 

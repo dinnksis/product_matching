@@ -35,15 +35,15 @@ def sample_report() -> dict[str, object]:
         "validation_splits": {
             "iid": {
                 "macro_average_precision": 0.71,
-                "overall_average_precision": 0.72,
             },
             "hard": {
                 "macro_average_precision": 0.31,
-                "overall_average_precision": 0.32,
+                "recall_at_precision_0_99": 0.12,
+                "roc_auc": 0.73,
             },
             "ood": {
                 "macro_average_precision": 0.61,
-                "overall_average_precision": 0.62,
+                "log_loss": 0.41,
             },
         },
         "args": {
@@ -98,6 +98,9 @@ class LocalSyncTest(unittest.TestCase):
         self.assertEqual(values["iid_macro_ap"], 0.71)
         self.assertEqual(values["hard_macro_ap"], 0.31)
         self.assertEqual(values["ood_macro_ap"], 0.61)
+        self.assertEqual(values["hard_recall_at_p99"], 0.12)
+        self.assertEqual(values["hard_roc_auc"], 0.73)
+        self.assertEqual(values["ood_log_loss"], 0.41)
         self.assertEqual(values["train_pairs"], 306_669)
         self.assertNotIn("validation_seconds", values)
 

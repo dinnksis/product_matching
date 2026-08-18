@@ -6,6 +6,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import re
 from pathlib import Path
 from textwrap import dedent
 
@@ -32,6 +33,29 @@ CHECKPOINT_MANIFEST_SHA256 = (
     "354c7006898a9a44a3115c8384f12dbab520cfec7723a675f8ccedb108544533"
 )
 EXPERIMENT_NAME = "minilm_5ep_team_data_loss_ablation"
+EXPERIMENT_SHEETS = {
+    "pretrain_exps": "pretrain",
+    "sft_exps": "sft",
+    "data_exps": "data",
+}
+DEFAULT_EXPERIMENT_SHEET = "data_exps"
+SIGNIFICANCE_BASELINE_DATASET = (
+    "alexproger23/product-matching-minilm-5ep-significance-v1"
+)
+SIGNIFICANCE_BASELINE_MANIFEST = (
+    "minilm_5ep_significance_baseline_manifest.json"
+)
+SIGNIFICANCE_BASELINE_MANIFEST_SHA256 = (
+    "5c0487aa02099546337520effe4def346eb3ad96a4874b45123abb9bc04ec3ed"
+)
+SIGNIFICANCE_BASELINE_RUN_ID = "67f4fe76886b43d6b52ed5cb49068e1e"
+SIGNIFICANCE_PREDICTION_FILES = {
+    split: f"{split}_validation_predictions.parquet"
+    for split in ("iid", "hard", "ood")
+}
+SIGNIFICANCE_PERMUTATIONS = 2_000
+SIGNIFICANCE_BOOTSTRAP_RESAMPLES = 2_000
+SIGNIFICANCE_SEED = 42
 
 
 def canonical_sha256(value: object) -> str:
@@ -58,8 +82,10 @@ def code(value: str, *tags: str) -> nbf.NotebookNode:
 
 def _heading_index(notebook: nbf.NotebookNode, heading: str) -> int:
     for index, cell in enumerate(notebook.cells):
-        if cell.cell_type == "markdown" and cell.source.strip() == heading:
-            return index
+        if cell.cell_type == "markdown":
+            first_line = cell.source.strip().splitlines()[0]
+            if first_line == heading:
+                return index
     raise ValueError(f"Notebook heading is missing: {heading}")
 
 
@@ -77,11 +103,32 @@ def assert_frozen_recipe(config: dict[str, object]) -> None:
         )
 
 
+def validate_experiment_routing(
+    experiment_label: str,
+    experiment_sheet: str,
+) -> None:
+    if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", experiment_label):
+        raise ValueError(
+            "experiment_label must contain only lowercase letters, digits, "
+            "underscores and hyphens"
+        )
+    if experiment_sheet not in EXPERIMENT_SHEETS:
+        raise ValueError(
+            f"Unknown experiment_sheet {experiment_sheet!r}; expected one of "
+            f"{sorted(EXPERIMENT_SHEETS)}"
+        )
+
+
 def build_team_notebook(
     dataset: dict[str, object],
     config: dict[str, object],
+    *,
+    experiment_label: str = EXPERIMENT_NAME,
+    experiment_sheet: str = DEFAULT_EXPERIMENT_SHEET,
+    experiment_notes: str = "",
 ) -> nbf.NotebookNode:
     assert_frozen_recipe(config)
+    validate_experiment_routing(experiment_label, experiment_sheet)
     recipe_hash = canonical_sha256(config)
     checkpoint = {
         "dataset": CHECKPOINT_DATASET,
@@ -96,13 +143,108 @@ def build_team_notebook(
             "Командный шаблон начинает с frozen MiniLM checkpoint после пяти эпох "
             "LLM pretraining. Оптимизатор, LR, одна эпоха human fine-tune, batch "
             "size, scheduler, сериализация и IID/hard/OOD validation зафиксированы. "
-            "Разрешено менять только две помеченные ячейки: train-данные и loss."
+            "Перед запуском задаются label/лист эксперимента, а алгоритмические "
+            "изменения разрешены только в двух помеченных ячейках: train-данные и loss."
         ),
         initial_checkpoint=checkpoint,
     )
 
     for cell in notebook.cells:
         cell.metadata["tags"] = ["frozen"]
+
+    notebook.cells[3:3] = [
+        markdown(
+            """
+            ## ✏️ RUN SETUP — label and comparison sheet
+
+            Перед запуском задайте уникальный `EXPERIMENT_LABEL`, выберите один
+            тематический лист и кратко опишите гипотезу. Запуск всегда попадёт в
+            `experiments_v2`; выбранный лист получит ту же строку вместе с
+            p-value, Holm correction и confidence interval против frozen baseline.
+            """,
+            "run-configurable",
+            "experiment-routing",
+        ),
+        code(
+            f"""
+            EXPERIMENT_LABEL = {experiment_label!r}
+            EXPERIMENT_SHEET = {experiment_sheet!r}  # pretrain_exps | sft_exps | data_exps
+            EXPERIMENT_NOTES = {experiment_notes!r}
+            """,
+            "run-configurable",
+            "experiment-routing",
+        ),
+        markdown("## 🔒 Frozen comparison baseline", "frozen"),
+        code(
+            f"""
+            import re
+
+            EXPERIMENT_GROUP_BY_SHEET = {EXPERIMENT_SHEETS!r}
+            if not re.fullmatch(r"[a-z0-9][a-z0-9_-]*", EXPERIMENT_LABEL):
+                raise ValueError(
+                    "EXPERIMENT_LABEL must contain only lowercase letters, digits, "
+                    "underscores and hyphens"
+                )
+            if EXPERIMENT_SHEET not in EXPERIMENT_GROUP_BY_SHEET:
+                raise ValueError(
+                    f"EXPERIMENT_SHEET must be one of "
+                    f"{{sorted(EXPERIMENT_GROUP_BY_SHEET)}}"
+                )
+            EXPERIMENT_GROUP = EXPERIMENT_GROUP_BY_SHEET[EXPERIMENT_SHEET]
+            EXPERIMENT_NOTES = str(EXPERIMENT_NOTES).strip()
+
+            SIGNIFICANCE_BASELINE_DATASET = {SIGNIFICANCE_BASELINE_DATASET!r}
+            SIGNIFICANCE_BASELINE_MANIFEST_SHA256 = {SIGNIFICANCE_BASELINE_MANIFEST_SHA256!r}
+            SIGNIFICANCE_BASELINE_RUN_ID = {SIGNIFICANCE_BASELINE_RUN_ID!r}
+            SIGNIFICANCE_PREDICTION_FILES = {SIGNIFICANCE_PREDICTION_FILES!r}
+            SIGNIFICANCE_PERMUTATIONS = {SIGNIFICANCE_PERMUTATIONS}
+            SIGNIFICANCE_BOOTSTRAP_RESAMPLES = {SIGNIFICANCE_BOOTSTRAP_RESAMPLES}
+            SIGNIFICANCE_SEED = {SIGNIFICANCE_SEED}
+
+            baseline_manifest_path = exactly_one({SIGNIFICANCE_BASELINE_MANIFEST!r})
+            if file_sha256(baseline_manifest_path) != SIGNIFICANCE_BASELINE_MANIFEST_SHA256:
+                raise RuntimeError("Attached significance baseline manifest has changed")
+            significance_manifest = json.loads(
+                baseline_manifest_path.read_text(encoding="utf-8")
+            )
+            if significance_manifest.get("schema_version") != 1:
+                raise RuntimeError("Unsupported significance baseline schema")
+            if significance_manifest.get("dataset") != SIGNIFICANCE_BASELINE_DATASET:
+                raise RuntimeError("Unexpected significance baseline Dataset")
+            if significance_manifest.get("baseline_run_id") != SIGNIFICANCE_BASELINE_RUN_ID:
+                raise RuntimeError("Unexpected significance baseline run_id")
+
+            BASELINE_PREDICTIONS_DIR = TEMP_ROOT / "significance_baseline"
+            BASELINE_PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
+            baseline_files = significance_manifest.get("files", {{}})
+            for split, filename in SIGNIFICANCE_PREDICTION_FILES.items():
+                declaration = baseline_files.get(filename)
+                source = baseline_manifest_path.parent / filename
+                if not isinstance(declaration, dict) or not source.is_file():
+                    raise RuntimeError(f"Baseline prediction is missing for {{split}}")
+                if (
+                    source.stat().st_size != declaration.get("bytes")
+                    or file_sha256(source) != declaration.get("sha256")
+                ):
+                    raise RuntimeError(f"Baseline prediction differs for {{split}}")
+                destination = BASELINE_PREDICTIONS_DIR / filename
+                if destination.exists() or destination.is_symlink():
+                    destination.unlink()
+                destination.symlink_to(source)
+            print(json.dumps({{
+                "experiment_label": EXPERIMENT_LABEL,
+                "experiment_sheet": EXPERIMENT_SHEET,
+                "experiment_group": EXPERIMENT_GROUP,
+                "baseline_dataset": SIGNIFICANCE_BASELINE_DATASET,
+                "baseline_run_id": SIGNIFICANCE_BASELINE_RUN_ID,
+                "permutations": SIGNIFICANCE_PERMUTATIONS,
+                "bootstrap_resamples": SIGNIFICANCE_BOOTSTRAP_RESAMPLES,
+            }}, ensure_ascii=False, indent=2))
+            """,
+            "frozen",
+            "significance-baseline",
+        ),
+    ]
 
     config_heading = _heading_index(notebook, "## Базовый конфиг")
     notebook.cells[config_heading] = markdown("## 🔒 Frozen training recipe", "frozen")
@@ -436,13 +578,102 @@ def build_team_notebook(
     if needle not in completion_cell.source:
         raise ValueError("Could not add team provenance to completion report")
     completion_cell.source = completion_cell.source.replace(needle, replacement)
+    experiment_needle = '"experiment": OUTPUT_DIR.name,'
+    experiment_replacement = dedent(
+        """
+        "experiment": EXPERIMENT_LABEL,
+                "experiment_group": EXPERIMENT_GROUP,
+                "notes": EXPERIMENT_NOTES,
+        """
+    ).strip()
+    if experiment_needle not in completion_cell.source:
+        raise ValueError("Could not add experiment routing to completion report")
+    completion_cell.source = completion_cell.source.replace(
+        experiment_needle,
+        experiment_replacement,
+    )
     completion_cell.metadata["tags"] = ["frozen"]
+
+    sheets_heading = _heading_index(
+        notebook,
+        "## Автоматическая запись результатов в Google Sheets",
+    )
+    notebook.cells[sheets_heading:sheets_heading] = [
+        markdown(
+            """
+            ## 🔒 Paired significance against the frozen baseline
+
+            Для IID, hard и OOD используются одни и те же пары baseline/candidate.
+            Тест переставляет scores внутри связных компонент, confidence interval
+            строится component bootstrap, а три p-value корректируются методом Holm.
+            """,
+            "frozen",
+        ),
+        code(
+            """
+            if str(PROJECT_ROOT) not in sys.path:
+                sys.path.insert(0, str(PROJECT_ROOT))
+            from src.experiment_significance import compare_experiment_directories
+
+            comparison_started = time.perf_counter()
+            baseline_comparison = compare_experiment_directories(
+                BASELINE_PREDICTIONS_DIR,
+                OUTPUT_DIR,
+                baseline_run_id=SIGNIFICANCE_BASELINE_RUN_ID,
+                candidate_run_id=completion["run_id"],
+                permutations=SIGNIFICANCE_PERMUTATIONS,
+                bootstrap_resamples=SIGNIFICANCE_BOOTSTRAP_RESAMPLES,
+                seed=SIGNIFICANCE_SEED,
+            )
+            baseline_comparison["wall_seconds"] = (
+                time.perf_counter() - comparison_started
+            )
+            comparison_path = WORKING_ROOT / "baseline_comparison.json"
+            comparison_path.write_text(
+                json.dumps(
+                    baseline_comparison,
+                    ensure_ascii=False,
+                    indent=2,
+                    default=str,
+                ),
+                encoding="utf-8",
+            )
+            completion["experiment_group"] = EXPERIMENT_GROUP
+            completion["notes"] = EXPERIMENT_NOTES
+            completion["baseline_comparison"] = baseline_comparison
+            completion_path.write_text(
+                json.dumps(completion, ensure_ascii=False, indent=2, default=str),
+                encoding="utf-8",
+            )
+            print(json.dumps({
+                "experiment_sheet": EXPERIMENT_SHEET,
+                "baseline_run_id": SIGNIFICANCE_BASELINE_RUN_ID,
+                "comparison_method": baseline_comparison["method"],
+                "splits": {
+                    split: {
+                        "delta": result["delta_macro_average_precision"],
+                        "p_value": result["p_value"],
+                        "p_value_holm": result["p_value_holm"],
+                        "ci95": [result["ci95_low"], result["ci95_high"]],
+                    }
+                    for split, result in baseline_comparison["splits"].items()
+                },
+            }, ensure_ascii=False, indent=2))
+            """,
+            "frozen",
+            "significance-comparison",
+        ),
+    ]
 
     notebook.metadata["product_matching_training"].update(
         {
             "template": "minilm_5ep_team_data_loss_ablation_v1",
             "frozen_recipe_sha256": recipe_hash,
             "editable_cells": ["data-hook", "loss-hook"],
+            "run_configurable_cell": "experiment-routing",
+            "default_experiment_sheet": experiment_sheet,
+            "significance_baseline_dataset": SIGNIFICANCE_BASELINE_DATASET,
+            "significance_baseline_run_id": SIGNIFICANCE_BASELINE_RUN_ID,
         }
     )
     nbf.validate(notebook)
@@ -454,6 +685,13 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--source-dir", type=Path, default=baseline_builder.DEFAULT_SOURCE_DIR)
     parser.add_argument("--config", type=Path, default=DEFAULT_CONFIG)
     parser.add_argument("--output", type=Path, default=DEFAULT_OUTPUT)
+    parser.add_argument("--experiment-label", default=EXPERIMENT_NAME)
+    parser.add_argument(
+        "--experiment-sheet",
+        choices=sorted(EXPERIMENT_SHEETS),
+        default=DEFAULT_EXPERIMENT_SHEET,
+    )
+    parser.add_argument("--notes", default="")
     return parser.parse_args()
 
 
@@ -461,13 +699,21 @@ def main() -> None:
     args = parse_args()
     dataset = baseline_builder.load_manifest(args.source_dir, DATASET_OWNER)
     config = cross_builder.load_training_config(args.config)
-    notebook = build_team_notebook(dataset, config)
+    notebook = build_team_notebook(
+        dataset,
+        config,
+        experiment_label=args.experiment_label,
+        experiment_sheet=args.experiment_sheet,
+        experiment_notes=args.notes,
+    )
     args.output.parent.mkdir(parents=True, exist_ok=True)
     nbf.write(notebook, args.output)
     print(f"Wrote notebook: {args.output}")
     print(f"Frozen recipe SHA-256: {canonical_sha256(config)}")
     print(f"Validation Dataset: {dataset['dataset']}")
     print(f"Checkpoint Dataset: {CHECKPOINT_DATASET}")
+    print(f"Comparison sheet: {args.experiment_sheet}")
+    print(f"Significance baseline Dataset: {SIGNIFICANCE_BASELINE_DATASET}")
 
 
 if __name__ == "__main__":
