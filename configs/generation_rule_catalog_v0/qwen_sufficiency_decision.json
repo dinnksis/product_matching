@@ -1,0 +1,20 @@
+{
+  "discovery_pairs": 60000,
+  "discovery_positive_pairs": 15515,
+  "discovery_negative_pairs": 44485,
+  "positive_anchor_pair_coverage": 0.6618111504995166,
+  "negative_anchor_pair_coverage": 0.49917949870742945,
+  "strict_validated_negative_rules": 28,
+  "ready_clean_negative_rules": 17,
+  "ready_positive_transformations": 4,
+  "categories_with_ready_negative_evidence": 18,
+  "minimum_ready_negative_rules_per_category": 4,
+  "additional_qwen_recommended_before_v0_generation": false,
+  "reason": "The current catalog has clean validated negative interventions in every current-train category, four positive transformations with deterministic same-latent-item labels, and 15515 existing positive discovery pairs for anchor diagnostics. More Qwen would mostly expand the long tail.",
+  "targeted_qwen_later_only_if": [
+    "a required category/concept has no READY rule",
+    "the generator needs semantic value changes for label 1 rather than safe surface transformations",
+    "STRICT_ASSOCIATION_NEEDS_ISOLATION rules must be promoted using more clean single-rule evidence"
+  ],
+  "hard_ood_used": false
+}

@@ -1,0 +1,13 @@
+{
+  "human_pairs": 306669,
+  "categories": 18,
+  "category_attribute_rows": 1427,
+  "candidate_rows": 326,
+  "min_conflicts": 20,
+  "min_negative_rate": 0.8,
+  "attribute_source": "product_text",
+  "outputs": {
+    "candidates": "reports\\variant_attributes\\attribute_candidates.csv",
+    "examples": "reports\\variant_attributes\\candidate_examples.jsonl"
+  }
+}

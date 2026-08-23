@@ -1,0 +1,31 @@
+{
+  "validation_pairs": 3000,
+  "validation_semantic_assignments": 11550,
+  "matched_frozen_assignments": 11202,
+  "unseen_validation_assignments": 348,
+  "assignment_coverage": 0.9698701298701299,
+  "frozen_rules": 12781,
+  "frozen_rules_with_validation_support": 1951,
+  "discovery_directional_rules": 473,
+  "robust_directional_rules": 284,
+  "robust_directional_with_validation_support": 284,
+  "strict_rule_candidates": 30,
+  "provisionally_stable_rule_candidates": 52,
+  "robust_median_flips": 31,
+  "robust_statistically_confirmed_opposites": 0,
+  "robust_stability_counts": {
+    "SAME_DIRECTION_WEAK": 217,
+    "REPLICATED_95": 36,
+    "OPPOSITE_DIRECTION": 31
+  },
+  "all_stability_counts": {
+    "NO_VALIDATION_SUPPORT": 10830,
+    "DISCOVERY_UNCERTAIN": 1515,
+    "SAME_DIRECTION_WEAK": 314,
+    "OPPOSITE_DIRECTION": 81,
+    "REPLICATED_95": 36,
+    "NOT_REPLICATED": 5
+  },
+  "definitions_changed_after_validation": false,
+  "ordinary_hard_ood_used": false
+}

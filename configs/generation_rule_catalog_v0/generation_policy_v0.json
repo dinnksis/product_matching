@@ -1,0 +1,15 @@
+{
+  "version": "generation_rule_catalog_v0",
+  "deterministic_label_contract": {
+    "label_0": "Start from one structured item and intervene on exactly one READY_LABEL_0 concept using a different valid value in an allowed category. Keep every other latent fact fixed and render title/attributes consistently.",
+    "label_1": "Render two records from the same latent item and apply only a READY_LABEL_1_BY_CONSTRUCTION surface/completeness transformation. Never change a normalized explicit semantic value.",
+    "natural_pairs": "The catalog does not guarantee a deterministic label for arbitrary natural pairs; use a trained matcher or human label there."
+  },
+  "hard_guards": [
+    "missing_a/missing_b never creates label 0",
+    "same SKU/MPN/model is an identity guard, not sufficient proof of label 1",
+    "do not use a rule outside allowed_categories",
+    "do not use STRICT_ASSOCIATION_NEEDS_ISOLATION for deterministic generation",
+    "do not infer new OOD category rules from this catalog"
+  ]
+}

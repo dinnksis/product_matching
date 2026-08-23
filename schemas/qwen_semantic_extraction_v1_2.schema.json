@@ -1,0 +1,218 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "qwen_semantic_extraction_v1_2.schema.json",
+  "title": "Qwen semantic product-pair extraction v1.2",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["identity_anchors", "differences", "missing_information"],
+  "properties": {
+    "identity_anchors": {
+      "type": "array",
+      "maxItems": 5,
+      "items": { "$ref": "#/$defs/identity_anchor" }
+    },
+    "differences": {
+      "type": "array",
+      "maxItems": 8,
+      "items": { "$ref": "#/$defs/semantic_fact" }
+    },
+    "missing_information": {
+      "type": "array",
+      "maxItems": 2,
+      "items": { "$ref": "#/$defs/missing_fact" }
+    }
+  },
+  "$defs": {
+    "concept": {
+      "type": "string",
+      "pattern": "^[a-z][a-z0-9_]*$",
+      "minLength": 2,
+      "maxLength": 80
+    },
+    "confidence": {
+      "type": "string",
+      "enum": ["high", "medium", "low"]
+    },
+    "direction": {
+      "type": "string",
+      "enum": ["symmetric", "a_to_b", "b_to_a", "item_a", "item_b", "not_applicable"]
+    },
+    "evidence": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["source", "raw_attribute_name", "raw_fragment"],
+      "properties": {
+        "source": { "type": "string", "enum": ["title", "attribute"] },
+        "raw_attribute_name": { "type": ["string", "null"], "maxLength": 300 },
+        "raw_fragment": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "semantic_value": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["raw_value", "normalized_value", "unit"],
+      "properties": {
+        "raw_value": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "normalized_value": { "type": ["string", "null"], "maxLength": 200 },
+        "unit": { "type": ["string", "null"], "maxLength": 80 }
+      }
+    },
+    "identity_anchor": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "anchor_type",
+        "concept",
+        "value_a",
+        "value_b",
+        "relation",
+        "evidence_a",
+        "evidence_b",
+        "confidence"
+      ],
+      "properties": {
+        "anchor_type": {
+          "type": "string",
+          "enum": [
+            "exact_sku",
+            "manufacturer_part_number",
+            "exact_model",
+            "model_family",
+            "product_line",
+            "brand",
+            "other_identity"
+          ]
+        },
+        "concept": { "$ref": "#/$defs/concept" },
+        "value_a": { "$ref": "#/$defs/semantic_value" },
+        "value_b": { "$ref": "#/$defs/semantic_value" },
+        "relation": { "const": "same" },
+        "evidence_a": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "evidence_b": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    },
+    "semantic_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": [
+        "concept",
+        "value_a",
+        "value_b",
+        "relation",
+        "relation_direction",
+        "evidence_a",
+        "evidence_b",
+        "confidence"
+      ],
+      "properties": {
+        "concept": { "$ref": "#/$defs/concept" },
+        "value_a": { "oneOf": [{ "$ref": "#/$defs/semantic_value" }, { "type": "null" }] },
+        "value_b": { "oneOf": [{ "$ref": "#/$defs/semantic_value" }, { "type": "null" }] },
+        "relation": {
+          "type": "string",
+          "enum": [
+            "different_value",
+            "compatible",
+            "incompatible",
+            "subset",
+            "more_specific",
+            "conflicting_sources",
+            "unknown"
+          ]
+        },
+        "relation_direction": { "$ref": "#/$defs/direction" },
+        "evidence_a": {
+          "type": "array",
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "evidence_b": {
+          "type": "array",
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      },
+      "allOf": [
+        {
+          "if": {
+            "properties": { "relation": { "const": "conflicting_sources" } },
+            "required": ["relation"]
+          },
+          "then": {
+            "anyOf": [
+              {
+                "properties": {
+                  "value_a": { "$ref": "#/$defs/semantic_value" },
+                  "evidence_a": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 3,
+                    "items": { "$ref": "#/$defs/evidence" }
+                  }
+                }
+              },
+              {
+                "properties": {
+                  "value_b": { "$ref": "#/$defs/semantic_value" },
+                  "evidence_b": {
+                    "type": "array",
+                    "minItems": 2,
+                    "maxItems": 3,
+                    "items": { "$ref": "#/$defs/evidence" }
+                  }
+                }
+              }
+            ]
+          },
+          "else": {
+            "properties": {
+              "value_a": { "$ref": "#/$defs/semantic_value" },
+              "value_b": { "$ref": "#/$defs/semantic_value" },
+              "evidence_a": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": { "$ref": "#/$defs/evidence" }
+              },
+              "evidence_b": {
+                "type": "array",
+                "minItems": 1,
+                "maxItems": 3,
+                "items": { "$ref": "#/$defs/evidence" }
+              }
+            }
+          }
+        }
+      ]
+    },
+    "missing_fact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concept", "relation", "known_value", "known_evidence", "confidence"],
+      "properties": {
+        "concept": { "$ref": "#/$defs/concept" },
+        "relation": { "type": "string", "enum": ["missing_a", "missing_b"] },
+        "known_value": { "$ref": "#/$defs/semantic_value" },
+        "known_evidence": {
+          "type": "array",
+          "minItems": 1,
+          "maxItems": 3,
+          "items": { "$ref": "#/$defs/evidence" }
+        },
+        "confidence": { "$ref": "#/$defs/confidence" }
+      }
+    }
+  }
+}

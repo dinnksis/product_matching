@@ -1,0 +1,12 @@
+﻿anchor_type,concept,strength,support,positive,negative,match_prevalence,wilson_low_95,wilson_high_95,category_count,generation_role,label_if_seen_in_natural_pair,warning
+brand,brand,weak,27312,7821,19491,0.28635764499121263,0.28102663542065054,0.29174874631973857,18,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.
+product_line,product_line,medium,6613,3024,3589,0.45728111295932256,0.4453023363688377,0.4693094929365517,18,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.
+exact_model,model_number,strong,2525,1423,1102,0.5635643564356435,0.5441377643028736,0.5827978254944469,18,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.
+exact_model,model_name,strong,2303,1201,1102,0.5214937038645245,0.5010726520471876,0.541843168440877,18,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.
+model_family,model_family,medium,1555,250,1305,0.1607717041800643,0.1433537874480733,0.17986160531537365,18,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.
+manufacturer_part_number,manufacturer_part_number,strong,354,311,43,0.8785310734463276,0.8403771612459298,0.9085575629448853,13,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.
+exact_sku,sku,strong,95,81,14,0.8526315789473684,0.7677122266932916,0.9101400136589488,13,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.
+manufacturer_part_number,part_number,strong,78,64,14,0.8205128205128205,0.7209744070847772,0.8899618404959151,5,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.
+exact_sku,exact_sku,strong,16,16,0,1.0,0.8063865817272802,1.0,8,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.
+exact_model,exact_model,strong,6,5,1,0.8333333333333334,0.43649056343635395,0.9699474141282697,4,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.
+product_line,series,medium,1,0,1,0.0,0.0,0.7934567085261071,1,IDENTITY_GUARD,,Same anchor alone never guarantees label=1.

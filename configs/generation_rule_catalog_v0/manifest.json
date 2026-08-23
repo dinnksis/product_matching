@@ -1,0 +1,38 @@
+{
+  "discovery_pairs": 60000,
+  "discovery_positive_pairs": 15515,
+  "discovery_negative_pairs": 44485,
+  "positive_anchor_pair_coverage": 0.6618111504995166,
+  "negative_anchor_pair_coverage": 0.49917949870742945,
+  "strict_validated_negative_rules": 28,
+  "ready_clean_negative_rules": 17,
+  "ready_positive_transformations": 4,
+  "categories_with_ready_negative_evidence": 18,
+  "minimum_ready_negative_rules_per_category": 4,
+  "additional_qwen_recommended_before_v0_generation": false,
+  "reason": "The current catalog has clean validated negative interventions in every current-train category, four positive transformations with deterministic same-latent-item labels, and 15515 existing positive discovery pairs for anchor diagnostics. More Qwen would mostly expand the long tail.",
+  "targeted_qwen_later_only_if": [
+    "a required category/concept has no READY rule",
+    "the generator needs semantic value changes for label 1 rather than safe surface transformations",
+    "STRICT_ASSOCIATION_NEEDS_ISOLATION rules must be promoted using more clean single-rule evidence"
+  ],
+  "hard_ood_used": false,
+  "files": [
+    "HANDOFF_FOR_AGENT_RU.md",
+    "REPORT_FOR_HUMAN_RU.md",
+    "anchor_conditioned_difference_statistics.csv",
+    "catalog_validation.json",
+    "generation_policy_v0.json",
+    "generation_rule_v0.schema.json",
+    "generation_rules_v0.json",
+    "generation_rules_v0.jsonl",
+    "negative_mutation_rules_ready.csv",
+    "negative_rule_evidence_all.csv",
+    "positive_anchor_statistics.csv",
+    "positive_anchor_statistics_by_category.csv",
+    "positive_transformation_rules_ready.csv",
+    "qwen_sufficiency_decision.json",
+    "ready_negative_coverage_by_category.csv",
+    "ready_rule_category_scope.csv"
+  ]
+}

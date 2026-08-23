@@ -1,0 +1,25 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["batch_id", "mappings"],
+  "properties": {
+    "batch_id": {"type": "string"},
+    "mappings": {
+      "type": "array",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["entry_id", "source_concept", "target_concept", "decision", "confidence", "reason_short"],
+        "properties": {
+          "entry_id": {"type": "string"},
+          "source_concept": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "target_concept": {"type": "string", "pattern": "^[a-z][a-z0-9_]*$"},
+          "decision": {"enum": ["KEEP", "MERGE"]},
+          "confidence": {"enum": ["high", "medium", "low"]},
+          "reason_short": {"type": "string", "maxLength": 240}
+        }
+      }
+    }
+  }
+}

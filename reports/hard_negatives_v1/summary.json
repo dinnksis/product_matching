@@ -1,0 +1,23 @@
+[
+  {
+    "split": "iid",
+    "categories": 18,
+    "improved": 1,
+    "degraded": 17,
+    "mean_category_delta": -0.010843329324420677
+  },
+  {
+    "split": "hard",
+    "categories": 18,
+    "improved": 13,
+    "degraded": 5,
+    "mean_category_delta": 0.002060206809108198
+  },
+  {
+    "split": "ood",
+    "categories": 2,
+    "improved": 0,
+    "degraded": 2,
+    "mean_category_delta": -0.009668200466094068
+  }
+]

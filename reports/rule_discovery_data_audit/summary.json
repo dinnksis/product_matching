@@ -1,0 +1,111 @@
+{
+  "schema_version": 1,
+  "scope": "текущий human train; frozen tests исследованы только структурно",
+  "source_files": {
+    "items": {
+      "path": "C:\\Users\\Professional\\product_matching\\data\\items_human.parquet",
+      "bytes": 214210451,
+      "sha256": "07d4f09ac8cfa90a2dfc2a7802dec09fc1e188576e1281e781aa1340b3336f4a"
+    },
+    "raw_pairs": {
+      "path": "C:\\Users\\Professional\\product_matching\\data\\matches.parquet",
+      "bytes": 4120668,
+      "sha256": "14b0e07f750204807aff0bb7510d385a0b3fae3f02088506a14242187ca1e492"
+    },
+    "train": {
+      "path": "C:\\Users\\Professional\\product_matching\\data\\validation_splits_v1\\human_train_pairs.parquet",
+      "bytes": 3610560,
+      "sha256": "ffc8ac7283ca0fe1ac8a39e8ca31cb4fa069465576eeb636005c72636935e616"
+    },
+    "ordinary": {
+      "path": "C:\\Users\\Professional\\product_matching\\data\\validation_splits_v1\\human_iid_validation_pairs.parquet",
+      "bytes": 169551,
+      "sha256": "8964422e8c3b254a355d35b5fb60568fed4b6532abb1e8918aba1050f7ecb798"
+    },
+    "hard": {
+      "path": "C:\\Users\\Professional\\product_matching\\data\\validation_splits_v1\\human_hard_validation_pairs.parquet",
+      "bytes": 81673,
+      "sha256": "6731ff9c41100b0ea21d6868cd91cbfab1038832d500753cbab8d4e6962fb064"
+    },
+    "ood": {
+      "path": "C:\\Users\\Professional\\product_matching\\data\\validation_splits_v1\\human_ood_validation_pairs.parquet",
+      "bytes": 591288,
+      "sha256": "e12eebba6afd6c307bd70475eea29d80df513280b262328cf819bac65e8b22a4"
+    }
+  },
+  "current_train": {
+    "pairs": 306669,
+    "unique_products": 596262,
+    "positives": 80136,
+    "negatives": 226533,
+    "prevalence": 0.26131105524197096,
+    "categories": 18
+  },
+  "duplicate_pairs": {
+    "exact_order_duplicate_groups": 0,
+    "exact_order_duplicate_extra_rows": 0,
+    "unordered_duplicate_groups": 0,
+    "unordered_duplicate_extra_rows": 0,
+    "reversed_duplicate_groups": 0,
+    "same_ids_conflicting_label_groups": 0,
+    "self_pairs": 0
+  },
+  "frozen_partition_integrity": {
+    "raw_pairs": 365654,
+    "combined_split_pairs": 365654,
+    "raw_exact_duplicate_rows": 0,
+    "combined_exact_duplicate_rows": 0,
+    "combined_splits_equal_raw_pair_multiset": true
+  },
+  "title_attribute_completeness": {
+    "mean_title_only_token_share": 0.5518877510193588,
+    "median_title_only_token_share": 0.5714285714285714,
+    "products_with_title_only_identifier_share": 0.50076141025254,
+    "products_with_repeated_attribute_value_share": 0.7536317927354083,
+    "attribute_value_occurrence_repeat_share": 0.16859607749576838
+  },
+  "components": {
+    "components": 289597,
+    "largest_component_nodes": 30,
+    "largest_component_edges": 31,
+    "largest_component_node_share": 5.031345281101261e-05,
+    "largest_component_edge_share": 0.00010108618738770467,
+    "components_over_0_1pct_nodes": 0,
+    "median_component_nodes": 2.0,
+    "p95_component_nodes": 2.0,
+    "p99_component_nodes": 3.0
+  },
+  "asymmetry": {
+    "strong_asymmetric_pairs": 3742,
+    "strong_asymmetric_pair_share": 0.012202081071122285,
+    "strong_asymmetric_positive_rate": 0.2528059861036879,
+    "attribute_count_difference_p50": 5.0,
+    "attribute_count_difference_p90": 13.0,
+    "attribute_count_difference_p99": 24.0
+  },
+  "outputs": [
+    "asymmetric_pair_examples.csv",
+    "attribute_category_overlap.csv",
+    "attribute_count_distribution.csv",
+    "attribute_name_alias_candidates.csv",
+    "attribute_name_by_category.csv",
+    "attribute_name_category_coverage.csv",
+    "attribute_name_global.csv",
+    "attribute_summary_by_category.csv",
+    "category_distribution.csv",
+    "category_size_quantiles.csv",
+    "component_size_distribution.csv",
+    "connected_components.csv",
+    "content_duplicate_diagnostics.csv",
+    "content_duplicate_examples.csv",
+    "duplicate_pair_examples.csv",
+    "label_distribution.csv",
+    "pair_asymmetry_by_category.csv",
+    "product_degree_distribution.csv",
+    "product_degree_quantiles.csv",
+    "split_structure.csv",
+    "title_attribute_completeness_by_category.csv",
+    "title_attribute_completeness_quantiles.csv",
+    "top_products_by_degree.csv"
+  ]
+}

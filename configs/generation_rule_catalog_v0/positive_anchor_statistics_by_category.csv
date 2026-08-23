@@ -1,0 +1,135 @@
+﻿anchor_type,concept,strength,category,support,positive,negative,match_prevalence
+brand,brand,weak,Автотовары,1522,360.0,1162.0,0.23653088042049936
+brand,brand,weak,Аптека,1119,154.0,965.0,0.13762287756925826
+brand,brand,weak,Бытовая химия,2364,1135.0,1229.0,0.48011844331641285
+brand,brand,weak,Галантерея и аксессуары,1212,168.0,1044.0,0.13861386138613863
+brand,brand,weak,Детские товары,811,439.0,372.0,0.5413070283600493
+brand,brand,weak,Дом и сад,1102,257.0,845.0,0.23321234119782214
+brand,brand,weak,Канцелярские товары,1421,497.0,924.0,0.3497536945812808
+brand,brand,weak,Красота и гигиена,2003,762.0,1241.0,0.38042935596605093
+brand,brand,weak,Мебель,1328,226.0,1102.0,0.17018072289156627
+brand,brand,weak,Музыкальные инструменты,1396,453.0,943.0,0.32449856733524357
+brand,brand,weak,Обувь,1921,260.0,1661.0,0.1353461738677772
+brand,brand,weak,Продукты питания,2076,589.0,1487.0,0.2837186897880539
+brand,brand,weak,Спорт и отдых,1576,424.0,1152.0,0.26903553299492383
+brand,brand,weak,Строительство и ремонт,1487,419.0,1068.0,0.28177538668459984
+brand,brand,weak,Товары для животных,2144,735.0,1409.0,0.34281716417910446
+brand,brand,weak,Хобби и творчество,1019,423.0,596.0,0.4151128557409225
+brand,brand,weak,Электроника,898,264.0,634.0,0.29398663697104677
+brand,brand,weak,Ювелирные изделия,1913,256.0,1657.0,0.1338212232096184
+exact_model,exact_model,strong,Детские товары,1,0.0,1.0,0.0
+exact_model,exact_model,strong,Музыкальные инструменты,1,1.0,0.0,1.0
+exact_model,exact_model,strong,Строительство и ремонт,1,1.0,0.0,1.0
+exact_model,exact_model,strong,Электроника,3,3.0,0.0,1.0
+exact_model,model_name,strong,Автотовары,5,3.0,2.0,0.6
+exact_model,model_name,strong,Аптека,29,15.0,14.0,0.5172413793103449
+exact_model,model_name,strong,Бытовая химия,43,30.0,13.0,0.6976744186046512
+exact_model,model_name,strong,Галантерея и аксессуары,29,19.0,10.0,0.6551724137931034
+exact_model,model_name,strong,Детские товары,557,374.0,183.0,0.6714542190305206
+exact_model,model_name,strong,Дом и сад,116,65.0,51.0,0.5603448275862069
+exact_model,model_name,strong,Канцелярские товары,54,29.0,25.0,0.5370370370370371
+exact_model,model_name,strong,Красота и гигиена,179,88.0,91.0,0.49162011173184356
+exact_model,model_name,strong,Мебель,401,81.0,320.0,0.20199501246882792
+exact_model,model_name,strong,Музыкальные инструменты,39,32.0,7.0,0.8205128205128205
+exact_model,model_name,strong,Обувь,21,6.0,15.0,0.2857142857142857
+exact_model,model_name,strong,Продукты питания,83,42.0,41.0,0.5060240963855421
+exact_model,model_name,strong,Спорт и отдых,303,74.0,229.0,0.24422442244224424
+exact_model,model_name,strong,Строительство и ремонт,22,11.0,11.0,0.5
+exact_model,model_name,strong,Товары для животных,109,62.0,47.0,0.5688073394495413
+exact_model,model_name,strong,Хобби и творчество,280,248.0,32.0,0.8857142857142857
+exact_model,model_name,strong,Электроника,25,17.0,8.0,0.68
+exact_model,model_name,strong,Ювелирные изделия,8,5.0,3.0,0.625
+exact_model,model_number,strong,Автотовары,35,27.0,8.0,0.7714285714285715
+exact_model,model_number,strong,Аптека,329,22.0,307.0,0.0668693009118541
+exact_model,model_number,strong,Бытовая химия,16,11.0,5.0,0.6875
+exact_model,model_number,strong,Галантерея и аксессуары,30,24.0,6.0,0.8
+exact_model,model_number,strong,Детские товары,122,99.0,23.0,0.8114754098360656
+exact_model,model_number,strong,Дом и сад,56,42.0,14.0,0.75
+exact_model,model_number,strong,Канцелярские товары,130,68.0,62.0,0.5230769230769231
+exact_model,model_number,strong,Красота и гигиена,29,23.0,6.0,0.7931034482758621
+exact_model,model_number,strong,Мебель,165,62.0,103.0,0.37575757575757573
+exact_model,model_number,strong,Музыкальные инструменты,472,367.0,105.0,0.777542372881356
+exact_model,model_number,strong,Обувь,12,8.0,4.0,0.6666666666666666
+exact_model,model_number,strong,Продукты питания,7,2.0,5.0,0.2857142857142857
+exact_model,model_number,strong,Спорт и отдых,301,141.0,160.0,0.4684385382059801
+exact_model,model_number,strong,Строительство и ремонт,298,219.0,79.0,0.7348993288590604
+exact_model,model_number,strong,Товары для животных,36,24.0,12.0,0.6666666666666666
+exact_model,model_number,strong,Хобби и творчество,57,31.0,26.0,0.543859649122807
+exact_model,model_number,strong,Электроника,370,215.0,155.0,0.581081081081081
+exact_model,model_number,strong,Ювелирные изделия,60,38.0,22.0,0.6333333333333333
+exact_sku,exact_sku,strong,Галантерея и аксессуары,1,1.0,0.0,1.0
+exact_sku,exact_sku,strong,Дом и сад,2,2.0,0.0,1.0
+exact_sku,exact_sku,strong,Канцелярские товары,3,3.0,0.0,1.0
+exact_sku,exact_sku,strong,Мебель,4,4.0,0.0,1.0
+exact_sku,exact_sku,strong,Спорт и отдых,1,1.0,0.0,1.0
+exact_sku,exact_sku,strong,Строительство и ремонт,2,2.0,0.0,1.0
+exact_sku,exact_sku,strong,Хобби и творчество,2,2.0,0.0,1.0
+exact_sku,exact_sku,strong,Электроника,1,1.0,0.0,1.0
+exact_sku,sku,strong,Бытовая химия,10,10.0,0.0,1.0
+exact_sku,sku,strong,Детские товары,4,4.0,0.0,1.0
+exact_sku,sku,strong,Дом и сад,17,15.0,2.0,0.8823529411764706
+exact_sku,sku,strong,Канцелярские товары,1,1.0,0.0,1.0
+exact_sku,sku,strong,Мебель,23,21.0,2.0,0.9130434782608695
+exact_sku,sku,strong,Музыкальные инструменты,2,2.0,0.0,1.0
+exact_sku,sku,strong,Продукты питания,3,0.0,3.0,0.0
+exact_sku,sku,strong,Спорт и отдых,3,3.0,0.0,1.0
+exact_sku,sku,strong,Строительство и ремонт,9,5.0,4.0,0.5555555555555556
+exact_sku,sku,strong,Товары для животных,1,0.0,1.0,0.0
+exact_sku,sku,strong,Хобби и творчество,6,5.0,1.0,0.8333333333333334
+exact_sku,sku,strong,Электроника,4,3.0,1.0,0.75
+exact_sku,sku,strong,Ювелирные изделия,12,12.0,0.0,1.0
+manufacturer_part_number,manufacturer_part_number,strong,Автотовары,206,194.0,12.0,0.941747572815534
+manufacturer_part_number,manufacturer_part_number,strong,Бытовая химия,4,3.0,1.0,0.75
+manufacturer_part_number,manufacturer_part_number,strong,Детские товары,1,1.0,0.0,1.0
+manufacturer_part_number,manufacturer_part_number,strong,Дом и сад,11,10.0,1.0,0.9090909090909091
+manufacturer_part_number,manufacturer_part_number,strong,Канцелярские товары,3,3.0,0.0,1.0
+manufacturer_part_number,manufacturer_part_number,strong,Мебель,20,18.0,2.0,0.9
+manufacturer_part_number,manufacturer_part_number,strong,Музыкальные инструменты,8,7.0,1.0,0.875
+manufacturer_part_number,manufacturer_part_number,strong,Спорт и отдых,4,3.0,1.0,0.75
+manufacturer_part_number,manufacturer_part_number,strong,Строительство и ремонт,40,27.0,13.0,0.675
+manufacturer_part_number,manufacturer_part_number,strong,Товары для животных,1,1.0,0.0,1.0
+manufacturer_part_number,manufacturer_part_number,strong,Хобби и творчество,7,5.0,2.0,0.7142857142857143
+manufacturer_part_number,manufacturer_part_number,strong,Электроника,20,17.0,3.0,0.85
+manufacturer_part_number,manufacturer_part_number,strong,Ювелирные изделия,29,22.0,7.0,0.7586206896551724
+manufacturer_part_number,part_number,strong,Автотовары,55,49.0,6.0,0.8909090909090909
+manufacturer_part_number,part_number,strong,Музыкальные инструменты,6,6.0,0.0,1.0
+manufacturer_part_number,part_number,strong,Строительство и ремонт,9,5.0,4.0,0.5555555555555556
+manufacturer_part_number,part_number,strong,Хобби и творчество,1,0.0,1.0,0.0
+manufacturer_part_number,part_number,strong,Электроника,7,4.0,3.0,0.5714285714285714
+model_family,model_family,medium,Автотовары,105,17.0,88.0,0.1619047619047619
+model_family,model_family,medium,Аптека,336,15.0,321.0,0.044642857142857144
+model_family,model_family,medium,Бытовая химия,1,0.0,1.0,0.0
+model_family,model_family,medium,Галантерея и аксессуары,14,4.0,10.0,0.2857142857142857
+model_family,model_family,medium,Детские товары,59,24.0,35.0,0.4067796610169492
+model_family,model_family,medium,Дом и сад,37,9.0,28.0,0.24324324324324326
+model_family,model_family,medium,Канцелярские товары,55,25.0,30.0,0.45454545454545453
+model_family,model_family,medium,Красота и гигиена,31,12.0,19.0,0.3870967741935484
+model_family,model_family,medium,Мебель,225,24.0,201.0,0.10666666666666667
+model_family,model_family,medium,Музыкальные инструменты,65,10.0,55.0,0.15384615384615385
+model_family,model_family,medium,Обувь,105,13.0,92.0,0.12380952380952381
+model_family,model_family,medium,Продукты питания,5,0.0,5.0,0.0
+model_family,model_family,medium,Спорт и отдых,215,40.0,175.0,0.18604651162790697
+model_family,model_family,medium,Строительство и ремонт,111,18.0,93.0,0.16216216216216217
+model_family,model_family,medium,Товары для животных,59,9.0,50.0,0.15254237288135594
+model_family,model_family,medium,Хобби и творчество,26,5.0,21.0,0.19230769230769232
+model_family,model_family,medium,Электроника,64,12.0,52.0,0.1875
+model_family,model_family,medium,Ювелирные изделия,42,13.0,29.0,0.30952380952380953
+product_line,product_line,medium,Автотовары,81,14.0,67.0,0.1728395061728395
+product_line,product_line,medium,Аптека,200,33.0,167.0,0.165
+product_line,product_line,medium,Бытовая химия,1146,636.0,510.0,0.5549738219895288
+product_line,product_line,medium,Галантерея и аксессуары,94,30.0,64.0,0.3191489361702128
+product_line,product_line,medium,Детские товары,629,429.0,200.0,0.6820349761526232
+product_line,product_line,medium,Дом и сад,285,127.0,158.0,0.4456140350877193
+product_line,product_line,medium,Канцелярские товары,328,125.0,203.0,0.38109756097560976
+product_line,product_line,medium,Красота и гигиена,799,355.0,444.0,0.44430538172715894
+product_line,product_line,medium,Мебель,231,42.0,189.0,0.18181818181818182
+product_line,product_line,medium,Музыкальные инструменты,118,29.0,89.0,0.2457627118644068
+product_line,product_line,medium,Обувь,45,10.0,35.0,0.2222222222222222
+product_line,product_line,medium,Продукты питания,718,312.0,406.0,0.43454038997214484
+product_line,product_line,medium,Спорт и отдых,174,45.0,129.0,0.25862068965517243
+product_line,product_line,medium,Строительство и ремонт,210,42.0,168.0,0.2
+product_line,product_line,medium,Товары для животных,757,326.0,431.0,0.43064729194187584
+product_line,product_line,medium,Хобби и творчество,619,421.0,198.0,0.6801292407108239
+product_line,product_line,medium,Электроника,68,16.0,52.0,0.23529411764705882
+product_line,product_line,medium,Ювелирные изделия,111,32.0,79.0,0.2882882882882883
+product_line,series,medium,Хобби и творчество,1,0.0,1.0,0.0
