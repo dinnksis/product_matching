@@ -9,6 +9,7 @@ import json
 import math
 import os
 import random
+import sys
 import threading
 import time
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
@@ -24,7 +25,6 @@ from sklearn.metrics import (
     average_precision_score,
     brier_score_loss,
     f1_score,
-    log_loss,
     precision_score,
     recall_score,
     roc_auc_score,
@@ -32,6 +32,12 @@ from sklearn.metrics import (
 
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from src.validation_metrics import binary_probability_metrics  # noqa: E402
+
+
 DEFAULT_DATA_DIR = ROOT / "prepared" / "validation_splits_v1" / "human"
 DEFAULT_PROMPT = ROOT / "prompts" / "qwen3_5_product_match_judge_v1.md"
 DEFAULT_OUTPUT_DIR = ROOT / "reports" / "qwen3_5_397b_judge_v1"
@@ -347,6 +353,7 @@ def threshold_metrics(target: np.ndarray, score: np.ndarray) -> dict[str, Any]:
 def evaluate_split(frame: pd.DataFrame) -> tuple[dict[str, Any], list[dict[str, Any]]]:
     target = frame["target"].to_numpy(dtype=np.int8)
     score = frame["predict"].to_numpy(dtype=np.float64)
+    probability_metrics = binary_probability_metrics(target, score)
     per_category: list[dict[str, Any]] = []
     for category, part in frame.groupby("category", sort=True):
         part_target = part["target"].to_numpy(dtype=np.int8)
@@ -377,14 +384,16 @@ def evaluate_split(frame: pd.DataFrame) -> tuple[dict[str, Any], list[dict[str, 
         ),
         "overall_average_precision": float(average_precision_score(target, score)),
         "overall_roc_auc": (
-            float(roc_auc_score(target, score))
-            if np.unique(target).size == 2
-            else None
+            probability_metrics["roc_auc"]
         ),
         "brier_score": float(brier_score_loss(target, score)),
-        "log_loss": float(
-            log_loss(target, np.clip(score, 1e-15, 1 - 1e-15), labels=[0, 1])
-        ),
+        "log_loss": probability_metrics["log_loss"],
+        "recall_at_precision_0_99": probability_metrics[
+            "recall_at_precision_0_99"
+        ],
+        "threshold_at_precision_0_99": probability_metrics[
+            "threshold_at_precision_0_99"
+        ],
         "score_min": float(score.min()),
         "score_median": float(np.median(score)),
         "score_max": float(score.max()),
@@ -505,7 +514,7 @@ def main() -> None:
     (args.output_dir / "errors.json").unlink(missing_ok=True)
 
     metadata = {
-        "evaluation": "qwen3.5_product_match_judge_v1",
+        "evaluation": args.prompt.stem,
         "model": model,
         "base_url": args.base_url,
         "prompt_path": str(args.prompt),

@@ -1,0 +1,23 @@
+{
+  "iid": {
+    "pairs": 2000,
+    "positives": 521,
+    "macro_average_precision": 0.7137691335653336,
+    "overall_average_precision": 0.7442935626427374,
+    "roc_auc": 0.8635555486341734
+  },
+  "hard": {
+    "pairs": 2000,
+    "positives": 492,
+    "macro_average_precision": 0.3993180959658607,
+    "overall_average_precision": 0.3891868253678933,
+    "roc_auc": 0.5979033231976882
+  },
+  "ood": {
+    "pairs": 2000,
+    "positives": 445,
+    "macro_average_precision": 0.5895188277338221,
+    "overall_average_precision": 0.6996330344346878,
+    "roc_auc": 0.8604624444524729
+  }
+}

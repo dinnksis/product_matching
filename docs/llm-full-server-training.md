@@ -215,6 +215,65 @@ scripts/run_llm_full_margin_distillation.sh
 `LLM_BATCH_SIZE=256`, global batch станет `2048`, а набор внутриранговых
 comparisons и optimizer schedule уже будут другим экспериментом.
 
+## Альтернатива: BCE + ELR + симметрия направлений
+
+Отдельный launcher
+[`scripts/run_llm_full_symmetric.sh`](../scripts/run_llm_full_symmetric.sh)
+обучает каждую пару сразу в обоих направлениях:
+
+```text
+z₁ = f(A, B)
+z₂ = f(B, A)
+
+Lsupervised = (BCEWithLogits(z₁, q) + BCEWithLogits(z₂, q)) / 2
+Lsym = mean((z₁ - z₂)²)
+L = Lsupervised + 1.0 · ELR + λsym · Lsym
+```
+
+Просто использовать `z₁-z₂` нельзя: такой терм не ограничен снизу и может
+стимулировать расхождение направлений. Квадрат разности неотрицателен и имеет
+минимум ровно при `f(A,B)=f(B,A)`. Два BCE усредняются, а не складываются, чтобы
+сохранить прежний масштаб supervised loss и learning rate.
+
+ELR-history остаётся одной записью на исходную пару. Для её обновления берётся
+средняя вероятность `(sigmoid(z₁)+sigmoid(z₂))/2`; это не создаёт две
+конкурирующие temporal targets для одного pair index. Pairwise Margin-Huber в
+этом launcher отключён, поэтому результат является чистым тестом симметрии.
+
+Defaults:
+
+- 5 эпох, `learning_rate=5e-6`, `batch_size=256` уникальных пар на GPU;
+- ELR `β=0.7`, coefficient `1.0`;
+- symmetry coefficient `λsym=0.1`;
+- `max_length=512`, `S1_KEY_VALUE`, BF16;
+- output — `models/minilm_llm_full_elr1_sym_l01_5ep`.
+
+Одна H100:
+
+```bash
+CUDA_VISIBLE_DEVICES=0 scripts/run_llm_full_symmetric.sh
+```
+
+Восемь H100:
+
+```bash
+CUDA_VISIBLE_DEVICES=0,1,2,3,4,5,6,7 \
+LLM_NPROC=8 \
+LLM_OUTPUT_DIR=models/minilm_llm_full_elr1_sym_l01_5ep_8gpu \
+scripts/run_llm_full_symmetric.sh
+```
+
+`batch_size=256` здесь означает 256 уникальных пар, но encoder фактически
+получает 512 последовательностей на GPU за step. Поэтому вычислений примерно в
+два раза больше, чем в однонаправленном train. На H100 80 GB это должно
+поместиться исходя из прежнего peak VRAM, но перед полным запуском разумно
+проверить первые несколько batch; при OOM задайте `LLM_BATCH_SIZE=192` или
+`128`.
+
+В train JSON выводятся `symmetry_loss` и
+`symmetry_mean_abs_logit_gap`. При рабочей регуляризации оба показателя должны
+снижаться. Resume выполняется обычным `--resume` и требует того же числа GPU.
+
 ## Human validation после каждой эпохи
 
 После каждой эпохи checkpoint оценивается на frozen `iid`, `hard` и `ood` в

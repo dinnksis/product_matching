@@ -10,6 +10,7 @@ import pandas as pd
 
 from scripts.train_llm_full import (
     BucketBatchSampler,
+    PairCollator,
     SymmetricEvaluationBatchSampler,
     infer_pair_template,
     one_logit,
@@ -76,6 +77,44 @@ class FullLlmDataTest(unittest.TestCase):
                 (2, True),
             ],
         )
+
+    def test_symmetric_training_collator_emits_two_directions_per_pair(self) -> None:
+        try:
+            import torch
+        except ImportError:
+            self.skipTest("PyTorch is not installed")
+
+        tokenizer = FakePairTokenizer()
+        collator = PairCollator(
+            template=infer_pair_template(tokenizer),
+            pad_token_id=tokenizer.pad_token_id,
+            max_length=16,
+            pad_to_multiple_of=1,
+            symmetric=True,
+        )
+        batch = collator(
+            [
+                {
+                    "first": np.asarray([10, 11]),
+                    "second": np.asarray([20]),
+                    "target": 5 / 9,
+                    "pair_index": 7,
+                    "reverse": False,
+                }
+            ]
+        )
+
+        torch.testing.assert_close(
+            batch["input_ids"],
+            torch.tensor(
+                [
+                    [1, 10, 11, 2, 2, 20, 2],
+                    [1, 20, 2, 2, 10, 11, 2],
+                ]
+            ),
+        )
+        self.assertEqual(len(batch["targets"]), 1)
+        self.assertEqual(len(batch["pair_indices"]), 1)
 
     def test_distributed_sampler_keeps_every_example_once_without_padding(self) -> None:
         lengths = np.arange(25, dtype=np.int64) + 1

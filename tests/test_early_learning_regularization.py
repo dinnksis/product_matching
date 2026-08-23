@@ -5,6 +5,7 @@ import unittest
 
 from src.early_learning_regularization import (
     binary_elr_loss,
+    binary_elr_regularization,
     make_binary_elr_targets,
 )
 
@@ -52,6 +53,23 @@ class BinaryElrTest(unittest.TestCase):
             regularization_strength=3.0,
         )
         self.assertTrue(torch.isfinite(result.total))
+
+    def test_regularizer_accepts_orientation_averaged_probability(self) -> None:
+        assert torch is not None
+        history = make_binary_elr_targets(1, torch.device("cpu"))
+        directional_logits = torch.tensor([[2.0, -2.0]], requires_grad=True)
+        averaged_probability = directional_logits.sigmoid().mean(dim=1)
+        result = binary_elr_regularization(
+            positive_probabilities=averaged_probability,
+            example_indices=torch.tensor([0]),
+            target_history=history,
+            beta=0.7,
+        )
+
+        torch.testing.assert_close(history, torch.tensor([[0.15, 0.15]]))
+        self.assertAlmostEqual(float(result.regularizer), math.log(0.85), places=6)
+        result.regularizer.backward()
+        self.assertTrue(torch.isfinite(directional_logits.grad).all())
 
 
 if __name__ == "__main__":

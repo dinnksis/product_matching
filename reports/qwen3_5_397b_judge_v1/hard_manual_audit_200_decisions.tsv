@@ -1,0 +1,201 @@
+audit_id	bucket	subtype	note
+1	label_conflict	hard_variant_conflict	Different Sailun lines, sizes, indices and manufacturer articles.
+2	label_conflict	hard_variant_conflict	Different car brands, paint codes and manufacturer articles.
+3	text_insufficient	missing_anchor	Second card is only a generic CTR ball joint; identity cannot be verified.
+4	qwen_error	missed_exact_anchor	Both cards carry manufacturer code DT0132 despite different titles/brands.
+5	label_conflict	hard_variant_conflict	MG81 wheels differ in PCD, ET and article 5004/0 vs 5048/0.
+6	label_conflict	different_entity	Camozzi tee fitting versus Patron brake hose.
+7	label_conflict	hard_variant_conflict	Regular lens versus toric astigmatic lens, with different curve/cylinder/axis.
+8	qwen_error	missed_exact_product	Same Komaroed Super aerosol and 125 ml; weight/color fields are packaging/noise.
+9	label_conflict	hard_variant_conflict	Different Kao Attack lines, formula purpose and fragrance.
+10	label_conflict	hard_variant_conflict	Same line but explicit 450 ml versus 750 ml.
+11	policy_ambiguous	formula_scope	ABC 3 kg may be same retail product, but Color versus universal purpose conflicts.
+12	text_insufficient	missing_variant	Second card omits lemon and explicit 2x150 g; 340 g packed weight is inconclusive.
+13	label_conflict	hard_variant_conflict	Ariel Color versus Mountain Spring/dark-fabric variant.
+14	qwen_error	missed_exact_product	Tide powder 6 kg; generic fresh versus Alpine Fresh is compatible wording.
+15	label_conflict	hard_variant_conflict	Different backpack brands, volumes and dimensions.
+16	text_insufficient	generic_card	Second card only says hair decoration; image may identify the tiara.
+17	label_conflict	hard_variant_conflict	Different brands, materials and product construction despite both being red crossbody bags.
+18	label_conflict	different_entity	Ponytail volumizer versus two 50 cm hair extensions.
+19	text_insufficient	generic_card	One card only says children's weapon; could be the pictured bow.
+20	label_conflict	hard_variant_conflict	Different Fairy sets, scenes, article numbers and 646 versus 702 pieces.
+21	text_insufficient	generic_card	Generic 1Toy RC car versus generic unbranded 4WD RC truck; no shared model.
+22	label_conflict	hard_variant_conflict	Zhorya functional 36 cm doll versus soft musical no-name doll with bottle.
+23	text_insufficient	missing_anchor	Both are T-90 toy tanks, but no shared maker/model and dimensions are incomplete.
+24	qwen_error	missed_exact_product	Same rare Kрошка Я “Путешествие в Африку” bath-toy set.
+25	qwen_error	missed_exact_product	Titles uniquely describe the same knitted-dress mixed-color doll.
+26	text_insufficient	missing_anchor	Generic blaster versus branded Blaze Storm ZC7111; ten darts alone is insufficient.
+27	label_conflict	quantity_conflict	Explicit two packs of 46 diapers versus one 46-count pack.
+28	qwen_error	missed_exact_product	Same Double Eagle Volvo radio-controlled concrete mixer/truck family.
+29	qwen_error	missed_exact_product	Same uniquely named “Милый единорожка” water pistol.
+30	text_insufficient	generic_card	One card only says toy household appliance; image may identify the sewing machine.
+31	qwen_error	missed_exact_product	Near-identical title and attributes for the same road roller RC toy.
+32	qwen_error	missed_exact_product	Same rare sorter “Барабан. Новогоднее настроение”.
+33	text_insufficient	generic_card	Generic ceramic planter versus a specific cactus-design 0.7 L pot.
+34	qwen_error	missed_fingerprint	Troyka wall clock, 30.5 cm, white/classic; multiple independent fields agree.
+35	qwen_error	missed_exact_product	Exact long title and matching 4.7 L, 18x20 cm ceramic pot.
+36	label_conflict	hard_variant_conflict	Generic 18 cm vase versus Evis Натали-1, 27 cm tall, 3 L.
+37	label_conflict	quantity_conflict	Generic balloon/set versus explicit 100 gold modelling balloons.
+38	qwen_error	missed_exact_product	Exact Halloween mixed-color textile mask title and type.
+39	text_insufficient	generic_card	Generic Lisik brush versus specific round synthetic brush #7; no shared model.
+40	text_insufficient	missing_anchor	Dimensions match A3, but first card omits envelope construction and Devente identity.
+41	policy_ambiguous	private_label_oem	Different brands, but exact 300x317 blue bumvinyl registrar fingerprint may indicate one OEM item.
+42	text_insufficient	generic_card	Same Calligrata brand, but first card lacks dimensions and camouflage/design evidence.
+43	label_conflict	different_entity	Gouache versus watercolor.
+44	label_conflict	different_entity	Generic sketchbook versus A5 kraft drawing pad with specified paper.
+45	label_conflict	hard_variant_conflict	Hexagonal versus triangular pencils.
+46	qwen_error	missed_exact_product	Titles are literally identical, including brand, design, dimensions, material and color.
+47	text_insufficient	generic_card	Specific football-design diary versus generic Calligrata diary without design/article.
+48	text_insufficient	missing_design	A4 one-sheet decoupage-card fingerprint matches, but the actual design is absent.
+49	label_conflict	quantity_conflict	Explicit two 250-sheet packs versus one pack.
+50	qwen_error	missed_exact_product	Exact long backpack title plus matching dimensions, weight, material and pockets.
+51	text_insufficient	generic_card	Specific Feniks design versus generic Lisik diary; image/design identity unavailable.
+52	label_conflict	different_entity	Hair balm versus shampoo.
+53	label_conflict	hard_variant_conflict	Anti-dandruff L'Oreal line versus anti-discomfort sensitive-scalp Mivis product.
+54	qwen_error	missed_product_line	Nioxin 300 ml composition/colored-hair purpose supports System 4 despite generic first title.
+55	qwen_error	missed_exact_product	Exact Round Lab Birch Juice SPF50 50 ml; Youvogue is a noisy seller/brand field.
+56	label_conflict	hard_variant_conflict	Concealer shade 02 versus shade 01.
+57	label_conflict	hard_variant_conflict	Naturehike chair lacks shared model and conflicts in height 105 versus 81 cm.
+58	qwen_error	failed_conflict_resolution	Exact Bradex Masters chair/color; isolated “2 pcs” field conflicts with singular title and package count.
+59	policy_ambiguous	identifier_level	All sofa dimensions/color match, but adjacent articles 112923/112924 and missing line create variant ambiguity.
+60	label_conflict	hard_variant_conflict	Countertop length 2600 versus 2300 mm.
+61	label_conflict	different_model	Woodville WO_11179 versus Tetchair Cindy model 1801.
+62	label_conflict	different_model	Different table brands, construction, dimensions and colors.
+63	label_conflict	different_model	Martin Romas GK-1 case versus Dasmax MRGK-2 case.
+64	policy_ambiguous	attribute_conflict	Same Ernie Ball part 2723, but explicit gauge 12-56 versus 09-42 is contradictory.
+65	text_insufficient	missing_anchor	Same maker/type/material, but generic AMC strap lacks RGE2.Pro model evidence.
+66	qwen_error	missed_exact_product	Exact no-name soprano ukulele case title, type and mixed-color variant.
+67	label_conflict	quantity_conflict	Same pick model but explicit 6 versus 24 pieces.
+68	label_conflict	hard_variant_conflict	Dunlop DBFS40120 versus DBFS40100M string sets and gauges.
+69	label_conflict	hard_variant_conflict	Adidas Run 60s HP2259 gray versus unidentified Adidas Sportswear burgundy shoe.
+70	label_conflict	hard_variant_conflict	Unbranded cotton slippers versus Dr. Luigi, with different size and insole material.
+71	qwen_error	soft_variant_missed	Same Vitacci white leather stiletto construction; only shoe size differs.
+72	qwen_error	failed_conflict_resolution	Both titles say 4Life Himalayan pink fine salt 250 g; isolated 50 g attribute is erroneous.
+73	label_conflict	hard_variant_conflict	Coconut versus banana muesli bars.
+74	qwen_error	failed_conflict_resolution	Exact 500 g mango-cube title/composition; first 100 g and milk-taste fields are inconsistent noise.
+75	policy_ambiguous	attribute_conflict	Same EcoPro Detonator/color but title variants 85mm/11g versus 75mm/9g; second length field also conflicts.
+76	text_insufficient	generic_card	Generic steel flask without volume/model versus Big Boss 240 ml.
+77	label_conflict	different_model	Different lure brands/models, 16 g/90 mm versus 5.2 g/67 mm.
+78	qwen_error	model_alias_missed	Nika Timka Sport 2+ WS plausibly expands to the generic Nika Winter Sport snowcat card.
+79	label_conflict	different_model	Arlight Smart-PWM versus Smart-Set-PWM with different voltage and controls.
+80	label_conflict	different_entity	Industrial pendant fixture versus Mantra outdoor floodlight.
+81	qwen_error	private_label_fingerprint	Exact G9/25W/210x210 glass-wall-light fingerprint despite Favourite versus Sonnenblume naming.
+82	label_conflict	quantity_conflict	One collar versus explicit two-piece offer.
+83	label_conflict	hard_variant_conflict	Petstages Deerhorn large versus medium 16 cm.
+84	qwen_error	missed_exact_product	Exact AJO Cat Skin & Hair dry cat food, 400 g.
+85	label_conflict	hard_variant_conflict	Dog food for small breeds versus adult cat food.
+86	label_conflict	hard_variant_conflict	Chicken wings versus chicken comb treats.
+87	label_conflict	different_model	Generic dog wig versus lion-mane costume with ears, different brand/color.
+88	qwen_error	missed_exact_product	Same “туалет премиум” deep cat tray with rim; model 2354 supports identity.
+89	text_insufficient	generic_card	Generic craft kit versus specific firefighter rhinestone/EVA applique.
+90	text_insufficient	generic_card	Specific “Загадочные снежинки” kit versus a card saying only chemistry.
+91	text_insufficient	missing_variant	Generic pink beads versus specified 10 mm/50 g beads; design absent.
+92	text_insufficient	missing_design	Same puzzle count/dimensions and landscape theme, but first card omits Lavender artwork.
+93	qwen_error	missed_exact_product	Same generic stencil “Узор”, 16x24 cm, plastic.
+94	text_insufficient	generic_card	Generic 16-page coloring book versus specific Blue Tractor artwork.
+95	text_insufficient	generic_card	Generic experiment kit versus specific Evriki apple hand-gum kit.
+96	label_conflict	hard_variant_conflict	Four small wooden puzzles versus one 30-piece 25x25 puzzle.
+97	label_conflict	hard_variant_conflict	Hoco X13 black USB-C cable versus unidentified multicolor cable.
+98	policy_ambiguous	compatibility_scope	Same MyPads Forever Young design but OnePlus Nord N300 versus ZTE Kis2 Max compatibility.
+99	policy_ambiguous	compatibility_scope	Same MyPads Forever Young design but Oppo A55s versus ZTE Kis2 Max compatibility.
+100	qwen_error	parent_article_parse	Shared Lazurit 8257 parent, size/weight/design and pink crystal; variant suffixes obscure the parent match.
+101	label_conflict	exact_duplicate_negative	Same Eltrans rust converter, 500 ml; second card only adds EL-0702.08.
+102	label_conflict	exact_duplicate_negative	Exact Renault Clio 2016-2019 steering-wheel cover title/specification.
+103	qwen_error	condition_missed	First tire is explicitly used (БУ), second is a regular/new offer.
+104	policy_ambiguous	compatibility_scope	Same Bosch H301/300 mm blade but different listed cars and 3397004629-2 suffix.
+105	label_conflict	exact_duplicate_negative	Same normalized Lada 2170 right hood-hinge part number.
+106	qwen_error	bundle_conflict_missed	Exact glasses/model/optics, but explicit case included versus without case.
+107	text_insufficient	hidden_variant	Same Komf-Ort K-901; second card omits size, so negative target is not text-resolvable.
+108	label_conflict	exact_duplicate_negative	Same Grass Arena polishing floor cleaner, 1 L.
+109	qwen_error	generic_overmatch	Generic calcined soda 600 g was merged with a specific DBH-branded retail product.
+110	label_conflict	exact_duplicate_negative	Same Акватория Макси-Пул-Комплекс, 500 ml.
+111	label_conflict	exact_duplicate_negative	Same Sanita rust/limescale cleaner, 500 g/ml and matching composition.
+112	label_conflict	exact_duplicate_negative	Same Synergetic Lavender Field conditioner, 1500 ml.
+113	label_conflict	exact_duplicate_negative	Same My Little Pony children’s umbrella, 8 ribs, 70 cm; Denco is seller/private label.
+114	label_conflict	exact_duplicate_negative	Same Krasnikova badge, color21, acrylic, two pieces.
+115	label_conflict	exact_duplicate_negative	Same Marvel/Avengers waist bag, 25x6x13 cm, red.
+116	label_conflict	exact_duplicate_negative	Same Solomon leather watch strap, 14 mm by 20 cm.
+117	label_conflict	exact_duplicate_negative	Same “Космические войны: Осада крепости” 501-piece set; Denco Store is seller noise.
+118	qwen_error	revision_missed	Babalo Future article hints 2023 while second explicitly says 2024 revision.
+119	label_conflict	exact_duplicate_negative	Same Iron Man/Iron Monger set and 497-piece configuration.
+120	label_conflict	exact_duplicate_negative	Same STAMM VK12 three-fan letters/numbers set.
+121	label_conflict	exact_duplicate_negative	Same Kukmara 3.5 L black non-stick cauldron with lid.
+122	label_conflict	exact_duplicate_negative	Same Petrovskaya turnip seeds, 1 g; brand field is seller/private-label noise.
+123	label_conflict	exact_duplicate_negative	Same Palisad Luxe reinforced hose, 3/4 inch by 50 m.
+124	policy_ambiguous	quantity_scope	Wording “6 шт / по 3 уп” versus six packages is genuinely ambiguous.
+125	qwen_error	personalization_missed	Different personalized family names Карасев versus Глуховы despite identical base key holder.
+126	label_conflict	exact_duplicate_negative	Same 80-year red anniversary medal, 70 mm.
+127	qwen_error	bundle_conflict_missed	Same mower model, but second offer explicitly adds PVC gloves.
+128	text_insufficient	hidden_design	First poster has print/article detail; second generic “nature” title omits the exact artwork.
+129	label_conflict	exact_duplicate_negative	Same Marvel Spider-Man school backpack and dimensions.
+130	text_insufficient	hidden_variant	Trodat 9052F purple versus generic 9052 with color omitted.
+131	qwen_error	generic_overmatch	No model/fingerprint beyond Attache, desktop, 12-digit and black; multiple calculators fit.
+132	label_conflict	exact_duplicate_negative	Same 20-count, 33x33 cm Christmas-tree napkins.
+133	label_conflict	exact_duplicate_negative	Same Siberian Health “Корень” balm, 250 ml.
+134	label_conflict	exact_duplicate_negative	Same Dockland Sensitive shaving gel, 200 ml.
+135	qwen_error	hard_variant_missed	“Iриска” versus “Камфора и ирис” names indicate different scented powder variants.
+136	policy_ambiguous	color_scope	Same Alpha right-corner sofa, but yellow/brown versus brown furniture color variant.
+137	qwen_error	hard_variant_missed	No exact model anchor and explicit green versus brown upholstery color.
+138	qwen_error	bundle_conflict_missed	First title adds click-clack waste fitting; second bundle lists only cabinet, basin and mixer.
+139	label_conflict	exact_duplicate_negative	Same Defo Berlin Metall desk, 160x85 cm.
+140	label_conflict	exact_duplicate_negative	Same Herman chair, gray #27, black frame and exact dimensions.
+141	label_conflict	physical_fingerprint_negative	Same three-tier black shoe rack with seat and exact 65x32x48.5 cm fingerprint.
+142	qwen_error	hard_variant_missed	EXL120 BT (balanced-tension variant) is not the ordinary EXL120 9-42 set.
+143	label_conflict	exact_duplicate_negative	Same Foix FEG/F​​EG-KG-21-GREY electric-guitar model.
+144	label_conflict	exact_duplicate_negative	Same Flight DUC525 EQ SP/ZEB concert ukulele and configuration.
+145	text_insufficient	hidden_design	FBG-2009-LIPS versus FBG 2009; the second card omits the design suffix, though its red color may match.
+146	qwen_error	quantity_conflict_missed	EXL110 single six-string set versus EXL110 10P, which denotes a multi-pack variant.
+147	label_conflict	exact_duplicate_negative	Same Olympia CTA1152 11-52 six-string set.
+148	qwen_error	generic_overmatch	Brand, generic product type, color and material are insufficient to identify an exact Music Life capo without a model.
+149	label_conflict	exact_duplicate_negative	Same Ernie Ball 2146 six-string acoustic set.
+150	label_conflict	exact_duplicate_negative	Same La Bella 830 Folksinger string model.
+151	qwen_error	hard_variant_missed	Alice A007M/WH and A007D/WH-A are explicitly different model codes.
+152	text_insufficient	hidden_model	The second Pierre Cardin card omits model 217115; shared size, color and materials do not resolve identity.
+153	text_insufficient	hidden_model	The second generic Converse card omits Chuck Taylor model M7650 despite compatible high-top details.
+154	qwen_error	generic_overmatch	Brand and generic “8 March” theme do not identify the same printed wafer design.
+155	text_insufficient	hidden_variant	The second card omits Maltagliati thin-spaghetti variant 002, so the human distinction is not text-verifiable.
+156	label_conflict	exact_duplicate_negative	Same Russian Appetite grainy mustard, two 190 g units and matching total weight.
+157	label_conflict	exact_duplicate_negative	Same Koska rose lokum, 250 g, with matching composition.
+158	qwen_error	hard_variant_missed	The lure cards expose different color/variant evidence: multicolor versus exact ZZ04 green.
+159	label_conflict	exact_duplicate_negative	Same Onlytop Balsa Floats no. 17 float, including the 6 g detail where present.
+160	qwen_error	hard_variant_missed	Bike Hand YC-26BB-1A and YC-26BB are distinct explicit model identifiers.
+161	qwen_error	hard_variant_missed	Same lure family and weight but explicit color variants 1050 and TS004 differ.
+162	qwen_error	hard_variant_missed	Same pillow model but explicit light-blue versus dark-blue color variants differ.
+163	text_insufficient	hidden_variant	The second Arena Classic Silicone card omits the first card's bright-red variant/article detail.
+164	label_conflict	exact_duplicate_negative	Same Onlytop size-5 PVC football with machine stitching and 32 panels.
+165	qwen_error	generic_overmatch	One-side model 34056-08-25 cannot be established by the other card's generic Zubr 8 m x 25 mm description.
+166	qwen_error	quantity_conflict_missed	Identical socket model but explicit offer quantities differ: six versus five units.
+167	label_conflict	physical_fingerprint_negative	The unnamed second Vitaluce chandelier matches the seven-lamp E14 crystal configuration and exact 108 cm height.
+168	label_conflict	physical_fingerprint_negative	Both cards describe the same VGT 230 g universal pearlescent reflective enamel; AK-1179 is only omitted on one side.
+169	text_insufficient	hidden_design	Generic identical character theme can cover different printed nightlights; power fields also conflict, so text cannot establish identity.
+170	label_conflict	exact_duplicate_negative	Same Dekraft UZO-03 14234DEK, 4P 32A 30mA AC device.
+171	qwen_error	hard_variant_missed	Generic Monge Cat Sterilised with duck was merged with the distinct PFB Monoprotein Sterilised formula.
+172	text_insufficient	hidden_variant	The second 12 L/5 kg Pi-Pi-Bent card omits the first card's “Fresh” scent variant.
+173	qwen_error	hard_variant_missed	Ordinary adult sterilised-cat food was merged with the explicitly senior/elderly formula.
+174	label_conflict	exact_duplicate_negative	Same Pizhon Aqua five-pack of green 10 cm artificial aquarium plants.
+175	label_conflict	exact_duplicate_negative	Same Pushistoe Schastye Neon 30x1 cm mixed-color collar.
+176	label_conflict	exact_duplicate_negative	Same Pizhon 3 m, 15 kg cable retractable leash; the second merely completes the color.
+177	label_conflict	exact_duplicate_negative	Same Purina One Nature of Health chicken cat food, 680 g.
+178	qwen_error	hard_variant_missed	Pumpkin/lamb/blueberry N&D formula was merged with a lamb/blueberry formula whose displayed composition lacks pumpkin.
+179	qwen_error	generic_overmatch	Generic “sun” stencil and 9x9 cm size do not establish the same artwork; stated uses also differ.
+180	text_insufficient	hidden_design	Generic “pattern” stencil and dimensions cannot identify the same drawing without an image/article.
+181	label_conflict	exact_duplicate_negative	Same uniquely worded three-power telescope-and-microscope kit with light effects; Evriki is omitted on one side.
+182	label_conflict	exact_duplicate_negative	Same Las Igras “In Search of Grandfather Frost” board game.
+183	text_insufficient	hidden_variant	Madeira article 9840 identifies the Rayon line/spool while the first card omits the second card's color 1020.
+184	label_conflict	exact_duplicate_negative	Same 16x22 cm plastic “different butterflies” stencil.
+185	label_conflict	exact_duplicate_negative	Same Lesnaya Masterskaya “Feed the Animal” kit with an exact 2+spoon+20 configuration.
+186	label_conflict	exact_duplicate_negative	Same Sphere “Create a Portrait / Stylish Image of Girls” sticker book.
+187	label_conflict	exact_duplicate_negative	Same glow-in-the-dark slime filler set: five colors, 5 g each.
+188	label_conflict	exact_duplicate_negative	Same reusable “Magical New Year” window-sticker design and exact 33x50 cm format.
+189	label_conflict	exact_duplicate_negative	Same Disney Frozen “Magic of Light” dark-drawing set.
+190	qwen_error	brand_conflict_missed	EasyPrint and NV Print are distinct replacement-cartridge manufacturers despite the shared OEM CC364A compatibility code.
+191	qwen_error	hard_variant_missed	Same Hoco Z32 model but explicit black versus gray-metallic color variants differ.
+192	text_insufficient	hidden_variant	The first telescope is explicitly Retractable while the second generic Dob 10 card does not say whether it is retractable or solid-tube.
+193	label_conflict	exact_duplicate_negative	Same Western Digital/HGST Ultrastar DC HC310 drive with exact part 0B36039 and matching 6 TB/256 MB/715 g fingerprint.
+194	qwen_error	condition_conflict_missed	The first Honor 50 is explicitly a used-condition “excellent condition” offer, unlike the ordinary product card.
+195	label_conflict	exact_duplicate_negative	Same white Apple iPhone 15 Pro Max 8/256 GB and matching bundle.
+196	qwen_error	hard_variant_missed	Cactus CS-W2212A and CSP-W2212A expose different product codes and should not be merged solely by printer compatibility.
+197	qwen_error	hard_variant_missed	Kingston KVR16LS11/8WP and KVR16LS11/8 have different explicit manufacturer-code suffixes.
+198	label_conflict	soft_size_negative	Same Platina design/article 01-3392-00-000-1120-11; only the selectable ring size differs.
+199	label_conflict	soft_size_negative	Same Platina design/article 01-2431-00-000-1120-11; only the selectable ring size differs.
+200	label_conflict	soft_size_negative	Same Sokolov design/article 94012743; the exposed difference is ring size.

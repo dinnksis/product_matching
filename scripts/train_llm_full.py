@@ -18,7 +18,7 @@ import shutil
 import sys
 import time
 from contextlib import nullcontext
-from dataclasses import dataclass
+from dataclasses import dataclass, replace
 from datetime import timedelta
 from pathlib import Path
 from typing import Any, Iterator, Sequence
@@ -37,14 +37,18 @@ from src.llm_full_data import (  # noqa: E402
     build_pair_category_cache,
 )
 from src.early_learning_regularization import (  # noqa: E402
+    BinaryElrLoss,
     binary_elr_loss,
+    binary_elr_regularization,
     make_binary_elr_targets,
 )
 from src.minilm_serialization import DEFAULT_VARIANT, VARIANTS  # noqa: E402
+from src.validation_metrics import binary_probability_metrics  # noqa: E402
 from src.pairwise_margin_distillation import (  # noqa: E402
     PairwiseMarginResult,
     pairwise_margin_huber_loss,
 )
+from src.symmetric_pair_regularization import symmetric_pair_loss  # noqa: E402
 
 
 DEFAULT_MODEL = "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1"
@@ -150,6 +154,15 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--elr-beta", type=float, default=0.7)
     parser.add_argument("--elr-lambda", type=float, default=3.0)
     parser.add_argument("--elr-epsilon", type=float, default=1e-4)
+    parser.add_argument(
+        "--symmetry-lambda",
+        type=float,
+        default=0.0,
+        help=(
+            "Weight of mean squared logit difference between f(A,B) and "
+            "f(B,A); enabling it evaluates both orientations during training"
+        ),
+    )
     parser.add_argument(
         "--pairwise-margin-lambda",
         type=float,
@@ -268,6 +281,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("elr-lambda must be non-negative")
     if not 0 < args.elr_epsilon < 0.5:
         raise ValueError("elr-epsilon must be in (0, 0.5)")
+    if args.symmetry_lambda < 0:
+        raise ValueError("symmetry-lambda must be non-negative")
     if args.pairwise_margin_lambda < 0:
         raise ValueError("pairwise-margin-lambda must be non-negative")
     if args.pairwise_margin_temperature <= 0:
@@ -552,6 +567,7 @@ class PairCollator:
     pad_to_multiple_of: int
     padding_side: str = "right"
     tokenizer: Any | None = None
+    symmetric: bool = False
 
     def __call__(self, rows: list[dict[str, Any]]) -> dict[str, Any]:
         import torch
@@ -559,9 +575,8 @@ class PairCollator:
         pair_budget = self.max_length - self.template.special_tokens
         sequences: list[np.ndarray] = []
         token_types: list[np.ndarray] = []
-        for row in rows:
-            first = np.asarray(row["first"], dtype=np.int64)
-            second = np.asarray(row["second"], dtype=np.int64)
+
+        def append_orientation(first: np.ndarray, second: np.ndarray) -> None:
             first_keep, second_keep = balanced_prefix_lengths(
                 len(first), len(second), pair_budget
             )
@@ -589,19 +604,26 @@ class PairCollator:
                     )
                 )
 
+        for row in rows:
+            first = np.asarray(row["first"], dtype=np.int64)
+            second = np.asarray(row["second"], dtype=np.int64)
+            append_orientation(first, second)
+            if self.symmetric:
+                append_orientation(second, first)
+
         maximum = max(map(len, sequences))
         padded_length = min(
             self.max_length,
             math.ceil(maximum / self.pad_to_multiple_of) * self.pad_to_multiple_of,
         )
         input_ids = torch.full(
-            (len(rows), padded_length), self.pad_token_id, dtype=torch.long
+            (len(sequences), padded_length), self.pad_token_id, dtype=torch.long
         )
         attention_mask = torch.zeros(
-            (len(rows), padded_length), dtype=torch.long
+            (len(sequences), padded_length), dtype=torch.long
         )
         token_type_ids = (
-            torch.zeros((len(rows), padded_length), dtype=torch.long)
+            torch.zeros((len(sequences), padded_length), dtype=torch.long)
             if token_types
             else None
         )
@@ -768,6 +790,7 @@ def evaluate_human_validation(
             )
         overall_ap = float(average_precision_score(targets, scores))
         macro_ap = float(np.mean(list(per_category.values())))
+        probability_metrics = binary_probability_metrics(targets, scores)
         predictions = pd.DataFrame(
             {
                 "pair_index": np.arange(len(frame), dtype=np.int64),
@@ -793,6 +816,7 @@ def evaluate_human_validation(
             "positive_rate": float(targets.mean()),
             "macro_average_precision": macro_ap,
             "overall_average_precision": overall_ap,
+            **probability_metrics,
             "per_category_average_precision": per_category,
             "mean_score_order_gap": float(predictions["score_order_gap"].mean()),
             "reached_max_length_rate": float(
@@ -1067,6 +1091,7 @@ def validate_resume_args(args: argparse.Namespace, checkpoint: Path) -> None:
         "elr_beta",
         "elr_lambda",
         "elr_epsilon",
+        "symmetry_lambda",
         "pairwise_margin_lambda",
         "pairwise_margin_temperature",
         "pairwise_margin_huber_delta",
@@ -1088,6 +1113,7 @@ def validate_resume_args(args: argparse.Namespace, checkpoint: Path) -> None:
     )
     saved_defaults = {
         "trust_remote_code": False,
+        "symmetry_lambda": 0.0,
         "pairwise_margin_lambda": 0.0,
         "pairwise_margin_temperature": 1.0,
         "pairwise_margin_huber_delta": 1.0,
@@ -1380,6 +1406,10 @@ def main() -> None:
         padding_side=tokenizer.padding_side,
         tokenizer=tokenizer if template.uses_token_type_ids else None,
     )
+    training_collator = replace(
+        collator,
+        symmetric=args.symmetry_lambda > 0,
+    )
     validation_sampler = SymmetricEvaluationBatchSampler(
         validation_cache.pair_lengths,
         batch_size=args.eval_batch_size,
@@ -1616,6 +1646,14 @@ def main() -> None:
                     * elr_targets.element_size()
                     / 2**20,
                 },
+                "symmetry_regularization": {
+                    "enabled": args.symmetry_lambda > 0,
+                    "lambda": args.symmetry_lambda,
+                    "loss": "mean_squared_logit_gap",
+                    "orientations_per_pair": (
+                        2 if args.symmetry_lambda > 0 else 1
+                    ),
+                },
                 "pairwise_margin_distillation": {
                     "enabled": args.pairwise_margin_lambda > 0,
                     "lambda": args.pairwise_margin_lambda,
@@ -1650,6 +1688,8 @@ def main() -> None:
     interval_margin_pair_count = 0
     interval_teacher_abs_margin_sum = 0.0
     interval_student_abs_margin_sum = 0.0
+    interval_symmetry_loss_sum = 0.0
+    interval_symmetry_abs_logit_gap_sum = 0.0
     interval_batches = 0
     interval_examples = 0
     interval_useful_tokens = 0
@@ -1659,6 +1699,8 @@ def main() -> None:
     completed_elr_regularizer_sum = 0.0
     completed_margin_loss_sum = 0.0
     completed_margin_pair_count = 0
+    completed_symmetry_loss_sum = 0.0
+    completed_symmetry_abs_logit_gap_sum = 0.0
     completed_examples = 0
     run_examples = 0
     last_checkpoint_update = global_update
@@ -1670,7 +1712,7 @@ def main() -> None:
         loader = DataLoader(
             dataset,
             batch_sampler=sampler,
-            collate_fn=collator,
+            collate_fn=training_collator,
             **loader_options(args),
         )
         model.train()
@@ -1710,16 +1752,60 @@ def main() -> None:
             )
             with sync_context:
                 with torch.autocast("cuda", dtype=amp_dtype):
-                    logits = one_logit(model(**model_inputs))
-                    elr = binary_elr_loss(
-                        logits=logits,
-                        labels=targets,
-                        example_indices=pair_indices,
-                        target_history=elr_targets,
-                        beta=args.elr_beta,
-                        regularization_strength=args.elr_lambda,
-                        epsilon=args.elr_epsilon,
-                    )
+                    raw_logits = one_logit(model(**model_inputs))
+                    if args.symmetry_lambda > 0:
+                        expected_logits = batch_examples * 2
+                        if len(raw_logits) != expected_logits:
+                            raise RuntimeError(
+                                "Symmetric training expected two orientations "
+                                f"per pair: {len(raw_logits)} != {expected_logits}"
+                            )
+                        symmetric = symmetric_pair_loss(
+                            directional_logits=raw_logits.reshape(
+                                batch_examples, 2
+                            ),
+                            labels=targets,
+                        )
+                        regularization = binary_elr_regularization(
+                            positive_probabilities=(
+                                symmetric.mean_positive_probability
+                            ),
+                            example_indices=pair_indices,
+                            target_history=elr_targets,
+                            beta=args.elr_beta,
+                            epsilon=args.elr_epsilon,
+                        )
+                        elr = BinaryElrLoss(
+                            total=(
+                                symmetric.supervised
+                                + args.elr_lambda * regularization.regularizer
+                            ),
+                            supervised=symmetric.supervised,
+                            regularizer=regularization.regularizer,
+                            mean_agreement=regularization.mean_agreement,
+                        )
+                        symmetry_loss = symmetric.regularizer
+                        symmetry_abs_logit_gap = symmetric.mean_abs_logit_gap
+                        logits = torch.logit(
+                            symmetric.mean_positive_probability.clamp(
+                                args.elr_epsilon,
+                                1.0 - args.elr_epsilon,
+                            )
+                        )
+                    else:
+                        logits = raw_logits
+                        elr = binary_elr_loss(
+                            logits=logits,
+                            labels=targets,
+                            example_indices=pair_indices,
+                            target_history=elr_targets,
+                            beta=args.elr_beta,
+                            regularization_strength=args.elr_lambda,
+                            epsilon=args.elr_epsilon,
+                        )
+                        symmetry_zero = logits.sum() * 0.0
+                        symmetry_loss = symmetry_zero
+                        symmetry_abs_logit_gap = symmetry_zero.detach()
                     if category_ids is not None:
                         margin = pairwise_margin_huber_loss(
                             student_logits=logits,
@@ -1741,7 +1827,9 @@ def main() -> None:
                             mean_student_abs_margin=zero.detach(),
                         )
                     combined_loss = (
-                        elr.total + args.pairwise_margin_lambda * margin.loss
+                        elr.total
+                        + args.symmetry_lambda * symmetry_loss
+                        + args.pairwise_margin_lambda * margin.loss
                     )
                     # DDP averages rank gradients. This scale recovers the exact
                     # global-example mean even for uneven final local batches and
@@ -1780,6 +1868,8 @@ def main() -> None:
             margin_pair_count = int(margin.pair_count)
             teacher_abs_margin_value = float(margin.mean_teacher_abs_margin)
             student_abs_margin_value = float(margin.mean_student_abs_margin)
+            symmetry_loss_value = float(symmetry_loss.detach())
+            symmetry_abs_logit_gap_value = float(symmetry_abs_logit_gap.detach())
             interval_loss_sum += loss_value * batch_examples
             interval_supervised_loss_sum += supervised_loss_value * batch_examples
             interval_elr_regularizer_sum += elr_regularizer_value * batch_examples
@@ -1792,12 +1882,20 @@ def main() -> None:
             interval_student_abs_margin_sum += (
                 student_abs_margin_value * margin_pair_count
             )
+            interval_symmetry_loss_sum += symmetry_loss_value * batch_examples
+            interval_symmetry_abs_logit_gap_sum += (
+                symmetry_abs_logit_gap_value * batch_examples
+            )
             interval_batches += 1
             completed_loss_sum += loss_value * batch_examples
             completed_supervised_loss_sum += supervised_loss_value * batch_examples
             completed_elr_regularizer_sum += elr_regularizer_value * batch_examples
             completed_margin_loss_sum += margin_loss_value * batch_examples
             completed_margin_pair_count += margin_pair_count
+            completed_symmetry_loss_sum += symmetry_loss_value * batch_examples
+            completed_symmetry_abs_logit_gap_sum += (
+                symmetry_abs_logit_gap_value * batch_examples
+            )
             completed_examples += batch_examples
 
             if (
@@ -1819,6 +1917,8 @@ def main() -> None:
                         interval_examples,
                         interval_useful_tokens,
                         interval_padded_tokens,
+                        interval_symmetry_loss_sum,
+                        interval_symmetry_abs_logit_gap_sum,
                     ],
                     dtype=torch.float64,
                     device=device,
@@ -1862,6 +1962,12 @@ def main() -> None:
                             / max(1.0, reduced_margin_pairs),
                             "student_mean_abs_margin": float(statistics[7].item())
                             / max(1.0, reduced_margin_pairs),
+                            "symmetry_loss": float(statistics[11].item())
+                            / reduced_examples,
+                            "symmetry_mean_abs_logit_gap": float(
+                                statistics[12].item()
+                            )
+                            / reduced_examples,
                             "examples_per_second": reduced_examples / elapsed,
                             "padding_efficiency": float(statistics[9].item())
                             / float(statistics[10].item()),
@@ -1882,6 +1988,8 @@ def main() -> None:
                 interval_margin_pair_count = 0
                 interval_teacher_abs_margin_sum = 0.0
                 interval_student_abs_margin_sum = 0.0
+                interval_symmetry_loss_sum = 0.0
+                interval_symmetry_abs_logit_gap_sum = 0.0
                 interval_batches = 0
                 interval_examples = 0
                 interval_useful_tokens = 0
@@ -2026,6 +2134,8 @@ def main() -> None:
             completed_margin_loss_sum,
             completed_margin_pair_count,
             completed_examples,
+            completed_symmetry_loss_sum,
+            completed_symmetry_abs_logit_gap_sum,
         ],
         dtype=torch.float64,
         device=device,
@@ -2083,6 +2193,12 @@ def main() -> None:
                 "lambda": args.elr_lambda,
                 "epsilon": args.elr_epsilon,
             },
+            "symmetry_regularization": {
+                "enabled": args.symmetry_lambda > 0,
+                "lambda": args.symmetry_lambda,
+                "loss": "mean_squared_logit_gap",
+                "orientations_per_pair": 2 if args.symmetry_lambda > 0 else 1,
+            },
             "pairwise_margin_distillation": {
                 "enabled": args.pairwise_margin_lambda > 0,
                 "lambda": args.pairwise_margin_lambda,
@@ -2111,6 +2227,10 @@ def main() -> None:
             / max(1.0, reduced_examples),
             "pairwise_margin_pairs": int(reduced_margin_pairs),
             "pairwise_margin_pairs_per_example": reduced_margin_pairs
+            / max(1.0, reduced_examples),
+            "mean_symmetry_loss": float(completed[6].item())
+            / max(1.0, reduced_examples),
+            "mean_symmetry_abs_logit_gap": float(completed[7].item())
             / max(1.0, reduced_examples),
             "validation_history": validation_history,
             "best_validation_split": args.best_validation_split,
