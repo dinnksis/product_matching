@@ -14,6 +14,7 @@ import random
 import sys
 import time
 from contextlib import nullcontext
+from dataclasses import dataclass
 from pathlib import Path
 from typing import Any
 
@@ -32,6 +33,7 @@ from transformers import AutoModelForCausalLM, AutoTokenizer, get_cosine_schedul
 sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
 
 from src.data_pipeline import attach_item_fields
+from src.experiment_protocol import validation_split_paths
 from src.qwen_reranker import preferred_cuda_dtype
 from src.qwen_training import (
     FixedLengthBatchSampler,
@@ -42,6 +44,7 @@ from src.qwen_training import (
     balanced_sampling_weights,
     build_token_cache,
 )
+from src.validation_metrics import binary_probability_metrics
 
 
 def parse_args() -> argparse.Namespace:
@@ -50,6 +53,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--prepared-dir", type=Path, default=Path("prepared/human"))
     parser.add_argument("--output-dir", type=Path, default=Path("model/qwen_products_lora"))
     parser.add_argument("--token-cache-dir", type=Path)
+    parser.add_argument(
+        "--validation-split",
+        action="append",
+        default=[],
+        metavar="NAME=PATH",
+        help=(
+            "Named validation pair file; repeat for IID, hard and OOD. Relative "
+            "paths are resolved below --prepared-dir. Defaults to iid=val_pairs.parquet."
+        ),
+    )
     parser.add_argument("--hard-negatives", type=Path)
     parser.add_argument("--hard-negative-weight", type=float, default=2.0)
     parser.add_argument("--epochs", type=int, default=2)
@@ -86,6 +99,7 @@ def parse_args() -> argparse.Namespace:
         default=True,
     )
     parser.add_argument("--log-every", type=int, default=50)
+    parser.add_argument("--max-grad-norm", type=float, default=1.0)
     parser.add_argument("--seed", type=int, default=42)
     return parser.parse_args()
 
@@ -101,6 +115,7 @@ def validate_args(args: argparse.Namespace) -> None:
         "bucket-size-multiplier": args.bucket_size_multiplier,
         "prefetch-factor": args.prefetch_factor,
         "log-every": args.log_every,
+        "max-grad-norm": args.max_grad_norm,
     }
     invalid = [name for name, value in positive.items() if value <= 0]
     if invalid:
@@ -181,16 +196,16 @@ def loader_options(args: argparse.Namespace, *, persistent: bool) -> dict[str, A
 
 def create_caches(
     train: pd.DataFrame,
-    validation: pd.DataFrame,
+    validations: dict[str, pd.DataFrame],
     tokenizer: Any,
     args: argparse.Namespace,
     is_main: bool,
     distributed: bool,
-) -> tuple[TokenCache, TokenCache]:
+) -> tuple[TokenCache, dict[str, TokenCache]]:
     cache_root = args.token_cache_dir or (
         Path("artifacts/token_cache") / args.output_dir.name
     )
-    paths: list[str] | None = None
+    payload: dict[str, Any] | None = None
     if is_main:
         train_cache = build_token_cache(
             train,
@@ -201,23 +216,41 @@ def create_caches(
             args.max_length,
             args.tokenization_batch_size,
         )
-        validation_cache = build_token_cache(
-            validation,
-            tokenizer,
-            cache_root,
-            "validation",
-            args.model,
-            args.max_length,
-            args.tokenization_batch_size,
-        )
-        paths = [str(train_cache.directory), str(validation_cache.directory)]
+        validation_caches = {
+            name: build_token_cache(
+                validation,
+                tokenizer,
+                cache_root,
+                f"validation_{name}",
+                args.model,
+                args.max_length,
+                args.tokenization_batch_size,
+            )
+            for name, validation in validations.items()
+        }
+        payload = {
+            "train_path": str(train_cache.directory),
+            "validation_paths": {
+                name: str(cache.directory)
+                for name, cache in validation_caches.items()
+            },
+        }
     if distributed:
-        message: list[Any] = [paths]
+        message: list[Any] = [payload]
         dist.broadcast_object_list(message, src=0)
-        paths = message[0]
-    if paths is None:
+        payload = message[0]
+    if payload is None:
         raise RuntimeError("Token cache paths were not initialized")
-    return TokenCache.load(Path(paths[0])), TokenCache.load(Path(paths[1]))
+    train_path = payload.get("train_path")
+    validation_paths = payload.get("validation_paths")
+    if not isinstance(train_path, str) or not isinstance(validation_paths, dict):
+        raise RuntimeError(f"Invalid token cache payload: {payload}")
+    if set(validation_paths) != set(validations):
+        raise RuntimeError(f"Validation token cache payload differs: {payload}")
+    return TokenCache.load(Path(train_path)), {
+        name: TokenCache.load(Path(validation_paths[name]))
+        for name in validations
+    }
 
 
 class BinaryReranker(torch.nn.Module):
@@ -251,6 +284,20 @@ class BinaryReranker(torch.nn.Module):
         return F.linear(hidden, class_weights)
 
 
+@dataclass(frozen=True)
+class ValidationResult:
+    macro_average_precision: float
+    overall_average_precision: float
+    recall_at_precision_0_99: float
+    threshold_at_precision_0_99: float | None
+    roc_auc: float
+    log_loss: float
+    per_category_average_precision: dict[str, float]
+    scores: np.ndarray
+    scores_ab: np.ndarray
+    scores_ba: np.ndarray
+
+
 def evaluate(
     model: torch.nn.Module,
     loader: DataLoader,
@@ -259,14 +306,13 @@ def evaluate(
     device: torch.device,
     distributed: bool,
     world_size: int,
-) -> tuple[float, dict[str, float]] | None:
+) -> ValidationResult | None:
     model.eval()
-    sums: dict[int, float] = {}
-    counts: dict[int, int] = {}
+    local: list[tuple[int, bool, float]] = []
     with torch.inference_mode():
         for packed in loader:
             pair_indices = packed.pop("pair_indices").tolist()
-            packed.pop("orientations")
+            orientations = packed.pop("orientations").tolist()
             packed.pop("targets")
             packed.pop("sample_weights")
             batch = {
@@ -274,11 +320,12 @@ def evaluate(
                 for key, value in packed.items()
             }
             probabilities = model(**batch).float().softmax(1)[:, 1]
-            for index, probability in zip(pair_indices, probabilities.cpu().tolist()):
-                sums[index] = sums.get(index, 0.0) + probability
-                counts[index] = counts.get(index, 0) + 1
-
-    local = [(index, sums[index] / counts[index]) for index in sums]
+            local.extend(
+                (int(index), bool(reverse), float(probability))
+                for index, reverse, probability in zip(
+                    pair_indices, orientations, probabilities.cpu().tolist()
+                )
+            )
     gathered: list[Any]
     if distributed:
         gathered = [None] * world_size
@@ -288,19 +335,87 @@ def evaluate(
     if distributed and dist.get_rank() != 0:
         return None
 
-    scores = np.full(len(targets), np.nan, dtype=np.float32)
+    scores_ab = np.full(len(targets), np.nan, dtype=np.float32)
+    scores_ba = np.full(len(targets), np.nan, dtype=np.float32)
     for part in gathered:
-        for index, score in part:
-            scores[index] = score
-    if not np.isfinite(scores).all():
-        missing = int((~np.isfinite(scores)).sum())
-        raise RuntimeError(f"Validation produced {missing} missing/non-finite scores")
+        for index, reverse, score in part:
+            destination = scores_ba if reverse else scores_ab
+            if np.isfinite(destination[index]):
+                raise RuntimeError(
+                    f"Validation produced a duplicate score for pair {index}, "
+                    f"reverse={reverse}"
+                )
+            destination[index] = score
+    if not np.isfinite(scores_ab).all():
+        missing = int((~np.isfinite(scores_ab)).sum())
+        raise RuntimeError(f"Validation produced {missing} missing A/B scores")
+    has_reverse_scores = bool(np.isfinite(scores_ba).any())
+    if has_reverse_scores and not np.isfinite(scores_ba).all():
+        missing = int((~np.isfinite(scores_ba)).sum())
+        raise RuntimeError(f"Validation produced {missing} missing B/A scores")
+    scores = (
+        (scores_ab + scores_ba) / 2.0
+        if has_reverse_scores
+        else scores_ab.copy()
+    )
     frame = pd.DataFrame({"target": targets, "predict": scores, "category": categories})
     per_category = frame.groupby("category").apply(
         lambda group: average_precision_score(group["target"], group["predict"]),
         include_groups=False,
     )
-    return float(per_category.mean()), {str(k): float(v) for k, v in per_category.items()}
+    probability_metrics = binary_probability_metrics(targets, scores)
+    return ValidationResult(
+        macro_average_precision=float(per_category.mean()),
+        overall_average_precision=float(average_precision_score(targets, scores)),
+        recall_at_precision_0_99=probability_metrics[
+            "recall_at_precision_0_99"
+        ],
+        threshold_at_precision_0_99=probability_metrics[
+            "threshold_at_precision_0_99"
+        ],
+        roc_auc=probability_metrics["roc_auc"],
+        log_loss=probability_metrics["log_loss"],
+        per_category_average_precision={
+            str(key): float(value) for key, value in per_category.items()
+        },
+        scores=scores,
+        scores_ab=scores_ab,
+        scores_ba=scores_ba,
+    )
+
+
+def build_validation_predictions(
+    validation: pd.DataFrame,
+    cache: TokenCache,
+    result: ValidationResult,
+    max_length: int,
+) -> pd.DataFrame:
+    columns = [
+        "id1",
+        "id2",
+        "target",
+        "category_1",
+        "category_2",
+        "product_text_1",
+        "product_text_2",
+    ]
+    if missing := [column for column in columns if column not in validation]:
+        raise ValueError(f"Validation metadata is missing columns: {missing}")
+    predictions = validation[columns].reset_index(drop=True).copy()
+    predictions.insert(0, "pair_index", np.arange(len(predictions), dtype=np.int64))
+    predictions["score"] = result.scores
+    predictions["score_ab"] = result.scores_ab
+    predictions["score_ba"] = result.scores_ba
+    predictions["score_order_gap"] = np.abs(result.scores_ab - result.scores_ba)
+    predictions["token_length_ab"] = cache.forward_lengths.astype(np.int32)
+    predictions["token_length_ba"] = cache.reverse_lengths.astype(np.int32)
+    predictions["reached_max_length_ab"] = (
+        predictions["token_length_ab"] >= max_length
+    )
+    predictions["reached_max_length_ba"] = (
+        predictions["token_length_ba"] >= max_length
+    )
+    return predictions
 
 
 def main() -> None:
@@ -332,7 +447,14 @@ def main() -> None:
 
     items_path = args.prepared_dir / "items.parquet"
     train_path = args.prepared_dir / "train_pairs.parquet"
-    validation_path = args.prepared_dir / "val_pairs.parquet"
+    validation_paths = validation_split_paths(
+        args.prepared_dir,
+        args.validation_split,
+    )
+    if missing_files := [str(path) for path in validation_paths.values() if not path.is_file()]:
+        raise FileNotFoundError(
+            f"Validation pair files do not exist: {missing_files}"
+        )
     items = pd.read_parquet(items_path)
     required_item_columns = {"id", "product_text", "category"}
     if missing := required_item_columns - set(items.columns):
@@ -341,42 +463,69 @@ def main() -> None:
         )
     items = items[["id", "product_text", "category"]]
     train_pairs = pd.read_parquet(train_path)
-    validation_pairs = pd.read_parquet(validation_path)
+    original_train_pairs = len(train_pairs)
+    validation_pairs = {
+        name: pd.read_parquet(path) for name, path in validation_paths.items()
+    }
+    all_validation_pairs = pd.concat(
+        [frame[["id1", "id2"]] for frame in validation_pairs.values()],
+        ignore_index=True,
+    )
     train_pairs = add_hard_negatives(
-        train_pairs, validation_pairs, args.hard_negatives, args.hard_negative_weight
+        train_pairs,
+        all_validation_pairs,
+        args.hard_negatives,
+        args.hard_negative_weight,
     )
     train = attach_item_fields(train_pairs, items, fields=("product_text", "category"))
-    validation = attach_item_fields(
-        validation_pairs, items, fields=("product_text", "category")
-    )
+    validations = {
+        name: attach_item_fields(
+            pairs, items, fields=("product_text", "category")
+        )
+        for name, pairs in validation_pairs.items()
+    }
     if (train["category_1"] != train["category_2"]).any():
         raise ValueError("Training contains cross-category pairs")
     if not train["target"].between(0, 1).all():
         raise ValueError("Training targets must be probabilities in [0, 1]")
-    if not validation["target"].isin([0.0, 1.0]).all():
-        raise ValueError("Validation targets must be binary for average precision")
+    for name, validation in validations.items():
+        if (validation["category_1"] != validation["category_2"]).any():
+            raise ValueError(f"Validation split {name!r} contains cross-category pairs")
+        if not validation["target"].isin([0.0, 1.0]).all():
+            raise ValueError(
+                f"Validation split {name!r} targets must be binary for average precision"
+            )
 
     tokenizer = AutoTokenizer.from_pretrained(args.model, padding_side="left")
     if tokenizer.pad_token_id is None:
         tokenizer.pad_token = tokenizer.eos_token
-    train_cache, validation_cache = create_caches(
-        train, validation, tokenizer, args, is_main, distributed
+    train_cache, validation_caches = create_caches(
+        train, validations, tokenizer, args, is_main, distributed
     )
     # The fast tokenizer has already finished its internally parallel work.
     # Disable its fork warning before DataLoader worker processes are created.
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     train_targets = train["target"].to_numpy(dtype=np.float32)
-    validation_targets = validation["target"].to_numpy(dtype=np.float32)
     train_categories = train["category_1"].astype(str).tolist()
-    validation_categories = validation["category_1"].astype(str).tolist()
+    validation_targets = {
+        name: validation["target"].to_numpy(dtype=np.float32)
+        for name, validation in validations.items()
+    }
+    validation_categories = {
+        name: validation["category_1"].astype(str).tolist()
+        for name, validation in validations.items()
+    }
     sample_weights = train["sample_weight"].to_numpy(dtype=np.float32)
     hard_negative_count = int(train["is_hard_negative"].sum())
     sampling_weights = balanced_sampling_weights(
         train_categories, train_targets, args.sampling
     )
     train_dataset = PackedPairDataset(train_cache, train_targets, sample_weights)
-    validation_dataset = PackedPairDataset(validation_cache, validation_targets)
+    validation_datasets = {
+        name: PackedPairDataset(validation_caches[name], validation_targets[name])
+        for name in validations
+    }
     train_sampler = LengthBucketBatchSampler(
         train_cache.forward_lengths,
         train_cache.reverse_lengths,
@@ -387,13 +536,15 @@ def main() -> None:
         bucket_size_multiplier=args.bucket_size_multiplier,
         seed=args.seed,
     )
-    validation_indices = np.arange(rank, len(validation_dataset), world_size)
-    validation_sampler = FixedLengthBatchSampler(
-        validation_cache,
-        validation_indices,
-        args.eval_batch_size,
-        both_orientations=args.symmetric_validation,
-    )
+    validation_samplers = {
+        name: FixedLengthBatchSampler(
+            validation_caches[name],
+            np.arange(rank, len(validation_datasets[name]), world_size),
+            args.eval_batch_size,
+            both_orientations=args.symmetric_validation,
+        )
+        for name in validations
+    }
     collator = PackedBatchCollator(tokenizer.pad_token_id)
     train_loader = DataLoader(
         train_dataset,
@@ -401,13 +552,16 @@ def main() -> None:
         collate_fn=collator,
         **loader_options(args, persistent=True),
     )
-    validation_loader = DataLoader(
-        validation_dataset,
-        batch_sampler=validation_sampler,
-        collate_fn=collator,
-        **loader_options(args, persistent=False),
-    )
-    del train, validation, items
+    validation_loaders = {
+        name: DataLoader(
+            validation_datasets[name],
+            batch_sampler=validation_samplers[name],
+            collate_fn=collator,
+            **loader_options(args, persistent=False),
+        )
+        for name in validations
+    }
+    del train, items, all_validation_pairs, validation_pairs
 
     model_dtype = preferred_cuda_dtype()
     parameter_dtype = torch.float32 if args.training_mode == "full" else model_dtype
@@ -447,7 +601,11 @@ def main() -> None:
                     "dtype": str(model_dtype),
                     "training_mode": args.training_mode,
                     "train_pairs": len(train_dataset),
-                    "validation_pairs": len(validation_dataset),
+                    "original_train_pairs": original_train_pairs,
+                    "validation_pairs": {
+                        name: len(dataset)
+                        for name, dataset in validation_datasets.items()
+                    },
                     "hard_negative_pairs": hard_negative_count,
                     "per_device_batch": args.batch_size,
                     "effective_batch": args.batch_size
@@ -550,7 +708,9 @@ def main() -> None:
 
             if should_update:
                 scaler.unscale_(optimizer)
-                torch.nn.utils.clip_grad_norm_(trainable_parameters, 1.0)
+                torch.nn.utils.clip_grad_norm_(
+                    trainable_parameters, args.max_grad_norm
+                )
                 scaler.step(optimizer)
                 scaler.update()
                 scheduler.step()
@@ -616,15 +776,27 @@ def main() -> None:
     inference_model = training_model.module if distributed else training_model
     torch.cuda.synchronize(device)
     validation_started = time.perf_counter()
-    validation_result = evaluate(
-        inference_model,
-        validation_loader,
-        validation_targets,
-        validation_categories,
-        device,
-        distributed,
-        world_size,
-    )
+    validation_results: dict[str, ValidationResult] = {}
+    validation_seconds_by_split: dict[str, float] = {}
+    for name, validation_loader in validation_loaders.items():
+        split_started = time.perf_counter()
+        validation_result = evaluate(
+            inference_model,
+            validation_loader,
+            validation_targets[name],
+            validation_categories[name],
+            device,
+            distributed,
+            world_size,
+        )
+        torch.cuda.synchronize(device)
+        validation_seconds_by_split[name] = time.perf_counter() - split_started
+        if is_main:
+            if validation_result is None:
+                raise RuntimeError(
+                    f"Main rank did not receive metrics for validation split {name!r}"
+                )
+            validation_results[name] = validation_result
     if distributed:
         dist.barrier()
     torch.cuda.synchronize(device)
@@ -644,25 +816,77 @@ def main() -> None:
         peak_memory_by_rank = [float(peak_memory.item())]
 
     if is_main:
-        if validation_result is None:
-            raise RuntimeError("Main rank did not receive validation metrics")
-        macro_ap, per_category = validation_result
+        validation_reports: dict[str, dict[str, Any]] = {}
+        validation_predictions: dict[str, pd.DataFrame] = {}
+        for name, validation in validations.items():
+            result = validation_results[name]
+            predictions = build_validation_predictions(
+                validation,
+                validation_caches[name],
+                result,
+                args.max_length,
+            )
+            predictions_filename = f"{name}_validation_predictions.parquet"
+            order_gap = predictions["score_order_gap"]
+            validation_predictions[name] = predictions
+            validation_reports[name] = {
+                "examples": len(predictions),
+                "positive_examples": int(validation_targets[name].sum()),
+                "positive_rate": float(validation_targets[name].mean()),
+                "macro_average_precision": result.macro_average_precision,
+                "overall_average_precision": result.overall_average_precision,
+                "recall_at_precision_0_99": result.recall_at_precision_0_99,
+                "threshold_at_precision_0_99": (
+                    result.threshold_at_precision_0_99
+                ),
+                "roc_auc": result.roc_auc,
+                "log_loss": result.log_loss,
+                "per_category_average_precision": (
+                    result.per_category_average_precision
+                ),
+                "predictions_file": predictions_filename,
+                "mean_score_order_gap": (
+                    float(order_gap.mean()) if order_gap.notna().any() else None
+                ),
+            }
+        primary_name = (
+            "iid" if "iid" in validation_reports else next(iter(validation_reports))
+        )
+        primary = validation_reports[primary_name]
         report = {
             "training_seconds": float(elapsed.item()),
             "validation_seconds": validation_seconds,
+            "validation_seconds_by_split": validation_seconds_by_split,
             "total_pipeline_seconds": time.perf_counter() - pipeline_started,
             "training_examples": int(totals[0].item()),
+            "original_training_examples": original_train_pairs,
             "hard_negative_pairs": hard_negative_count,
+            "primary_validation_split": primary_name,
+            "validation_splits": validation_reports,
+            "validation_examples": primary["examples"],
+            "validation_positive_examples": primary["positive_examples"],
+            "validation_positive_rate": primary["positive_rate"],
             "examples_per_second": float(totals[0].item() / elapsed.item()),
             "padding_efficiency": float(totals[1].item() / totals[2].item()),
             "peak_vram_gib_by_rank": peak_memory_by_rank,
-            "macro_average_precision": macro_ap,
-            "per_category_average_precision": per_category,
+            "macro_average_precision": primary["macro_average_precision"],
+            "overall_average_precision": primary["overall_average_precision"],
+            "per_category_average_precision": primary[
+                "per_category_average_precision"
+            ],
+            "validation_predictions_file": primary["predictions_file"],
+            "mean_score_order_gap": primary["mean_score_order_gap"],
             "args": vars(args),
         }
         args.output_dir.mkdir(parents=True, exist_ok=True)
         inference_model.causal_model.save_pretrained(args.output_dir)
         tokenizer.save_pretrained(args.output_dir)
+        for name, predictions in validation_predictions.items():
+            predictions.to_parquet(
+                args.output_dir / validation_reports[name]["predictions_file"],
+                index=False,
+                compression="zstd",
+            )
         (args.output_dir / "training_report.json").write_text(
             json.dumps(report, default=str, ensure_ascii=False, indent=2),
             encoding="utf-8",

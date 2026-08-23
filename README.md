@@ -70,6 +70,11 @@ Parquet-файлы игнорируются Git. Подробнее — в [data
 - [notebooks/01_human_data_eda.ipynb](notebooks/01_human_data_eda.ipynb) —
   выполненный notebook с кодом и выводами;
 - [reports/human_data_eda.html](reports/human_data_eda.html) — статический отчёт;
+- [docs/inferred-human-matching-guidelines.md](docs/inferred-human-matching-guidelines.md) —
+  восстановленная по 2000 ручным примерам инструкция о границе `target=1/0`;
+- [docs/llm-label-quality-audit.md](docs/llm-label-quality-audit.md) — ручной
+  аудит 2000 LLM-пар, оценка шума по confidence/category и рекомендации по
+  использованию weak labels;
 - `reports/category_summary.csv`, `reports/univariate_feature_scores.csv`,
   `reports/light_baseline_by_category.csv` — таблицы для следующих экспериментов;
 - `reports/eda_summary.json` — компактная сводка основных метрик.
@@ -170,6 +175,32 @@ make kaggle-cross-run
 Последующие изменения только гиперпараметров не требуют новой версии Dataset —
 достаточно изменить JSON и повторить последние две команды. Полная инструкция:
 [`docs/cross-encoder-training.md`](docs/cross-encoder-training.md).
+
+Для full fine-tuning на всех 10,04 млн non-OOD LLM-парах на одной серверной
+H100 добавлен отдельный потоковый trainer. Он сохраняет все дробные soft labels,
+использует `S1_KEY_VALUE` serialization из MiniLM ablation, обучается с длиной
+до 512 токенов, применяет ELR против запоминания noisy labels, валидируется после
+каждой из 10 эпох на IID/hard/OOD, не материализует 10 млн пар текстов в pandas
+и поддерживает полный checkpoint/resume:
+[`docs/llm-full-server-training.md`](docs/llm-full-server-training.md).
+
+Завершённые Kaggle training runs автоматически журналируются в Google Sheets:
+компактная строка с IID/hard/OOD macro AP, Hard R@P99, Hard ROC-AUC и OOD
+LogLoss попадает в `experiments_v2`. Родственные запуски дополнительно можно
+направить в `pretrain_exps`, `sft_exps` или `data_exps`, где сохраняются paired
+p-value, Holm correction и 95% CI. Отдельный private credential Dataset
+автоматически подключается даже к новым notebook slug; настройка описана в
+[`docs/kaggle-notebook.md`](docs/kaggle-notebook.md#автоматический-журнал-экспериментов-в-google-sheets).
+
+Для командных MiniLM 5ep data/loss-абляций готов locked notebook с явным выбором
+тематического листа и автоматическим сравнением с общим frozen baseline:
+[`notebooks/minilm_5ep_team_ablation/`](notebooks/minilm_5ep_team_ablation/README.md).
+
+Отдельный эксперимент с `mixedbread-ai/mxbai-rerank-xsmall-v1` физически
+выравнивает все категории и классы, сохраняя весь human train и дополняя его
+только наиболее уверенными LLM-метками. Подробности подготовки, sample weights
+и отдельного Kaggle payload описаны в
+[`docs/mxbai-balanced-training.md`](docs/mxbai-balanced-training.md).
 
 ## Удалённый запуск notebook на Kaggle (2×T4)
 

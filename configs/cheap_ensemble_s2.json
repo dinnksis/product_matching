@@ -1,0 +1,27 @@
+{
+  "experiment": "minilm_s2_cheap_ensemble",
+  "transformer_checkpoint": "serialization_ablation_S2_VALUES_ONLY",
+  "transformer_score_column": "score",
+  "human_only": true,
+  "meta_oof_folds": 5,
+  "seed": 42,
+  "char_tfidf": {
+    "n_features": 65536,
+    "ngram_min": 3,
+    "ngram_max": 5,
+    "batch_size": 10000
+  },
+  "logistic_regression": {
+    "C": 1.0,
+    "max_iter": 2000
+  },
+  "catboost": {
+    "iterations": 600,
+    "depth": 6,
+    "learning_rate": 0.04,
+    "l2_leaf_reg": 5.0,
+    "random_strength": 0.5,
+    "loss_function": "Logloss",
+    "thread_count": 20
+  }
+}

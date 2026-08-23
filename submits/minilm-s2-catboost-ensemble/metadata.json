@@ -1,0 +1,4 @@
+{
+  "image": "dinakepech/ecup26-minilm-s2-ensemble:1.0",
+  "entry_point": "python -u run.py"
+}

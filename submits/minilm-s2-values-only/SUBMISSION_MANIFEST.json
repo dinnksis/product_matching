@@ -1,0 +1,54 @@
+{
+  "experiment": "minilm_serialization_ablation_s2_values_only",
+  "training_data": "120000 human-labelled screening pairs",
+  "validation_macro_average_precision": 0.6901528206662118,
+  "base_model": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+  "base_model_revision": "1427fd652930e4ba29e8149678df786c240d8825",
+  "docker_image": "dinakepech/ecup26-minilm-s2:1.0",
+  "files": {
+    "attribute_name_frequency.csv": {
+      "size": 1781499,
+      "sha256": "48a3846f39c68f035ea247096c9b3c5c47242a3f5c978117c2601dd0fa5f8486"
+    },
+    "metadata.json": {
+      "size": 86,
+      "sha256": "e744f862b3aef7d37d9369547cc731da22e4b33afc2a6fb944beb94e21da488d"
+    },
+    "models/minilm-s2-values-only/config.json": {
+      "size": 809,
+      "sha256": "773bb79a85adaacc7c15b3fb1c5f78246a2167e81df4aa593933c8c8dc096005"
+    },
+    "models/minilm-s2-values-only/model.safetensors": {
+      "size": 470588492,
+      "sha256": "7109c0c8eb181d4325eee44c04a04b1d468018fa36773408ef429863635ed750"
+    },
+    "models/minilm-s2-values-only/special_tokens_map.json": {
+      "size": 964,
+      "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+    },
+    "models/minilm-s2-values-only/tokenizer.json": {
+      "size": 17082832,
+      "sha256": "d0091a328b3441d754e481db5a390d7f3b8dabc6016869fd13ba350d23ddc4cd"
+    },
+    "models/minilm-s2-values-only/tokenizer_config.json": {
+      "size": 1178,
+      "sha256": "ccf223ba3d5b3cc7fa6c3bf451f3bb40557a5c92b0aa33f63d17802ff1a96fd9"
+    },
+    "README.md": {
+      "size": 1705,
+      "sha256": "2229c24c248e2c3b6d2bc8b59a4ca1f9b4179cb79c9b18eac543639ed40fd4e9"
+    },
+    "run.py": {
+      "size": 11507,
+      "sha256": "a6d99c4bc63ef2eb993ed531541d11cd5ba3b47504a857a0df56b036abd458f4"
+    },
+    "serialization_ablation.py": {
+      "size": 17773,
+      "sha256": "f3f94d181cb6c4482da18539bad17bba233e4fc75f730aef8b2713f665e1359b"
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "size": 488,
+      "sha256": "7c1c8234506e442a1f0c6b13e669fd8674e12c93d5e3535101d03ed72d851cb0"
+    }
+  }
+}

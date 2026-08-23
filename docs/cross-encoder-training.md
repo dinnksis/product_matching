@@ -12,6 +12,34 @@ ranking logit. Модель обучается целиком через `BCEWit
 `configs/cross_encoder_minilm.json`. Training script также принимает каждый из
 них как CLI-флаг; CLI имеет приоритет над JSON.
 
+Baseline остаётся неизменным в `configs/cross_encoder_minilm.json`. Рецепт
+второго эксперимента находится в `configs/cross_encoder_minilm_v2.json`:
+
+- все train-пары проходят ровно один раз вместо sampling с возвращением;
+- `category_label_sqrt` задаёт мягкие loss-веса классов по категориям;
+- похожие по символьным 3–5-граммам negative получают больший вес внутри своей
+  категории, но суммарный вес группы не меняется;
+- `max_length` увеличен с 256 до 384, потому что baseline обрезал 49,8% validation;
+- `label_smoothing=0.03` уменьшает переуверенность на противоречивых метках.
+
+Запуск v2 локально или на Kaggle:
+
+```bash
+make train-cross-encoder CROSS_ENCODER_CONFIG=configs/cross_encoder_minilm_v2.json
+make kaggle-cross-run CROSS_ENCODER_CONFIG=configs/cross_encoder_minilm_v2.json
+```
+
+Чистая абляция физического баланса находится в
+`configs/cross_encoder_minilm_balanced_downsample.json`. Она оставляет все
+примеры редкого класса и без повторений сокращает majority-класс до того же
+размера отдельно в каждой категории. Категории между собой не выравниваются;
+остальные гиперпараметры совпадают с baseline:
+
+```bash
+make kaggle-cross-run \
+  CROSS_ENCODER_CONFIG=configs/cross_encoder_minilm_balanced_downsample.json
+```
+
 Основные параметры:
 
 | Ключ | Назначение | Текущее значение |
@@ -24,6 +52,9 @@ ranking logit. Модель обучается целиком через `BCEWit
 | `weight_decay` | AdamW weight decay | `0.01` |
 | `warmup_ratio` | Доля optimizer steps на warmup | `0.05` |
 | `sampling` | Балансировка sampler | `category_label` |
+| `train_subset` | Физическая фильтрация train до токенизации | `all` |
+| `loss_weighting` | Мягкие веса BCE без потери строк | `none` |
+| `lexical_hard_negative_strength` | Вес похожих negative внутри категории | `0.0` |
 | `dataloader_workers` | Worker-процессы на одну GPU | `2` |
 | `symmetric_validation` | Усреднять порядки A/B и B/A | `true` |
 | `log_every` | Интервал training-логов в шагах | `20` |
@@ -125,10 +156,51 @@ Kaggle сохраняет:
 
 ```text
 /kaggle/working/
-├── minilm_cross_encoder/       # веса, tokenizer, config и training_report.json
+├── minilm_cross_encoder/
+│   ├── model.safetensors
+│   ├── training_config.json
+│   ├── training_report.json
+│   ├── validation_predictions.parquet
+│   └── файлы tokenizer/config модели
 ├── minilm_training.log         # полный stdout/stderr DDP-процесса
-└── notebook_completed.json
+├── notebook_completed.json
+└── google_sheets_sync.json     # результат автоматической синхронизации
 ```
 
 `training_report.json` содержит время обучения и validation, throughput, peak
 VRAM обеих GPU, overall AP, macro AP и AP каждой категории.
+
+Финальная ячейка также переносит этот отчёт в Google Sheets. Runner автоматически
+подключает отдельный private credential Dataset; Kaggle Secret
+`GOOGLE_SERVICE_ACCOUNT_JSON` остаётся приоритетным необязательным источником.
+Схема листов и поведение при сетевой ошибке описаны в
+[`docs/kaggle-notebook.md`](kaggle-notebook.md). Logger встроен прямо в
+сгенерированный notebook, поэтому изменение только Sheets-интеграции не требует
+новой версии Dataset с исходными training parquet.
+
+`validation_predictions.parquet` содержит одну строку на исходную validation-пару:
+
+- `id1`, `id2`, `target`, категории и сериализованные тексты товаров;
+- `score_ab` и `score_ba` для двух порядков пары;
+- `score` — их среднее при `symmetric_validation=true`;
+- `score_order_gap` — чувствительность модели к порядку товаров;
+- длины обеих tokenized-ориентаций и признаки достижения `max_length`.
+
+Для текущего component-disjoint split validation содержит 54 887 пар: 14 128
+положительных и 40 759 отрицательных. При симметричной validation выполняется
+109 774 model forward-примера.
+
+## Error analysis сохранённых predictions
+
+Воспроизводимый анализ запускается так:
+
+```bash
+uv run python scripts/analyze_validation_predictions.py \
+  data/runs/validation_predictions_v1.parquet \
+  --output-dir data/runs/validation_predictions_v1_analysis
+```
+
+Он сохраняет `summary.json`, метрики категорий и порогов, n-граммные срезы,
+top FP/FN, пары с сильной зависимостью от порядка и `label_review_queue.parquet`.
+Очередь предназначена для ручной проверки: скрипт не меняет исходные метки
+автоматически.

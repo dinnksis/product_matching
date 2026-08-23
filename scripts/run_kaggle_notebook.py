@@ -10,6 +10,7 @@ import re
 import shutil
 import subprocess
 import sys
+import tempfile
 import time
 from pathlib import Path
 from typing import NoReturn
@@ -18,6 +19,7 @@ from typing import NoReturn
 ROOT = Path(__file__).resolve().parents[1]
 DEFAULT_ENV_FILE = ROOT / ".env"
 STAGE_ROOT = ROOT / ".kaggle" / "staging"
+GOOGLE_CREDENTIALS_DATASET_SLUG = "ecom-matching-google-sheets-credentials"
 
 TERMINAL_SUCCESS = {"complete", "completed"}
 TERMINAL_FAILURE = {
@@ -115,6 +117,11 @@ def split_sources(value: str | None) -> list[str]:
     if not value:
         return []
     return [item for item in re.split(r"[\s,]+", value.strip()) if item]
+
+
+def unique_sources(values: list[str]) -> list[str]:
+    """Deduplicate Kaggle sources while preserving their declared order."""
+    return list(dict.fromkeys(values))
 
 
 def validate_slug(value: str, label: str) -> str:
@@ -244,6 +251,40 @@ def wait_for_kernel(
     )
 
 
+def verify_remote_sources(
+    cli: list[str],
+    kernel_ref: str,
+    *,
+    expected_datasets: list[str],
+) -> None:
+    """Verify that Kaggle kept requested attachments on the pushed version."""
+    if not expected_datasets:
+        return
+
+    with tempfile.TemporaryDirectory(prefix="kaggle-kernel-metadata-") as temp_dir:
+        result = run_command(
+            cli + ["kernels", "pull", kernel_ref, "-p", temp_dir, "-m"],
+            check=False,
+        )
+        if result.returncode:
+            fail("could not verify the Dataset attachments of the pushed kernel")
+        metadata_path = Path(temp_dir) / "kernel-metadata.json"
+        if not metadata_path.is_file():
+            fail("Kaggle kernel pull did not return kernel-metadata.json")
+        metadata = json.loads(metadata_path.read_text(encoding="utf-8"))
+
+    actual = set(metadata.get("dataset_sources") or [])
+    missing = [source for source in expected_datasets if source not in actual]
+    if missing:
+        fail(
+            "Kaggle accepted the kernel version but dropped its Dataset attachment(s): "
+            f"{missing}. Remote dataset_sources={sorted(actual)}. "
+            "Do not wait for this run: it cannot read /kaggle/input. "
+            "Confirm the Dataset is ready and submit the kernel again."
+        )
+    print(f"Verified remote Dataset attachment(s): {sorted(actual)}")
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = argparse.ArgumentParser(
         description="Run a local .ipynb on Kaggle and download /kaggle/working outputs."
@@ -254,13 +295,24 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--title", help="override KAGGLE_KERNEL_TITLE")
     parser.add_argument("--dataset", action="append", default=[], help="attach owner/dataset")
     parser.add_argument("--competition", action="append", default=[], help="attach competition slug")
+    parser.add_argument("--kernel", action="append", default=[], help="attach owner/kernel-slug output")
     parser.add_argument("--no-wait", action="store_true", help="return immediately after push")
     parser.add_argument("--no-download", action="store_true", help="do not download outputs")
+    parser.add_argument(
+        "--cpu",
+        action="store_true",
+        help="run on Kaggle CPU without requesting an accelerator",
+    )
     parser.add_argument("--no-gpu-check", action="store_true", help="do not assert that two T4s exist")
     parser.add_argument(
         "--no-env-sources",
         action="store_true",
         help="ignore dataset/competition/kernel/model sources from .env",
+    )
+    parser.add_argument(
+        "--no-google-sheets-credentials",
+        action="store_true",
+        help="do not attach the private Google Sheets credential Dataset",
     )
     parser.add_argument("--dry-run", action="store_true", help="prepare files but do not call Kaggle")
     return parser
@@ -292,7 +344,11 @@ def main() -> int:
     if not title:
         fail("KAGGLE_KERNEL_TITLE cannot be empty")
 
-    accelerator = os.getenv("KAGGLE_ACCELERATOR", "NvidiaTeslaT4").strip()
+    accelerator = None if args.cpu else os.getenv(
+        "KAGGLE_ACCELERATOR", "NvidiaTeslaT4"
+    ).strip()
+    if not args.cpu and not accelerator:
+        fail("KAGGLE_ACCELERATOR cannot be empty for a GPU run")
     internet_enabled = env_bool("KAGGLE_ENABLE_INTERNET", True)
     is_private = env_bool("KAGGLE_IS_PRIVATE", True)
     run_timeout = env_int("KAGGLE_RUN_TIMEOUT_SECONDS", 43200, minimum=60)
@@ -304,8 +360,19 @@ def main() -> int:
         [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_COMPETITION_SOURCES"))
     )
     datasets = env_datasets + args.dataset
+    credentials_dataset = os.getenv(
+        "KAGGLE_GOOGLE_SHEETS_CREDENTIALS_DATASET",
+        f"{username}/{GOOGLE_CREDENTIALS_DATASET_SLUG}",
+    ).strip()
+    if not args.no_google_sheets_credentials and is_private:
+        if not credentials_dataset:
+            fail("KAGGLE_GOOGLE_SHEETS_CREDENTIALS_DATASET cannot be empty")
+        datasets.append(credentials_dataset)
+    elif not args.no_google_sheets_credentials:
+        print("Skipping the credential Dataset because this notebook is public.")
+    datasets = unique_sources(datasets)
     competitions = env_competitions + args.competition
-    kernel_sources = (
+    kernel_sources = args.kernel + (
         [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_KERNEL_SOURCES"))
     )
     model_sources = (
@@ -315,7 +382,11 @@ def main() -> int:
     stage_dir = STAGE_ROOT / slug
     stage_dir.mkdir(parents=True, exist_ok=True)
     staged_notebook = stage_dir / "notebook.ipynb"
-    prepare_notebook(notebook, staged_notebook, gpu_check=not args.no_gpu_check)
+    prepare_notebook(
+        notebook,
+        staged_notebook,
+        gpu_check=not args.cpu and not args.no_gpu_check,
+    )
 
     kernel_ref = f"{username}/{slug}"
     metadata = {
@@ -325,15 +396,16 @@ def main() -> int:
         "language": "python",
         "kernel_type": "notebook",
         "is_private": is_private,
-        "enable_gpu": True,
+        "enable_gpu": not args.cpu,
         "enable_tpu": False,
         "enable_internet": internet_enabled,
-        "machine_shape": accelerator,
         "dataset_sources": datasets,
         "competition_sources": competitions,
         "kernel_sources": kernel_sources,
         "model_sources": model_sources,
     }
+    if accelerator is not None:
+        metadata["machine_shape"] = accelerator
     (stage_dir / "kernel-metadata.json").write_text(
         json.dumps(metadata, ensure_ascii=False, indent=2) + "\n",
         encoding="utf-8",
@@ -341,7 +413,15 @@ def main() -> int:
 
     print(f"Prepared: {stage_dir}")
     print(f"Kernel:   https://www.kaggle.com/code/{kernel_ref}")
-    print(f"GPU:      {accelerator} (the staged notebook asserts exactly 2 x T4)")
+    if args.cpu:
+        print("Compute:  Kaggle CPU (no accelerator requested)")
+    else:
+        gpu_check_note = (
+            "the staged notebook asserts exactly 2 x T4"
+            if not args.no_gpu_check
+            else "GPU preflight disabled"
+        )
+        print(f"GPU:      {accelerator} ({gpu_check_note})")
     print(f"Sources:  {len(datasets)} dataset(s), {len(competitions)} competition(s)")
     if args.dry_run:
         print("Dry run complete; Kaggle was not contacted.")
@@ -350,19 +430,23 @@ def main() -> int:
     cli = kaggle_command()
     print("Checking Kaggle credentials...")
     run_command(cli + ["kernels", "list", "--mine", "--page-size", "1"])
-    run_command(
-        cli
-        + [
-            "kernels",
-            "push",
-            "-p",
-            str(stage_dir),
-            "--accelerator",
-            accelerator,
-            "--timeout",
-            str(run_timeout),
-        ]
-    )
+    push_command = cli + [
+        "kernels",
+        "push",
+        "-p",
+        str(stage_dir),
+        "--timeout",
+        str(run_timeout),
+    ]
+    if accelerator is not None:
+        push_command.extend(["--accelerator", accelerator])
+    push_result = run_command(push_command)
+    if "not valid dataset sources" in push_result.stdout.lower():
+        fail(
+            "Kaggle rejected one or more Dataset attachments during kernel push; "
+            "the run cannot read /kaggle/input"
+        )
+    verify_remote_sources(cli, kernel_ref, expected_datasets=datasets)
 
     if args.no_wait:
         print("Notebook was submitted; not waiting for completion.")

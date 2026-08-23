@@ -1,0 +1,201 @@
+category,band,target,n
+Автотовары,exact_negative,0.0,362935
+Автотовары,exact_positive,1.0,129272
+Автотовары,uncertain_negative,0.1111111111111111,28
+Автотовары,uncertain_negative,0.2222222222222222,19784
+Автотовары,uncertain_negative,0.3333333333333333,14694
+Автотовары,uncertain_negative,0.4444444444444444,7459
+Автотовары,uncertain_positive,0.5555555555555556,8813
+Автотовары,uncertain_positive,0.6666666666666666,5697
+Автотовары,uncertain_positive,0.7777777777777778,11155
+Автотовары,uncertain_positive,0.8888888888888888,33966
+Аптека,exact_negative,0.0,369631
+Аптека,exact_positive,1.0,49251
+Аптека,uncertain_negative,0.1111111111111111,376
+Аптека,uncertain_negative,0.2222222222222222,42989
+Аптека,uncertain_negative,0.3333333333333333,23230
+Аптека,uncertain_negative,0.4444444444444444,10886
+Аптека,uncertain_positive,0.5555555555555556,10301
+Аптека,uncertain_positive,0.6666666666666666,6791
+Аптека,uncertain_positive,0.7777777777777778,10507
+Аптека,uncertain_positive,0.8888888888888888,29946
+Бытовая техника,exact_negative,0.0,292247
+Бытовая техника,exact_positive,1.0,66906
+Бытовая техника,uncertain_negative,0.1111111111111111,40
+Бытовая техника,uncertain_negative,0.2222222222222222,40024
+Бытовая техника,uncertain_negative,0.3333333333333333,33212
+Бытовая техника,uncertain_negative,0.4444444444444444,17659
+Бытовая техника,uncertain_positive,0.5555555555555556,20958
+Бытовая техника,uncertain_positive,0.6666666666666666,12778
+Бытовая техника,uncertain_positive,0.7777777777777778,20521
+Бытовая техника,uncertain_positive,0.8888888888888888,44204
+Бытовая химия,exact_negative,0.0,227942
+Бытовая химия,exact_positive,1.0,123539
+Бытовая химия,uncertain_negative,0.1111111111111111,67
+Бытовая химия,uncertain_negative,0.2222222222222222,33885
+Бытовая химия,uncertain_negative,0.3333333333333333,27185
+Бытовая химия,uncertain_negative,0.4444444444444444,13567
+Бытовая химия,uncertain_positive,0.5555555555555556,15031
+Бытовая химия,uncertain_positive,0.6666666666666666,9810
+Бытовая химия,uncertain_positive,0.7777777777777778,17668
+Бытовая химия,uncertain_positive,0.8888888888888888,49035
+Галантерея и аксессуары,exact_negative,0.0,454380
+Галантерея и аксессуары,exact_positive,1.0,21848
+Галантерея и аксессуары,uncertain_negative,0.1111111111111111,13
+Галантерея и аксессуары,uncertain_negative,0.2222222222222222,17980
+Галантерея и аксессуары,uncertain_negative,0.3333333333333333,16417
+Галантерея и аксессуары,uncertain_negative,0.4444444444444444,8178
+Галантерея и аксессуары,uncertain_positive,0.5555555555555556,8262
+Галантерея и аксессуары,uncertain_positive,0.6666666666666666,4580
+Галантерея и аксессуары,uncertain_positive,0.7777777777777778,6863
+Галантерея и аксессуары,uncertain_positive,0.8888888888888888,13264
+Детские товары,exact_negative,0.0,323337
+Детские товары,exact_positive,1.0,78690
+Детские товары,uncertain_negative,0.1111111111111111,14
+Детские товары,uncertain_negative,0.2222222222222222,28132
+Детские товары,uncertain_negative,0.3333333333333333,26183
+Детские товары,uncertain_negative,0.4444444444444444,14759
+Детские товары,uncertain_positive,0.5555555555555556,17834
+Детские товары,uncertain_positive,0.6666666666666666,10259
+Детские товары,uncertain_positive,0.7777777777777778,18503
+Детские товары,uncertain_positive,0.8888888888888888,41305
+Дом и сад,exact_negative,0.0,369267
+Дом и сад,exact_positive,1.0,56436
+Дом и сад,uncertain_negative,0.1111111111111111,76
+Дом и сад,uncertain_negative,0.2222222222222222,31059
+Дом и сад,uncertain_negative,0.3333333333333333,24923
+Дом и сад,uncertain_negative,0.4444444444444444,13451
+Дом и сад,uncertain_positive,0.5555555555555556,13539
+Дом и сад,uncertain_positive,0.6666666666666666,9631
+Дом и сад,uncertain_positive,0.7777777777777778,15008
+Дом и сад,uncertain_positive,0.8888888888888888,39455
+Канцелярские товары,exact_negative,0.0,344843
+Канцелярские товары,exact_positive,1.0,63790
+Канцелярские товары,uncertain_negative,0.1111111111111111,25
+Канцелярские товары,uncertain_negative,0.2222222222222222,28344
+Канцелярские товары,uncertain_negative,0.3333333333333333,25795
+Канцелярские товары,uncertain_negative,0.4444444444444444,14079
+Канцелярские товары,uncertain_positive,0.5555555555555556,15089
+Канцелярские товары,uncertain_positive,0.6666666666666666,9006
+Канцелярские товары,uncertain_positive,0.7777777777777778,15359
+Канцелярские товары,uncertain_positive,0.8888888888888888,37966
+Красота и гигиена,exact_negative,0.0,328126
+Красота и гигиена,exact_positive,1.0,91111
+Красота и гигиена,uncertain_negative,0.1111111111111111,64
+Красота и гигиена,uncertain_negative,0.2222222222222222,31273
+Красота и гигиена,uncertain_negative,0.3333333333333333,25906
+Красота и гигиена,uncertain_negative,0.4444444444444444,13252
+Красота и гигиена,uncertain_positive,0.5555555555555556,15890
+Красота и гигиена,uncertain_positive,0.6666666666666666,9500
+Красота и гигиена,uncertain_positive,0.7777777777777778,16506
+Красота и гигиена,uncertain_positive,0.8888888888888888,40448
+Мебель,exact_negative,0.0,345491
+Мебель,exact_positive,1.0,29669
+Мебель,uncertain_negative,0.1111111111111111,155
+Мебель,uncertain_negative,0.2222222222222222,62220
+Мебель,uncertain_negative,0.3333333333333333,40085
+Мебель,uncertain_negative,0.4444444444444444,16975
+Мебель,uncertain_positive,0.5555555555555556,14656
+Мебель,uncertain_positive,0.6666666666666666,10272
+Мебель,uncertain_positive,0.7777777777777778,14364
+Мебель,uncertain_positive,0.8888888888888888,30996
+Музыкальные инструменты,exact_negative,0.0,273401
+Музыкальные инструменты,exact_positive,1.0,92296
+Музыкальные инструменты,uncertain_negative,0.1111111111111111,15
+Музыкальные инструменты,uncertain_negative,0.2222222222222222,25182
+Музыкальные инструменты,uncertain_negative,0.3333333333333333,23977
+Музыкальные инструменты,uncertain_negative,0.4444444444444444,13902
+Музыкальные инструменты,uncertain_positive,0.5555555555555556,18148
+Музыкальные инструменты,uncertain_positive,0.6666666666666666,9996
+Музыкальные инструменты,uncertain_positive,0.7777777777777778,17744
+Музыкальные инструменты,uncertain_positive,0.8888888888888888,41014
+Обувь,exact_negative,0.0,527039
+Обувь,exact_positive,1.0,16920
+Обувь,uncertain_negative,0.1111111111111111,1
+Обувь,uncertain_negative,0.2222222222222222,11885
+Обувь,uncertain_negative,0.3333333333333333,10858
+Обувь,uncertain_negative,0.4444444444444444,4668
+Обувь,uncertain_positive,0.5555555555555556,4348
+Обувь,uncertain_positive,0.6666666666666666,2698
+Обувь,uncertain_positive,0.7777777777777778,4220
+Обувь,uncertain_positive,0.8888888888888888,7257
+Одежда,exact_negative,0.0,531809
+Одежда,exact_positive,1.0,12617
+Одежда,uncertain_negative,0.1111111111111111,14
+Одежда,uncertain_negative,0.2222222222222222,15794
+Одежда,uncertain_negative,0.3333333333333333,12539
+Одежда,uncertain_negative,0.4444444444444444,5237
+Одежда,uncertain_positive,0.5555555555555556,4243
+Одежда,uncertain_positive,0.6666666666666666,2757
+Одежда,uncertain_positive,0.7777777777777778,3785
+Одежда,uncertain_positive,0.8888888888888888,7429
+Продукты питания,exact_negative,0.0,290303
+Продукты питания,exact_positive,1.0,78022
+Продукты питания,uncertain_negative,0.1111111111111111,182
+Продукты питания,uncertain_negative,0.2222222222222222,51785
+Продукты питания,uncertain_negative,0.3333333333333333,36120
+Продукты питания,uncertain_negative,0.4444444444444444,16498
+Продукты питания,uncertain_positive,0.5555555555555556,16881
+Продукты питания,uncertain_positive,0.6666666666666666,10884
+Продукты питания,uncertain_positive,0.7777777777777778,16350
+Продукты питания,uncertain_positive,0.8888888888888888,43304
+Спорт и отдых,exact_negative,0.0,340932
+Спорт и отдых,exact_positive,1.0,50232
+Спорт и отдых,uncertain_negative,0.1111111111111111,35
+Спорт и отдых,uncertain_negative,0.2222222222222222,31678
+Спорт и отдых,uncertain_negative,0.3333333333333333,27863
+Спорт и отдых,uncertain_negative,0.4444444444444444,15168
+Спорт и отдых,uncertain_positive,0.5555555555555556,16487
+Спорт и отдых,uncertain_positive,0.6666666666666666,10390
+Спорт и отдых,uncertain_positive,0.7777777777777778,16307
+Спорт и отдых,uncertain_positive,0.8888888888888888,37944
+Строительство и ремонт,exact_negative,0.0,324037
+Строительство и ремонт,exact_positive,1.0,62534
+Строительство и ремонт,uncertain_negative,0.1111111111111111,159
+Строительство и ремонт,uncertain_negative,0.2222222222222222,39876
+Строительство и ремонт,uncertain_negative,0.3333333333333333,30244
+Строительство и ремонт,uncertain_negative,0.4444444444444444,15769
+Строительство и ремонт,uncertain_positive,0.5555555555555556,16991
+Строительство и ремонт,uncertain_positive,0.6666666666666666,11246
+Строительство и ремонт,uncertain_positive,0.7777777777777778,19106
+Строительство и ремонт,uncertain_positive,0.8888888888888888,47912
+Товары для животных,exact_negative,0.0,270573
+Товары для животных,exact_positive,1.0,102967
+Товары для животных,uncertain_negative,0.1111111111111111,121
+Товары для животных,uncertain_negative,0.2222222222222222,44975
+Товары для животных,uncertain_negative,0.3333333333333333,33657
+Товары для животных,uncertain_negative,0.4444444444444444,16578
+Товары для животных,uncertain_positive,0.5555555555555556,17514
+Товары для животных,uncertain_positive,0.6666666666666666,11521
+Товары для животных,uncertain_positive,0.7777777777777778,19246
+Товары для животных,uncertain_positive,0.8888888888888888,48725
+Хобби и творчество,exact_negative,0.0,348375
+Хобби и творчество,exact_positive,1.0,55869
+Хобби и творчество,uncertain_negative,0.1111111111111111,18
+Хобби и творчество,uncertain_negative,0.2222222222222222,22785
+Хобби и творчество,uncertain_negative,0.3333333333333333,21945
+Хобби и творчество,uncertain_negative,0.4444444444444444,13935
+Хобби и творчество,uncertain_positive,0.5555555555555556,15339
+Хобби и творчество,uncertain_positive,0.6666666666666666,10024
+Хобби и творчество,uncertain_positive,0.7777777777777778,15016
+Хобби и творчество,uncertain_positive,0.8888888888888888,45026
+Электроника,exact_negative,0.0,449621
+Электроника,exact_positive,1.0,25080
+Электроника,uncertain_negative,0.1111111111111111,22
+Электроника,uncertain_negative,0.2222222222222222,25779
+Электроника,uncertain_negative,0.3333333333333333,22905
+Электроника,uncertain_negative,0.4444444444444444,11592
+Электроника,uncertain_positive,0.5555555555555556,11549
+Электроника,uncertain_positive,0.6666666666666666,7452
+Электроника,uncertain_positive,0.7777777777777778,10591
+Электроника,uncertain_positive,0.8888888888888888,19509
+Ювелирные изделия,exact_negative,0.0,410374
+Ювелирные изделия,exact_positive,1.0,16906
+Ювелирные изделия,uncertain_negative,0.1111111111111111,9
+Ювелирные изделия,uncertain_negative,0.2222222222222222,26986
+Ювелирные изделия,uncertain_negative,0.3333333333333333,19419
+Ювелирные изделия,uncertain_negative,0.4444444444444444,8932
+Ювелирные изделия,uncertain_positive,0.5555555555555556,7287
+Ювелирные изделия,uncertain_positive,0.6666666666666666,4930
+Ювелирные изделия,uncertain_positive,0.7777777777777778,7530
+Ювелирные изделия,uncertain_positive,0.8888888888888888,21176

@@ -84,6 +84,166 @@ make kaggle-run NOTEBOOK=notebooks/train.ipynb
 Notebook должен сохранять нужные файлы именно в `/kaggle/working`, иначе Kaggle
 не вернёт их как output.
 
+## Обязательный контракт экспериментального notebook
+
+Любой Kaggle notebook в этом проекте, который обучает, валидирует, сравнивает
+или тестирует модель и производит метрики эксперимента, **обязан** отправлять
+результат в общую Google-таблицу. Это относится как к новой версии существующего
+notebook, так и к notebook с новым slug.
+
+Экспериментальный notebook считается готовым к запуску только при выполнении
+всех условий:
+
+1. До начала эксперимента создаются стабильный UUID `run_id` и время старта.
+2. Метрики, конфигурация и сведения об источниках сохраняются в
+   `training_report.json` и `notebook_completed.json` в `/kaggle/working`.
+3. После сохранения всех основных outputs расположена финальная ячейка
+   синхронизации с Google Sheets. Она должна передавать как минимум `run_id`,
+   время старта и завершения, статус, название эксперимента, модель,
+   `dataset_ref`, `kaggle_kernel_ref`, SHA code bundle, конфигурацию, итоговые и
+   покатегорийные метрики. Для попадания в тематический лист она также явно
+   задаёт `experiment_group`: `pretrain`, `sft` или `data`. Logger специально
+   не угадывает группу по имени эксперимента.
+4. К notebook подключён private Dataset
+   `alexproger23/ecom-matching-google-sheets-credentials`, а сам notebook также
+   остаётся приватным.
+5. Сбой Google Sheets не отменяет успешно завершённый эксперимент: финальная
+   ячейка не делает `raise`, а сохраняет `google_sheets_sync.json` и при ошибке
+   `sheets_sync_pending.json`.
+6. Если notebook должен заполнять p-value/CI тематического листа, до обучения он
+   проверяет frozen baseline predictions и их manifest. Финальная статистическая
+   ячейка выполняется до Google Sheets sync и добавляет `baseline_comparison` в
+   completion report. Scalar AP без парных predictions недостаточно.
+
+Для notebook, генерируемых кодом, нельзя создавать собственную копию логики
+синхронизации. Новый generator должен переиспользовать
+`experiment_run_initialization_cell()` и `google_sheets_tracking_cells()` из
+`scripts/create_qwen_training_notebook.py`. Так сохраняются единая схема,
+идемпотентность по `run_id` и одинаковое поведение при ошибках.
+
+При запуске через `scripts/run_kaggle_notebook.py` credential Dataset
+подключается автоматически. Флаг `--no-google-sheets-credentials` допустим
+только для неэкспериментальных или диагностических notebook; для настоящего
+эксперимента его использовать нельзя. Если notebook создаётся вручную на сайте
+Kaggle, перед запуском необходимо одновременно:
+
+- добавить private Dataset через `Add Input`;
+- проверить наличие финальной ячейки отправки метрик;
+- оставить notebook приватным.
+
+Запуск без финальной ячейки или без credential Dataset считается незавершённой
+настройкой эксперимента, даже если обучение технически может выполниться.
+
+## Автоматический журнал экспериментов в Google Sheets
+
+Сгенерированные training notebooks после успешного сохранения модели записывают
+основные результаты из `training_report.json` в таблицу
+<https://docs.google.com/spreadsheets/d/1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA/edit>:
+
+- `experiments_v2` содержит одну строку на запуск, macro AP для IID/hard/OOD,
+  `hard_recall_at_p99`, `hard_roc_auc` и `ood_log_loss`. Поля
+  `kaggle_kernel_ref` и `code_bundle_sha256` остаются в JSON artifacts, но не
+  занимают колонки компактной таблицы;
+- `pretrain_exps`, `sft_exps` и `data_exps` служат для сравнения экспериментов
+  одного типа. Baseline каждого листа задаётся вручную в ячейке `B2`, а уровень
+  значимости — в `E2`. Первые 19 колонок полностью совпадают с
+  `experiments_v2`, а notes/baseline/statistics расположены после них;
+- технические тайминги, throughput, VRAM, per-category метрики и полный JSON
+  остаются в Kaggle outputs и не засоряют таблицу;
+- прежние `experiments` и `category_metrics` сохранены только как история.
+
+Контракт frozen validation и готовый запуск MiniLM описаны в
+[`docs/validation-experiments.md`](validation-experiments.md).
+
+Для автоматической авторизации используется отдельный приватный Kaggle Dataset
+`alexproger23/ecom-matching-google-sheets-credentials`. Создать или безопасно
+обновить его из локального ключа можно командой:
+
+```bash
+make kaggle-google-credentials
+```
+
+`scripts/run_kaggle_notebook.py` автоматически добавляет этот Dataset в
+`dataset_sources` каждого приватного notebook, включая новый slug. Для
+конкретного запуска это можно отключить флагом
+`--no-google-sheets-credentials`.
+
+Новый notebook, а не новую версию существующего, можно создать той же командой,
+передав ещё не использованный `--slug`:
+
+```bash
+uv run python scripts/run_kaggle_notebook.py notebooks/train.ipynb \
+  --slug new-experiment-slug \
+  --title "New Experiment"
+```
+
+При создании notebook вручную в web-интерфейсе runner не участвует, поэтому там
+credential Dataset нужно добавить через `Add Input` вручную.
+
+Kaggle Secret `GOOGLE_SERVICE_ACCOUNT_JSON` также поддерживается и имеет
+приоритет, если он подключён вручную. Сам JSON-ключ не хранится в Git, не
+встраивается в notebook и не копируется в Dataset с обучающими данными.
+
+У каждого запуска есть UUID `run_id`. Повторное выполнение финальной ячейки
+обновляет существующие строки и не создаёт дублей. Если Google временно
+недоступен или credential Dataset не подключён, обучение всё равно остаётся
+успешным, а в `/kaggle/working` сохраняются `google_sheets_sync.json` и
+`sheets_sync_pending.json`. После исправления доступа достаточно повторно
+выполнить последнюю ячейку.
+
+Без повторного обучения pending-отчёт можно синхронизировать локально:
+
+```bash
+make kaggle-sheets-retry KERNEL=owner/kernel-slug
+```
+
+Logger поддерживает оба формата монтирования приватного credential Dataset:
+`/kaggle/input/<dataset-slug>` и новый
+`/kaggle/input/datasets/<owner>/<dataset-slug>`.
+
+### Статистическая значимость в тематических листах
+
+Одних трёх итоговых AP недостаточно для честного `p-value`. Сравнение должно
+использовать парные predictions кандидата и baseline на одних и тех же frozen
+IID/hard/OOD парах. Контракт тематических листов предусматривает для каждого
+split колонки `delta`, raw `p_value`, Holm-скорректированный `p_value` и границы
+95% confidence interval. Реализация использует парную перестановку на уровне
+связной компоненты, component bootstrap для CI и Holm correction для трёх split.
+
+Строка окрашивается целиком в приглушённый зелёный или красный только когда её
+`baseline_run_id` совпадает с `B2` и изменение основной IID macro AP значимо по
+Holm-скорректированному `p-value <= E2`. Baseline, незавершённое сравнение,
+несовпадающий baseline и статистически незначимое изменение остаются белыми.
+До выбора baseline это намеренно делает все строки белыми.
+
+После выбора baseline сравнение и синхронизация запускаются командой:
+
+```bash
+uv run python scripts/compare_experiment_significance.py \
+  --baseline-dir artifacts/path/to/baseline-run \
+  --candidate-dir artifacts/path/to/candidate-run \
+  --baseline-run-id BASELINE_RUN_ID \
+  --candidate-completion artifacts/path/to/candidate-run/notebook_completed.json \
+  --experiment-group pretrain \
+  --sync-google-sheets
+```
+
+Исходный completion не перезаписывается: рядом сохраняются
+`baseline_comparison.json` и `completion_with_comparison.json`.
+
+Locked шаблон
+[`notebooks/minilm_5ep_team_ablation/`](../notebooks/minilm_5ep_team_ablation/README.md)
+делает это автоматически внутри Kaggle. Он требует дополнительный private
+Dataset `alexproger23/product-matching-minilm-5ep-significance-v1`,
+содержащий только slim predictions baseline run
+`67f4fe76886b43d6b52ed5cb49068e1e`. В routing-ячейке выбирается точное имя
+листа: `pretrain_exps`, `sft_exps` или `data_exps`; `experiments_v2` при этом
+заполняется всегда.
+
+Logger встраивается в notebook при генерации, а `google-auth` при необходимости
+устанавливается только в финальной ячейке. Поэтому для изменений самого журнала
+не требуется повторно загружать Dataset с training-данными.
+
 ## Дополнительные параметры
 
 Скрипт можно запускать напрямую:
@@ -177,3 +337,35 @@ make kaggle-cross-run
 
 Подробное описание параметров, локального и Kaggle-запуска находится в
 [`docs/cross-encoder-training.md`](cross-encoder-training.md).
+## Embedding + boosting experiment
+
+The repository has a dedicated autonomous launcher for the three CatBoost
+ablations described in `docs/data-findings.md`:
+
+```powershell
+python scripts/run_embedding_boosting_kaggle.py --dry-run
+python scripts/run_embedding_boosting_kaggle.py
+```
+
+The second command submits the notebook and returns while Kaggle continues in
+the background. Closing the browser or the local terminal does not stop the
+remote kernel. Later, wait for it and download all `/kaggle/working` artifacts:
+
+```powershell
+python scripts/run_embedding_boosting_kaggle.py --monitor-existing
+```
+
+Outputs are downloaded to
+`artifacts/kaggle/product-matching-embedding-boosting/`. The remote output
+contains three CatBoost models, validation predictions, macro/per-category AP,
+feature importances, timings, selected train-only attribute keys, the Qwen
+float16 item-embedding cache, the exact Qwen model snapshot, logs, the exact config, a manifest and a
+`COMPLETED` marker. These are experiment artifacts; a separate offline submit
+builder will package the winning preprocessing code, CatBoost model and Qwen
+weights after the ablation result is known.
+
+The launcher reuses the existing private Dataset
+`<KAGGLE_USERNAME>/e-cup-human-data` for `items_human.parquet` and
+`matches.parquet`. It creates a separate small private Dataset containing only
+the versioned code/config bundle, so the parquet files are never uploaded a
+second time.

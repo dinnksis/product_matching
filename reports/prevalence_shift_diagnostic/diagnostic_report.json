@@ -1,0 +1,364 @@
+{
+  "baseline": {
+    "pairs": 54887,
+    "positive_examples": 14128,
+    "global_prevalence": 0.25740157049938966,
+    "global_weighted_prevalence": 0.25740157049938966,
+    "mean_category_weighted_prevalence": 0.2616437313413073,
+    "macro_average_precision": 0.5015377923802575,
+    "global_average_precision": 0.5951184381447783,
+    "macro_roc_auc": 0.7357064022541542,
+    "global_roc_auc": 0.7941829053825408
+  },
+  "ap_021_solution": {
+    "target_macro_average_precision": 0.21,
+    "target_prevalence": 0.059038793844120654,
+    "negative_weight": 5.524480034636198,
+    "macro_average_precision": 0.2099999999999999,
+    "global_weighted_prevalence": 0.05903879384412064,
+    "mean_category_weighted_prevalence": 0.06656746714405053,
+    "global_average_precision": 0.2582678360416709,
+    "macro_roc_auc": 0.7357064022541474,
+    "global_roc_auc": 0.7941829053824265
+  },
+  "maximum_macro_roc_auc_delta": 8.881784197001252e-15,
+  "configuration": {
+    "target_prevalences": [
+      0.25740157049938966,
+      0.262,
+      0.2,
+      0.15,
+      0.1,
+      0.075,
+      0.066,
+      0.05,
+      0.03
+    ],
+    "bootstrap_prevalences": [
+      0.1,
+      0.075,
+      0.05
+    ],
+    "bootstrap_repeats": 30,
+    "bootstrap_seed": 20260814,
+    "target_macro_ap": 0.21
+  },
+  "weighting_table": [
+    {
+      "target_prevalence": 0.2574015705,
+      "negative_weight": 1.0,
+      "effective_prevalence": 0.2574015705,
+      "global_weighted_prevalence": 0.2574015705,
+      "mean_category_weighted_prevalence": 0.2616437313,
+      "macro_average_precision": 0.5015377924,
+      "global_average_precision": 0.5951184381,
+      "macro_roc_auc": 0.7357064023,
+      "global_roc_auc": 0.7941829054
+    },
+    {
+      "target_prevalence": 0.262,
+      "negative_weight": 0.9763650757,
+      "effective_prevalence": 0.262,
+      "global_weighted_prevalence": 0.262,
+      "mean_category_weighted_prevalence": 0.2658565588,
+      "macro_average_precision": 0.5062941676,
+      "global_average_precision": 0.600097768,
+      "macro_roc_auc": 0.7357064023,
+      "global_roc_auc": 0.7941829054
+    },
+    {
+      "target_prevalence": 0.2,
+      "negative_weight": 1.3864913271,
+      "effective_prevalence": 0.2,
+      "global_weighted_prevalence": 0.2,
+      "mean_category_weighted_prevalence": 0.2082011343,
+      "macro_average_precision": 0.4372950501,
+      "global_average_precision": 0.5261265785,
+      "macro_roc_auc": 0.7357064023,
+      "global_roc_auc": 0.7941829054
+    },
+    {
+      "target_prevalence": 0.15,
+      "negative_weight": 1.9641960467,
+      "effective_prevalence": 0.15,
+      "global_weighted_prevalence": 0.15,
+      "mean_category_weighted_prevalence": 0.1600144152,
+      "macro_average_precision": 0.3717547988,
+      "global_average_precision": 0.4525537336,
+      "macro_roc_auc": 0.7357064023,
+      "global_roc_auc": 0.7941829054
+    },
+    {
+      "target_prevalence": 0.1,
+      "negative_weight": 3.1196054859,
+      "effective_prevalence": 0.1,
+      "global_weighted_prevalence": 0.1,
+      "mean_category_weighted_prevalence": 0.1097579797,
+      "macro_average_precision": 0.2924018544,
+      "global_average_precision": 0.3594308701,
+      "macro_roc_auc": 0.7357064023,
+      "global_roc_auc": 0.7941829054
+    },
+    {
+      "target_prevalence": 0.075,
+      "negative_weight": 4.2750149251,
+      "effective_prevalence": 0.075,
+      "global_weighted_prevalence": 0.075,
+      "mean_category_weighted_prevalence": 0.0836463368,
+      "macro_average_precision": 0.2446831267,
+      "global_average_precision": 0.3013919428,
+      "macro_roc_auc": 0.7357064023,
+      "global_roc_auc": 0.7941829054
+    },
+    {
+      "target_prevalence": 0.066,
+      "negative_weight": 4.9052382556,
+      "effective_prevalence": 0.066,
+      "global_weighted_prevalence": 0.066,
+      "mean_category_weighted_prevalence": 0.074057885,
+      "macro_average_precision": 0.2256111304,
+      "global_average_precision": 0.2777757582,
+      "macro_roc_auc": 0.7357064023,
+      "global_roc_auc": 0.7941829054
+    },
+    {
+      "target_prevalence": 0.05,
+      "negative_weight": 6.5858338036,
+      "effective_prevalence": 0.05,
+      "global_weighted_prevalence": 0.05,
+      "mean_category_weighted_prevalence": 0.056740162,
+      "macro_average_precision": 0.1884144929,
+      "global_average_precision": 0.2310321872,
+      "macro_roc_auc": 0.7357064023,
+      "global_roc_auc": 0.7941829054
+    },
+    {
+      "target_prevalence": 0.03,
+      "negative_weight": 11.2074715605,
+      "effective_prevalence": 0.03,
+      "global_weighted_prevalence": 0.03,
+      "mean_category_weighted_prevalence": 0.0345572117,
+      "macro_average_precision": 0.1336316583,
+      "global_average_precision": 0.160558839,
+      "macro_roc_auc": 0.7357064023,
+      "global_roc_auc": 0.7941829054
+    }
+  ],
+  "bootstrap_summary": [
+    {
+      "target_prevalence": 0.05,
+      "negative_weight": 6.5858338036,
+      "weighted_macro_ap": 0.1884144929,
+      "bootstrap_macro_ap_mean": 0.1887449129,
+      "bootstrap_macro_ap_std": 0.0009643701,
+      "weighted_macro_roc_auc": 0.7357064023,
+      "bootstrap_macro_roc_auc_mean": 0.7356254956,
+      "bootstrap_macro_roc_auc_std": 0.000594561,
+      "bootstrap_repeats": 30
+    },
+    {
+      "target_prevalence": 0.075,
+      "negative_weight": 4.2750149251,
+      "weighted_macro_ap": 0.2446831267,
+      "bootstrap_macro_ap_mean": 0.2455262861,
+      "bootstrap_macro_ap_std": 0.001061651,
+      "weighted_macro_roc_auc": 0.7357064023,
+      "bootstrap_macro_roc_auc_mean": 0.7356499197,
+      "bootstrap_macro_roc_auc_std": 0.0005773644,
+      "bootstrap_repeats": 30
+    },
+    {
+      "target_prevalence": 0.1,
+      "negative_weight": 3.1196054859,
+      "weighted_macro_ap": 0.2924018544,
+      "bootstrap_macro_ap_mean": 0.2931535801,
+      "bootstrap_macro_ap_std": 0.0015989174,
+      "weighted_macro_roc_auc": 0.7357064023,
+      "bootstrap_macro_roc_auc_mean": 0.7358154763,
+      "bootstrap_macro_roc_auc_std": 0.000688171,
+      "bootstrap_repeats": 30
+    }
+  ],
+  "baseline_per_category": [
+    {
+      "category": "Автотовары",
+      "pairs": 2859,
+      "positive_examples": 512,
+      "unweighted_prevalence": 0.1790835957,
+      "weighted_prevalence": 0.1790835957,
+      "average_precision": 0.4514389835,
+      "roc_auc": 0.7074926935
+    },
+    {
+      "category": "Аптека",
+      "pairs": 2692,
+      "positive_examples": 210,
+      "unweighted_prevalence": 0.0780089153,
+      "weighted_prevalence": 0.0780089153,
+      "average_precision": 0.4832314539,
+      "roc_auc": 0.8962645332
+    },
+    {
+      "category": "Бытовая техника",
+      "pairs": 2682,
+      "positive_examples": 969,
+      "unweighted_prevalence": 0.3612975391,
+      "weighted_prevalence": 0.3612975391,
+      "average_precision": 0.6208248644,
+      "roc_auc": 0.7362697806
+    },
+    {
+      "category": "Бытовая химия",
+      "pairs": 2571,
+      "positive_examples": 1226,
+      "unweighted_prevalence": 0.476857254,
+      "weighted_prevalence": 0.476857254,
+      "average_precision": 0.67323635,
+      "roc_auc": 0.6826112664
+    },
+    {
+      "category": "Галантерея и аксессуары",
+      "pairs": 2649,
+      "positive_examples": 444,
+      "unweighted_prevalence": 0.167610419,
+      "weighted_prevalence": 0.167610419,
+      "average_precision": 0.3528738799,
+      "roc_auc": 0.7165757594
+    },
+    {
+      "category": "Детские товары",
+      "pairs": 2683,
+      "positive_examples": 1528,
+      "unweighted_prevalence": 0.5695117406,
+      "weighted_prevalence": 0.5695117406,
+      "average_precision": 0.753918994,
+      "roc_auc": 0.6977298225
+    },
+    {
+      "category": "Дом и сад",
+      "pairs": 2632,
+      "positive_examples": 656,
+      "unweighted_prevalence": 0.2492401216,
+      "weighted_prevalence": 0.2492401216,
+      "average_precision": 0.5272441275,
+      "roc_auc": 0.7383923392
+    },
+    {
+      "category": "Канцелярские товары",
+      "pairs": 2570,
+      "positive_examples": 857,
+      "unweighted_prevalence": 0.333463035,
+      "weighted_prevalence": 0.333463035,
+      "average_precision": 0.524558568,
+      "roc_auc": 0.6828767044
+    },
+    {
+      "category": "Красота и гигиена",
+      "pairs": 2635,
+      "positive_examples": 943,
+      "unweighted_prevalence": 0.3578747628,
+      "weighted_prevalence": 0.3578747628,
+      "average_precision": 0.5888408805,
+      "roc_auc": 0.7190778638
+    },
+    {
+      "category": "Мебель",
+      "pairs": 2806,
+      "positive_examples": 401,
+      "unweighted_prevalence": 0.1429080542,
+      "weighted_prevalence": 0.1429080542,
+      "average_precision": 0.3439521157,
+      "roc_auc": 0.7114142917
+    },
+    {
+      "category": "Музыкальные инструменты",
+      "pairs": 2709,
+      "positive_examples": 592,
+      "unweighted_prevalence": 0.2185308232,
+      "weighted_prevalence": 0.2185308232,
+      "average_precision": 0.6503033487,
+      "roc_auc": 0.8379048628
+    },
+    {
+      "category": "Обувь",
+      "pairs": 2797,
+      "positive_examples": 281,
+      "unweighted_prevalence": 0.1004647837,
+      "weighted_prevalence": 0.1004647837,
+      "average_precision": 0.2507983013,
+      "roc_auc": 0.7318697701
+    },
+    {
+      "category": "Одежда",
+      "pairs": 3531,
+      "positive_examples": 415,
+      "unweighted_prevalence": 0.1175304446,
+      "weighted_prevalence": 0.1175304446,
+      "average_precision": 0.2277599441,
+      "roc_auc": 0.7182660037
+    },
+    {
+      "category": "Продукты питания",
+      "pairs": 2685,
+      "positive_examples": 754,
+      "unweighted_prevalence": 0.2808193669,
+      "weighted_prevalence": 0.2808193669,
+      "average_precision": 0.5692030967,
+      "roc_auc": 0.7245984475
+    },
+    {
+      "category": "Спорт и отдых",
+      "pairs": 2651,
+      "positive_examples": 709,
+      "unweighted_prevalence": 0.2674462467,
+      "weighted_prevalence": 0.2674462467,
+      "average_precision": 0.4987686546,
+      "roc_auc": 0.7180621667
+    },
+    {
+      "category": "Строительство и ремонт",
+      "pairs": 2724,
+      "positive_examples": 612,
+      "unweighted_prevalence": 0.2246696035,
+      "weighted_prevalence": 0.2246696035,
+      "average_precision": 0.5149669404,
+      "roc_auc": 0.7667007854
+    },
+    {
+      "category": "Товары для животных",
+      "pairs": 2734,
+      "positive_examples": 979,
+      "unweighted_prevalence": 0.3580833943,
+      "weighted_prevalence": 0.3580833943,
+      "average_precision": 0.6116233117,
+      "roc_auc": 0.7135131203
+    },
+    {
+      "category": "Хобби и творчество",
+      "pairs": 2680,
+      "positive_examples": 1236,
+      "unweighted_prevalence": 0.4611940299,
+      "weighted_prevalence": 0.4611940299,
+      "average_precision": 0.7416916724,
+      "roc_auc": 0.7757479336
+    },
+    {
+      "category": "Электроника",
+      "pairs": 2748,
+      "positive_examples": 471,
+      "unweighted_prevalence": 0.1713973799,
+      "weighted_prevalence": 0.1713973799,
+      "average_precision": 0.4236581166,
+      "roc_auc": 0.773919384
+    },
+    {
+      "category": "Ювелирные изделия",
+      "pairs": 2849,
+      "positive_examples": 333,
+      "unweighted_prevalence": 0.1168831169,
+      "weighted_prevalence": 0.1168831169,
+      "average_precision": 0.2218622434,
+      "roc_auc": 0.6648405162
+    }
+  ]
+}

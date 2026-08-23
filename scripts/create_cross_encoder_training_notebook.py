@@ -86,6 +86,8 @@ def build_notebook(
             from pathlib import Path, PurePosixPath
 
             INPUT_ROOT = Path("/kaggle/input")
+            EXPECTED_DATASET_REF = {dataset_reference!r}
+            EXPECTED_DATASET_SLUG = EXPECTED_DATASET_REF.rsplit("/", 1)[-1]
             WORKING_ROOT = Path("/kaggle/working")
             TEMP_ROOT = Path("/kaggle/temp/product_matching_minilm")
             PROJECT_ROOT = WORKING_ROOT / "product_matching"
@@ -97,11 +99,22 @@ def build_notebook(
             EXPECTED_BUNDLE_SHA256 = {expected_bundle_hash!r}
 
             def exactly_one(filename):
+                expected_path = INPUT_ROOT / EXPECTED_DATASET_SLUG / filename
+                if expected_path.is_file():
+                    return expected_path
                 candidates = list(INPUT_ROOT.glob(f"**/{{filename}}"))
                 if len(candidates) != 1:
+                    input_entries = (
+                        sorted(str(path) for path in INPUT_ROOT.iterdir())[:50]
+                        if INPUT_ROOT.is_dir()
+                        else []
+                    )
                     raise RuntimeError(
                         f"Expected exactly one {{filename!r}} in attached datasets, "
-                        f"found {{candidates}}"
+                        f"found {{candidates}}. Expected Kaggle Dataset "
+                        f"{{EXPECTED_DATASET_REF!r}} to be mounted at "
+                        f"{{INPUT_ROOT / EXPECTED_DATASET_SLUG}}. "
+                        f"Top-level /kaggle/input entries: {{input_entries}}"
                     )
                 return candidates[0]
 
@@ -116,6 +129,14 @@ def build_notebook(
             matches_path = exactly_one("matches.parquet")
             manifest_path = exactly_one({shared.MANIFEST_NAME!r})
             attached_manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+            attached_bundle_hash = attached_manifest["code_bundle"]["sha256"]
+            if attached_bundle_hash != EXPECTED_BUNDLE_SHA256:
+                raise RuntimeError(
+                    "Attached Kaggle Dataset version does not match this notebook: "
+                    f"expected bundle {{EXPECTED_BUNDLE_SHA256}}, "
+                    f"got {{attached_bundle_hash}}. Re-submit the kernel only after "
+                    "the new Dataset version reports ready."
+                )
             bundle_candidates = list(INPUT_ROOT.glob("**/{shared.BUNDLE_NAME}"))
             bundle_candidates.extend(
                 path
@@ -178,6 +199,7 @@ def build_notebook(
             print(subprocess.run(["nvidia-smi"], check=False, capture_output=True, text=True).stdout)
             """
         ),
+        shared.experiment_run_initialization_cell(),
         markdown("## Гиперпараметры эксперимента"),
         code(config_source),
         markdown(
@@ -292,7 +314,19 @@ def build_notebook(
             report = json.loads(report_path.read_text(encoding="utf-8"))
             completion = {
                 "status": "complete",
+                "run_id": EXPERIMENT_RUN_ID,
+                "started_at_utc": EXPERIMENT_STARTED_AT_UTC,
+                "completed_at_utc": datetime.now(timezone.utc).isoformat(
+                    timespec="seconds"
+                ).replace("+00:00", "Z"),
+                "experiment": OUTPUT_DIR.name,
                 "model": TRAIN_CONFIG["model"],
+                "dataset_ref": EXPECTED_DATASET_REF,
+                "kaggle_kernel_ref": (
+                    os.getenv("KAGGLE_KERNEL_RUN_ID")
+                    or os.getenv("KAGGLE_KERNEL_INFERENCE_RUN_ID")
+                    or ""
+                ),
                 "code_bundle_sha256": EXPECTED_BUNDLE_SHA256,
                 "training_wall_seconds": training_wall_seconds,
                 "training_report": report,
@@ -311,6 +345,7 @@ def build_notebook(
             print(f"  {completion_path.name}: {completion_path.stat().st_size / 2**20:.2f} MiB")
             """
         ),
+        *shared.google_sheets_tracking_cells(),
     ]
     notebook = nbf.v4.new_notebook(cells=cells)
     notebook.metadata.update(
