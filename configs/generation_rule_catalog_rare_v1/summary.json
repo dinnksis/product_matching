@@ -1,0 +1,32 @@
+{
+  "version": "generation_rule_catalog_rare_v1",
+  "source": "RULE_DISCOVERY_60000_PLUS_FROZEN_INTERNAL_VALIDATION_3000",
+  "ordinary_hard_ood_used": false,
+  "rare_support_range": [
+    20,
+    500
+  ],
+  "candidate_count": 75,
+  "rare_safe_rule_count": 24,
+  "rare_experimental_rule_count": 39,
+  "rare_safe_rule_category_combinations": 29,
+  "tier_counts": {
+    "EXCLUDED_CORE_ALIAS": 12,
+    "RARE_EXPERIMENTAL_NEEDS_CLEAN_VALIDATION": 23,
+    "RARE_EXPERIMENTAL_NO_CATEGORY_SCOPE": 1,
+    "RARE_EXPERIMENTAL_SEMANTIC_GUARD": 15,
+    "RARE_SAFE": 24
+  },
+  "safe_requirements": {
+    "different_value_only": true,
+    "discovery_direction": "NEGATIVE",
+    "validation_median_direction": "NEGATIVE",
+    "min_clean_discovery_support": 5,
+    "min_validation_support": 3,
+    "min_clean_validation_support": 1,
+    "min_discovery_category_support": 5,
+    "explicit_semantic_allow_list": true,
+    "category_scoped_only": true
+  },
+  "deterministic_label_warning": "Rules assign label 0 only to controlled one-concept mutations satisfying the rule guard, never to arbitrary natural pairs."
+}
