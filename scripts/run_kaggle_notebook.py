@@ -163,6 +163,29 @@ def prepare_notebook(source: Path, destination: Path, *, gpu_check: bool) -> Non
     if not isinstance(notebook.get("cells"), list):
         fail(f"notebook has no cells array: {source}")
 
+    # Fail locally before consuming a Kaggle run when an ordinary Python cell
+    # was accidentally corrupted. Cells containing IPython magics are parsed
+    # by the notebook kernel and therefore cannot be checked with compile().
+    for cell_index, cell in enumerate(notebook["cells"]):
+        if cell.get("cell_type") != "code":
+            continue
+        cell_source = "".join(cell.get("source", []))
+        if any(
+            line.lstrip().startswith(("%", "!", "?"))
+            for line in cell_source.splitlines()
+        ):
+            continue
+        try:
+            compile(cell_source, f"{source}:cell-{cell_index}", "exec")
+        except SyntaxError as error:
+            location = f"line {error.lineno}"
+            if error.offset is not None:
+                location += f", column {error.offset}"
+            fail(
+                f"Python syntax error in notebook cell {cell_index} "
+                f"({location}): {error.msg}"
+            )
+
     # Local outputs only make the upload larger. The source file is never modified.
     for cell in notebook["cells"]:
         if cell.get("cell_type") == "code":

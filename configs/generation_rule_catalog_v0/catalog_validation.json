@@ -1,0 +1,9 @@
+{
+  "unique_generation_rule_ids": true,
+  "all_labels_binary": true,
+  "all_allowed_categories_are_lists": true,
+  "all_negative_rules_have_allowed_categories": true,
+  "all_current_train_categories_have_ready_negative_rule": true,
+  "hard_ood_used": false,
+  "all_checks_passed": true
+}

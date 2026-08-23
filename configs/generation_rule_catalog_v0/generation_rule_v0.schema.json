@@ -1,0 +1,57 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "title": "Generation rule v0",
+  "type": "object",
+  "required": [
+    "generation_rule_id",
+    "rule_kind",
+    "label",
+    "concept",
+    "relation",
+    "allowed_categories",
+    "generation_action",
+    "required_postcondition"
+  ],
+  "properties": {
+    "generation_rule_id": {
+      "type": "string"
+    },
+    "source_rule_id": {
+      "type": "string"
+    },
+    "rule_kind": {
+      "enum": [
+        "NEGATIVE_MUTATION",
+        "POSITIVE_TRANSFORMATION"
+      ]
+    },
+    "label": {
+      "enum": [
+        0,
+        1
+      ]
+    },
+    "concept": {
+      "type": "string"
+    },
+    "relation": {
+      "type": "string"
+    },
+    "scope": {
+      "type": "string"
+    },
+    "allowed_categories": {
+      "type": "array",
+      "items": {
+        "type": "string"
+      }
+    },
+    "generation_action": {
+      "type": "string"
+    },
+    "required_postcondition": {
+      "type": "string"
+    }
+  },
+  "additionalProperties": true
+}

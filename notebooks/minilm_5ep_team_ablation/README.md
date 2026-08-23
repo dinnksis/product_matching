@@ -138,7 +138,7 @@ uv run python scripts/run_kaggle_notebook.py \
 Notebook рассчитан на две T4 и запускает DDP через `torchrun` с двумя
 процессами. Он сохраняет checkpoint, predictions для трёх validation split,
 training log, `training_report.json` и `notebook_completed.json` в
-`/kaggle/working` и отправляет итог в `experiments_v2`.
+`/kaggle/working` и отправляет итог в `data_exps`.
 
 ## Воспроизводимость
 

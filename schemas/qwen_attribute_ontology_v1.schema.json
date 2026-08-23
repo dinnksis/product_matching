@@ -1,0 +1,59 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "qwen_attribute_ontology_v1.schema.json",
+  "title": "Category-aware raw attribute ontology batch",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["batch_id", "mappings"],
+  "properties": {
+    "batch_id": {"type": "string", "pattern": "^ab_[0-9a-f]{20}$"},
+    "mappings": {
+      "type": "array",
+      "minItems": 1,
+      "maxItems": 50,
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": [
+          "entry_id", "canonical_concept", "role", "anchor_type",
+          "value_type", "unit_family", "confidence"
+        ],
+        "properties": {
+          "entry_id": {"type": "string", "pattern": "^an_[0-9a-f]{20}$"},
+          "canonical_concept": {
+            "type": "string",
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "minLength": 2,
+            "maxLength": 80
+          },
+          "role": {
+            "type": "string",
+            "enum": ["identity", "variant", "context", "ignore"]
+          },
+          "anchor_type": {
+            "enum": [
+              null, "exact_sku", "manufacturer_part_number", "exact_model",
+              "model_family", "product_line", "brand"
+            ]
+          },
+          "value_type": {
+            "type": "string",
+            "enum": [
+              "identifier", "categorical", "numeric", "unitized_numeric",
+              "boolean", "list", "free_text"
+            ]
+          },
+          "unit_family": {
+            "type": ["string", "null"],
+            "pattern": "^[a-z][a-z0-9_]*$",
+            "maxLength": 50
+          },
+          "confidence": {
+            "type": "string",
+            "enum": ["high", "medium", "low"]
+          }
+        }
+      }
+    }
+  }
+}

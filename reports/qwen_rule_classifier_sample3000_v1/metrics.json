@@ -1,0 +1,46 @@
+{
+  "method": "L2 logistic regression: category one-hot + frozen semantic rule incidence",
+  "training_source": "60000 RULE_DISCOVERY pairs only",
+  "validation_pairs": 3000,
+  "selected_rules": 1645,
+  "min_discovery_support": 10,
+  "regularization_c": 0.25,
+  "discovery_pairs_with_selected_rule": 58566,
+  "validation_pairs_with_selected_rule": 2921,
+  "validation_prevalence": 0.25666666666666665,
+  "category_only_baseline": {
+    "roc_auc": 0.6845495311863025,
+    "average_precision": 0.4148755874294893,
+    "log_loss": 0.5287473534300645,
+    "brier": 0.17461653744446606,
+    "accuracy_at_0_5": 0.753,
+    "precision_at_0_5": 0.5947712418300654,
+    "recall_at_0_5": 0.11818181818181818,
+    "f1_at_0_5": 0.19718309859154928,
+    "confusion_matrix_tn_fp_fn_tp": [
+      2168,
+      62,
+      679,
+      91
+    ]
+  },
+  "rule_classifier": {
+    "roc_auc": 0.8271579989517209,
+    "average_precision": 0.6154867386908272,
+    "log_loss": 0.43050875619717194,
+    "brier": 0.13781725295278077,
+    "accuracy_at_0_5": 0.805,
+    "precision_at_0_5": 0.6597582037996546,
+    "recall_at_0_5": 0.4961038961038961,
+    "f1_at_0_5": 0.5663454410674573,
+    "confusion_matrix_tn_fp_fn_tp": [
+      2033,
+      197,
+      388,
+      382
+    ]
+  },
+  "validation_labels_used_for_training_or_threshold_selection": false,
+  "threshold": 0.5,
+  "ordinary_hard_ood_used": false
+}
