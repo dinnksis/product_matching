@@ -1,0 +1,19 @@
+{
+  "source_model": "MiniLM S2 values-only baseline OOF, 3 folds",
+  "human_labels_only": true,
+  "synthetic_pairs_used": false,
+  "qwen_labels_used": false,
+  "qwen_role": "label-free semantic rule assignment only",
+  "ordinary_hard_ood_used_for_rule_selection": false,
+  "all_oof_human_pairs": 306669,
+  "qwen_semantic_covered_pairs": 59184,
+  "covered_positive_pairs": 14822,
+  "covered_negative_pairs": 44362,
+  "diagnostic_threshold": 0.5,
+  "covered_false_positives": 3103,
+  "covered_false_negatives": 5362,
+  "covered_model_errors": 8465,
+  "covered_oof_hard_pairs": 7987,
+  "rules_observed": 12781,
+  "rare_safe_rules_observed": 24
+}
