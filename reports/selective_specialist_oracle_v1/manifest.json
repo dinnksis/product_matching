@@ -1,0 +1,158 @@
+{
+  "status": "complete",
+  "experiment": "selective_specialist_oracle_v1",
+  "completed_at_utc": "2026-08-26T13:49:32Z",
+  "training_performed": false,
+  "submission_performed": false,
+  "google_sheets_modified": false,
+  "splits": {
+    "iid": 12000,
+    "hard": 5814,
+    "ood": 41171
+  },
+  "specialists": [
+    "minilm",
+    "rumodernbert"
+  ],
+  "route_budgets": [
+    0.05,
+    0.1,
+    0.15,
+    0.2,
+    0.3,
+    0.4
+  ],
+  "score_modes": [
+    "replace",
+    "blend_specialist_25",
+    "blend_50_50",
+    "blend_specialist_75",
+    "mean_normalized_rank"
+  ],
+  "primary_oracle_summary_excludes": [
+    "mean_normalized_rank"
+  ],
+  "oracle_policies": [
+    "global_directional",
+    "category_balanced_directional"
+  ],
+  "binary_threshold": 0.5,
+  "binary_threshold_source": "fixed_not_fitted",
+  "oof_neural_thresholds_available": false,
+  "limitations": [
+    "No train/OOF predictions exist for all three neural checkpoints.",
+    "Oracle selection uses labels and is not a production router.",
+    "Directional oracle is not a proof of the exact combinatorial AP optimum.",
+    "Mean normalized rank requires full specialist score distribution.",
+    "OOD category identity is descriptive only and forbidden for production rules."
+  ],
+  "sources": {
+    "iid/bge": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_bge\\iid_validation_predictions.parquet",
+      "bytes": 3965069,
+      "sha256": "128b531e8157e7062d317f0e44941707b2cb64b299754dbd3c6c39ac8863d5b7"
+    },
+    "iid/minilm": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_minilm\\iid_validation_predictions.parquet",
+      "bytes": 3964403,
+      "sha256": "3128969d471a26d3a2ebbd90f70067758282c3433c306d70fb8a1a5e8ebc1afb"
+    },
+    "iid/rumodernbert": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_rumodernbert\\iid_validation_predictions.parquet",
+      "bytes": 3963264,
+      "sha256": "37977fbc2070525d2895aa9730d346cd839e81e408a0dca40b0c336c9bf5dac7"
+    },
+    "iid/feature_pairs": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\iid_pairs.parquet",
+      "bytes": 169506
+    },
+    "iid/feature_base": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\iid_base.parquet",
+      "bytes": 667709
+    },
+    "hard/bge": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_bge\\hard_validation_predictions.parquet",
+      "bytes": 1896202,
+      "sha256": "4ffd16f394d4a6362885374e6a18f5af5437bb30c4d76f1865602f84f4831f9b"
+    },
+    "hard/minilm": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_minilm\\hard_validation_predictions.parquet",
+      "bytes": 1896671,
+      "sha256": "4d97a47c44781a54e0186ea84e98b16aefabba231fa7d044b838f1e62e4c4498"
+    },
+    "hard/rumodernbert": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_rumodernbert\\hard_validation_predictions.parquet",
+      "bytes": 1894706,
+      "sha256": "4593d076f85196e7b996eab7fadbb02dddc4f931cf9df4d75850af94fc9af3ff"
+    },
+    "hard/feature_pairs": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\hard_pairs.parquet",
+      "bytes": 81628
+    },
+    "hard/feature_base": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\hard_base.parquet",
+      "bytes": 375659
+    },
+    "ood/bge": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_bge\\ood_validation_predictions.parquet",
+      "bytes": 12363434,
+      "sha256": "d6b768a78b6c9b3b9d8a476dcdacd8b9d656536b3811b9bfba17daf9b5f8790b"
+    },
+    "ood/minilm": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_minilm\\ood_validation_predictions.parquet",
+      "bytes": 12363140,
+      "sha256": "15a947a75c354820c46522b93005f19514fcce1a69b3260320e2ce1316b1f863"
+    },
+    "ood/rumodernbert": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_rumodernbert\\ood_validation_predictions.parquet",
+      "bytes": 12352818,
+      "sha256": "579f6d03f874a9325dd194dfa32b43d7d64f23872b3ed33191bfff1da8fd999e"
+    },
+    "ood/feature_pairs": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\ood_pairs.parquet",
+      "bytes": 591243
+    },
+    "ood/feature_base": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\ood_base.parquet",
+      "bytes": 1783115
+    }
+  },
+  "outputs": {
+    "expert_overlap_summary.csv": {
+      "bytes": 221,
+      "sha256": "cb8b06addb3252f4dd14b8282aa4370b3962672b3148da5d52243a4b0bdb627a"
+    },
+    "oracle_budget_summary.csv": {
+      "bytes": 7458,
+      "sha256": "802f971c336488a5a5a1a868082b207d5c3e7a4dc55e42e980aa8f6c734148c5"
+    },
+    "oracle_budget_summary_all_modes.csv": {
+      "bytes": 7458,
+      "sha256": "802f971c336488a5a5a1a868082b207d5c3e7a4dc55e42e980aa8f6c734148c5"
+    },
+    "oracle_routing_results.csv": {
+      "bytes": 121904,
+      "sha256": "49dcd372327e94c4d858d6c0addc2e6faad4555e7398bb8afd1ddc4a44655fce"
+    },
+    "pairwise_corrections.parquet": {
+      "bytes": 3677212,
+      "sha256": "9db49d108d0aadc8ce01095c6ad2516a05478b9dbc90f04622e629ae217352c9"
+    },
+    "pairwise_summary.csv": {
+      "bytes": 2351,
+      "sha256": "8d5db0ad46b53d633c544d9e3c023f06329e9d5daeecf02691fcb57002e571f2"
+    },
+    "representative_examples.csv": {
+      "bytes": 57088,
+      "sha256": "96a47ae65bb456fa0e3173e982a930bc0b4cf97a2e963dbbdb1c721edf9a155e"
+    },
+    "slice_metrics.csv": {
+      "bytes": 297975,
+      "sha256": "89fdabf27b8bb97987c7cf05c150840a8e187deef6bbc3fc3359a1b88072284e"
+    },
+    "stable_slices.csv": {
+      "bytes": 96565,
+      "sha256": "2104db804191cdc8eebbab0e2e5314231bc775be1150861300794194a7d51c35"
+    }
+  }
+}

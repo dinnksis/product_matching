@@ -1,0 +1,30 @@
+{
+  "items_path": "data/items_human.parquet",
+  "human_train_pairs_path": "data/validation_splits_v1/human_train_pairs.parquet",
+  "accepted_facts_path": "artifacts/qwen_semantic_extraction_v1_3_sanitized_checkpoint_60000/accepted_facts.parquet",
+  "rule_definitions_path": "artifacts/qwen_rules_frozen_v1_60000/frozen_rule_definitions.parquet",
+  "output_dir": "artifacts/catboost1_early_exit_v1",
+  "folds": 5,
+  "seed": 2026,
+  "threads": 20,
+  "logging_period": 100,
+  "risk_limits": [0.001, 0.002, 0.005],
+  "rule_templates": {
+    "attribute_alias_min_support": 3,
+    "attribute_alias_min_purity": 0.7,
+    "prior_strength": 20.0
+  },
+  "catboost": {
+    "iterations": 450,
+    "depth": 7,
+    "learning_rate": 0.06,
+    "l2_leaf_reg": 5.0,
+    "random_strength": 0.5,
+    "bootstrap_type": "Bayesian",
+    "bagging_temperature": 0.5,
+    "border_count": 128,
+    "random_seed": 2026
+  },
+  "smoke_pairs": 4000,
+  "smoke_iterations": 5
+}

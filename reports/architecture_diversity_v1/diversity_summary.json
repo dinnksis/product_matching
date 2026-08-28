@@ -1,0 +1,38 @@
+{
+  "experiment_version": "architecture_prediction_diversity_v1",
+  "threshold_policy": "per-model best F1 on ordinary; frozen for hard and OOD",
+  "thresholds": {
+    "gte": {
+      "threshold": 0.3731314539909363,
+      "best_f1": 0.7419405566913037,
+      "precision": 0.7278617710583153,
+      "recall": 0.7565747273893522
+    },
+    "rumodernbert": {
+      "threshold": 0.39473289251327515,
+      "best_f1": 0.7518064718818724,
+      "precision": 0.7367610837438424,
+      "recall": 0.7674791533033997
+    },
+    "bge": {
+      "threshold": 0.42573681473731995,
+      "best_f1": 0.7583716349310572,
+      "precision": 0.7767316745124412,
+      "recall": 0.7408595253367544
+    },
+    "minilm": {
+      "threshold": 0.37262552976608276,
+      "best_f1": 0.7597923548843795,
+      "precision": 0.7456004939796234,
+      "recall": 0.7745349583066068
+    }
+  },
+  "source_aligned_scores_sha256": {
+    "ordinary": "8bb122ffb53391e3d8291cec7b903bded0928a5185e8dae4648730b72c9b3315",
+    "hard": "352586436a54d13a22ec9dbf0c80e9082fd1382b3b1873c5f6355ace1c737862",
+    "OOD": "f62c063e202b1ef63f83473a6ae75512a8abc96b0ea1e4f81e46a0cb2177c682"
+  },
+  "pairwise_rows": 18,
+  "model_uniqueness_rows": 12,
+  "hard_vs_minilm_rows": 3
+}

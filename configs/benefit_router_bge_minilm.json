@@ -1,0 +1,31 @@
+{
+  "specialists": ["minilm"],
+  "human_train_pairs_path": "data/validation_splits_v1/human_train_pairs.parquet",
+  "train_feature_cache_path": "artifacts/catboost1_negative_router_v2/feature_cache/base_features.parquet",
+  "validation_feature_cache_dir": "artifacts/catboost2_trust_router_v1/validation_feature_cache",
+  "predictions_root": "preds",
+  "oof_predictions": {
+    "bge": "preds/preds_bge/oof_predictions.parquet",
+    "minilm": "preds/preds_minilm/oof_predictions.parquet"
+  },
+  "runtime_measurements": "reports/inference_backend_benchmark_v1/winner_summary.csv",
+  "output_dir": "artifacts/benefit_router_bge_minilm_v1",
+  "classification_margin_logloss": 0.02,
+  "min_learned_gain_over_simple": 0.0005,
+  "budgets": [0.05, 0.10, 0.15, 0.20, 0.30],
+  "blend_weights": [0.25, 0.50, 0.75, 1.0],
+  "private_pairs": 275000,
+  "seed": 2026,
+  "threads": 20,
+  "catboost": {
+    "iterations": 400,
+    "depth": 7,
+    "learning_rate": 0.05,
+    "l2_leaf_reg": 7.0,
+    "random_strength": 0.5,
+    "bootstrap_type": "Bayesian",
+    "bagging_temperature": 0.5,
+    "border_count": 128,
+    "verbose": 100
+  }
+}

@@ -1,0 +1,115 @@
+{
+  "experiment": "bge_minilm_fast_oneway_router40_st_v2",
+  "backend": "sentence-transformers CrossEncoder 5.1.2",
+  "attention": "sdpa without fallback",
+  "precision": "FP16",
+  "serialization": "S2_VALUES_ONLY",
+  "max_length": 384,
+  "batch_size": 1024,
+  "direction": "AB only",
+  "routing": {
+    "model": "compact CatBoost classification benefit-router",
+    "features": 15,
+    "coverage": 0.4
+  },
+  "aggregation": "BGE probability; routed rows use 50/50 probability blend",
+  "offline_validation": {
+    "iid_macro_ap": 0.7881950552432775,
+    "hard_macro_ap": 0.37708810054523534,
+    "ood_macro_ap": 0.6392545436659138,
+    "mean_macro_ap": 0.6015125664848089
+  },
+  "docker_image": "dinakepech/ecup26-bge-minilm-benefit-router-sdpa:1.0",
+  "weights": {
+    "bge": {
+      "bytes": 2271071852,
+      "sha256": "0e4e8e0b9dd5f220fd0423a5a27d8d6c09ff3697e72fbbf16f861f03df02b87e"
+    },
+    "minilm": {
+      "bytes": 470588492,
+      "sha256": "1122ac37bda1be257b743c56468fbf3abba8a341f89c7d34888a6c0f3afbb6ab"
+    }
+  },
+  "files": {
+    "attribute_name_frequency.csv": {
+      "size": 1781499,
+      "sha256": "48a3846f39c68f035ea247096c9b3c5c47242a3f5c978117c2601dd0fa5f8486"
+    },
+    "ensemble_base.py": {
+      "size": 13432,
+      "sha256": "8a0554e5d9ac553ef0b832b599df97f80cfba6c7151089ca90ce1595165e070a"
+    },
+    "fast_benefit_router.py": {
+      "size": 5611,
+      "sha256": "281ddc630cbc2bdc373775e9f044736b6eb98d18d18b653c48f6e6b2058b6061"
+    },
+    "metadata.json": {
+      "size": 108,
+      "sha256": "d4b9cc4b479773a76763f2877c1c7185ba3d602c5c2cb59c19a3c2a24b27429c"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/config.json": {
+      "size": 765,
+      "sha256": "9afa1e9d9f2c711f7ec953b707ddf6f38638fbc123ffcd79e1c28791eea04977"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/model.safetensors": {
+      "size": 2271071852,
+      "sha256": "0e4e8e0b9dd5f220fd0423a5a27d8d6c09ff3697e72fbbf16f861f03df02b87e"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/sentencepiece.bpe.model": {
+      "size": 5069051,
+      "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/special_tokens_map.json": {
+      "size": 964,
+      "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/tokenizer.json": {
+      "size": 17082998,
+      "sha256": "efcbc2e883c0ef3f67ce522db4e6e4e114532aeb827b5e2cbfa89bac7da8252f"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/tokenizer_config.json": {
+      "size": 1203,
+      "sha256": "b87c8703482b0300d3da30e201519aa641f6a450f5eb5bf1e624afbf70c74d80"
+    },
+    "models/minilm-5ep-human-ft-v1/config.json": {
+      "size": 817,
+      "sha256": "c48e1122d31e216b552b6d0cc9d9181e240ebea307278f1d61027f397f627666"
+    },
+    "models/minilm-5ep-human-ft-v1/model.safetensors": {
+      "size": 470588492,
+      "sha256": "1122ac37bda1be257b743c56468fbf3abba8a341f89c7d34888a6c0f3afbb6ab"
+    },
+    "models/minilm-5ep-human-ft-v1/special_tokens_map.json": {
+      "size": 964,
+      "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+    },
+    "models/minilm-5ep-human-ft-v1/tokenizer.json": {
+      "size": 17082832,
+      "sha256": "d0091a328b3441d754e481db5a390d7f3b8dabc6016869fd13ba350d23ddc4cd"
+    },
+    "models/minilm-5ep-human-ft-v1/tokenizer_config.json": {
+      "size": 1178,
+      "sha256": "ccf223ba3d5b3cc7fa6c3bf451f3bb40557a5c92b0aa33f63d17802ff1a96fd9"
+    },
+    "README.md": {
+      "size": 1025,
+      "sha256": "9c60c08abdfb5a6669496dd9c9521a96c3de3df2d5a0f184e8fd17b17bac9aa8"
+    },
+    "router_manifest.json": {
+      "size": 559,
+      "sha256": "4f7d21c1cab97cf338ddd22cccbeedb19f0b71d3f39d5c34725875a3cd3df41e"
+    },
+    "router_score_title.cbm": {
+      "size": 764732,
+      "sha256": "bbda6e86aeb68814a50753a587d8a1476f2f1b346a648168ac65fe6721e6fb5a"
+    },
+    "run.py": {
+      "size": 9290,
+      "sha256": "07adfddd2a07f7b31c3325a124db5c4120a38114070975d910ec043efe0c8842"
+    },
+    "serialization_ablation.py": {
+      "size": 18169,
+      "sha256": "30a6058b0a143dcaca33fe6f4f334a4740f8c9feac77cd423009dd0978f17b8d"
+    }
+  }
+}

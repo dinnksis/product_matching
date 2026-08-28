@@ -1,0 +1,12 @@
+{
+  "experiment1_dir": "artifacts/catboost2_trust_router_v1",
+  "experiment1_config": "configs/catboost2_trust_router.json",
+  "catboost1_source_dir": "artifacts/catboost1_negative_router_v2",
+  "output_dir": "artifacts/catboost2_separate_routers_v1",
+  "validation_splits": ["iid", "hard", "ood"],
+  "risk_limits": [0.001, 0.002, 0.005],
+  "threads": 20,
+  "smoke_pairs_per_fold": 1000,
+  "smoke_validation_rows": 500,
+  "smoke_iterations": 5
+}

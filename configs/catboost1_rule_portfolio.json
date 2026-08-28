@@ -1,0 +1,13 @@
+{
+  "catboost1_source_dir": "artifacts/catboost1_negative_router_v2",
+  "score_column": "p_match_C1A_category_no_rules",
+  "output_dir": "artifacts/catboost1_rule_portfolio_v1",
+  "risk_limits": [0.001, 0.002, 0.005],
+  "selection_risk_factors": [1.0, 0.8],
+  "score_caps": [0.005, 0.01, 0.02, 0.03, 0.05, 0.08],
+  "baseline_seed_fractions": [0.5, 0.75, 0.9, 1.0],
+  "minimum_gate_support": 100,
+  "minimum_calibration_folds": 3,
+  "maximum_gates": 5,
+  "smoke_pairs_per_fold": 1000
+}

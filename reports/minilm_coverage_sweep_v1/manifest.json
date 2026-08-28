@@ -1,0 +1,97 @@
+{
+  "status": "complete",
+  "experiment": "minilm_coverage_sweep_v1",
+  "completed_at_utc": "2026-08-27T13:40:05Z",
+  "training_performed": false,
+  "submission_performed": false,
+  "oof_parameters_frozen_before_validation": true,
+  "runtime_protocol": {
+    "backend": "sentence-transformers CrossEncoder 5.1.2",
+    "attention": "sdpa",
+    "precision": "FP16",
+    "max_length": 192,
+    "batch_size": 1024,
+    "symmetric_inference": false,
+    "absolute_private_seconds_available": false
+  },
+  "quality_protocol": "saved max_length=384 symmetric probability predictions",
+  "production_parity_warning": "final submit uses max_length=192 one-direction raw-logit rank ensemble",
+  "sources": {
+    "router_oof": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\benefit_router_bge_minilm_v1\\router_oof_predictions.parquet",
+      "sha256": "93d6575bb146207b78cf234d4794d3ed8a073c3e5f07d567eb79987c345cfb23"
+    },
+    "human_pairs": {
+      "path": "C:\\Users\\Professional\\product_matching\\data\\validation_splits_v1\\human_train_pairs.parquet",
+      "sha256": "ffc8ac7283ca0fe1ac8a39e8ca31cb4fa069465576eeb636005c72636935e616"
+    },
+    "cheap_features": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost1_negative_router_v2\\feature_cache\\base_features.parquet",
+      "sha256": "7903ba560eb9020ea66e0e57eec0ba2a649350ce5254ed4546c8e92b20fb53c4"
+    },
+    "router_model": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\benefit_router_bge_minilm_v1\\models\\router_minilm_classification.cbm",
+      "sha256": "c92106f0aae271a1be4a1997aeb02c0de8060746fb1939f8080adf7e271b6d0c"
+    },
+    "iid/bge": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_bge\\iid_validation_predictions.parquet",
+      "bytes": 3965069,
+      "sha256": "128b531e8157e7062d317f0e44941707b2cb64b299754dbd3c6c39ac8863d5b7"
+    },
+    "iid/minilm": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_minilm\\iid_validation_predictions.parquet",
+      "bytes": 3964403,
+      "sha256": "3128969d471a26d3a2ebbd90f70067758282c3433c306d70fb8a1a5e8ebc1afb"
+    },
+    "iid/feature_pairs": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\iid_pairs.parquet",
+      "bytes": 169506
+    },
+    "iid/feature_base": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\iid_base.parquet",
+      "bytes": 667709
+    },
+    "hard/bge": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_bge\\hard_validation_predictions.parquet",
+      "bytes": 1896202,
+      "sha256": "4ffd16f394d4a6362885374e6a18f5af5437bb30c4d76f1865602f84f4831f9b"
+    },
+    "hard/minilm": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_minilm\\hard_validation_predictions.parquet",
+      "bytes": 1896671,
+      "sha256": "4d97a47c44781a54e0186ea84e98b16aefabba231fa7d044b838f1e62e4c4498"
+    },
+    "hard/feature_pairs": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\hard_pairs.parquet",
+      "bytes": 81628
+    },
+    "hard/feature_base": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\hard_base.parquet",
+      "bytes": 375659
+    },
+    "ood/bge": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_bge\\ood_validation_predictions.parquet",
+      "bytes": 12363434,
+      "sha256": "d6b768a78b6c9b3b9d8a476dcdacd8b9d656536b3811b9bfba17daf9b5f8790b"
+    },
+    "ood/minilm": {
+      "path": "C:\\Users\\Professional\\product_matching\\preds\\preds_minilm\\ood_validation_predictions.parquet",
+      "bytes": 12363140,
+      "sha256": "15a947a75c354820c46522b93005f19514fcce1a69b3260320e2ce1316b1f863"
+    },
+    "ood/feature_pairs": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\ood_pairs.parquet",
+      "bytes": 591243
+    },
+    "ood/feature_base": {
+      "path": "C:\\Users\\Professional\\product_matching\\artifacts\\catboost2_trust_router_v1\\validation_feature_cache\\ood_base.parquet",
+      "bytes": 1783115
+    }
+  },
+  "outputs": {
+    "table": "quality_runtime_table.csv",
+    "operating_points": "operating_points.csv",
+    "pareto": "pareto_learned.csv",
+    "report": "REPORT.md"
+  }
+}

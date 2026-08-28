@@ -1,0 +1,4 @@
+{
+  "image": "dinakepech/ecup26-bge-minilm-rumodern-router-sdpa:1.0",
+  "entry_point": "python -u run.py"
+}

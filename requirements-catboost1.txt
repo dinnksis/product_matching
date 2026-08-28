@@ -1,0 +1,3 @@
+# Install after the base project environment (`uv sync`).
+catboost==1.2.8
+scipy>=1.13,<2

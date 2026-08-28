@@ -1,0 +1,44 @@
+{
+  "catboost1_source_dir": "artifacts/catboost1_negative_router_v2",
+  "catboost1_score_column": "p_match_C1A_category_no_rules",
+  "items_path": "data/items_human.parquet",
+  "accepted_facts_path": "artifacts/qwen_semantic_extraction_v1_3_sanitized_checkpoint_60000/accepted_facts.parquet",
+  "validation_splits": {
+    "iid": "data/validation_splits_v1/human_iid_validation_pairs.parquet",
+    "hard": "data/validation_splits_v1/human_hard_validation_pairs.parquet",
+    "ood": "data/validation_splits_v1/human_ood_validation_pairs.parquet"
+  },
+  "output_dir": "artifacts/catboost2_trust_router_v1",
+  "risk_limits": [0.001, 0.002, 0.005],
+  "calibration_bins": 10,
+  "attribute_alias_min_support": 3,
+  "attribute_alias_min_purity": 0.7,
+  "threads": 20,
+  "catboost1": {
+    "iterations": 450,
+    "depth": 7,
+    "learning_rate": 0.06,
+    "l2_leaf_reg": 5.0,
+    "random_strength": 0.5,
+    "bootstrap_type": "Bayesian",
+    "bagging_temperature": 0.5,
+    "border_count": 128,
+    "random_seed": 2026,
+    "verbose": 100
+  },
+  "catboost2": {
+    "iterations": 500,
+    "depth": 7,
+    "learning_rate": 0.05,
+    "l2_leaf_reg": 7.0,
+    "random_strength": 0.5,
+    "bootstrap_type": "Bayesian",
+    "bagging_temperature": 0.5,
+    "border_count": 128,
+    "random_seed": 3026,
+    "verbose": 100
+  },
+  "smoke_pairs_per_fold": 1000,
+  "smoke_validation_rows": 500,
+  "smoke_iterations": 5
+}

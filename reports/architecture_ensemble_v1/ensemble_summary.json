@@ -1,0 +1,62 @@
+{
+  "best_overall": {
+    "models": "rumodernbert+bge+minilm",
+    "aggregation_method": "mean_probability",
+    "mean_AP": 0.6037181627285387
+  },
+  "best_hard": {
+    "models": "bge",
+    "aggregation_method": "mean_probability",
+    "hard_AP": 0.3759746515593398
+  },
+  "best_OOD": {
+    "models": "rumodernbert+bge",
+    "aggregation_method": "mean_rank",
+    "OOD_AP": 0.6497095872511751
+  },
+  "best_2_model": {
+    "models": "bge+minilm",
+    "aggregation_method": "mean_rank",
+    "mean_AP": 0.602674169664077
+  },
+  "best_3_model": {
+    "models": "rumodernbert+bge+minilm",
+    "aggregation_method": "mean_probability",
+    "mean_AP": 0.6037181627285387
+  },
+  "best_single": {
+    "models": "bge",
+    "aggregation_method": "mean_probability",
+    "mean_AP": 0.5998223505114325
+  },
+  "best_all_4": {
+    "models": "gte+rumodernbert+bge+minilm",
+    "aggregation_method": "mean_probability",
+    "mean_AP": 0.6011273728833105
+  },
+  "all_4_delta_vs_best_single": 0.0013050223718780174,
+  "all_4_delta_vs_best_triple": -0.002590789845228203,
+  "experiment_version": "architecture_score_ensemble_v1",
+  "rows": 30,
+  "source_predictions_sha256": {
+    "gte/ordinary": "aa97d7c5b1a96fcb8c0b03ab0c368fd0668cba94251cd493ab8e47da29f61937",
+    "rumodernbert/ordinary": "37977fbc2070525d2895aa9730d346cd839e81e408a0dca40b0c336c9bf5dac7",
+    "bge/ordinary": "128b531e8157e7062d317f0e44941707b2cb64b299754dbd3c6c39ac8863d5b7",
+    "minilm/ordinary": "3128969d471a26d3a2ebbd90f70067758282c3433c306d70fb8a1a5e8ebc1afb",
+    "gte/hard": "b68d53dd83c503d190975629e0f6073e443b9bcab4cf8c209314d7cf13fd226e",
+    "rumodernbert/hard": "4593d076f85196e7b996eab7fadbb02dddc4f931cf9df4d75850af94fc9af3ff",
+    "bge/hard": "4ffd16f394d4a6362885374e6a18f5af5437bb30c4d76f1865602f84f4831f9b",
+    "minilm/hard": "4d97a47c44781a54e0186ea84e98b16aefabba231fa7d044b838f1e62e4c4498",
+    "gte/OOD": "6165d91ca04ff0187512af77de51c0d7f5466d41f4ac8b96f3b13dc446c18bb7",
+    "rumodernbert/OOD": "579f6d03f874a9325dd194dfa32b43d7d64f23872b3ed33191bfff1da8fd999e",
+    "bge/OOD": "d6b768a78b6c9b3b9d8a476dcdacd8b9d656536b3811b9bfba17daf9b5f8790b",
+    "minilm/OOD": "15a947a75c354820c46522b93005f19514fcce1a69b3260320e2ce1316b1f863"
+  },
+  "aligned_score_files": {
+    "ordinary": "C:\\Users\\Professional\\product_matching\\reports\\architecture_ensemble_v1\\ordinary_aligned_scores.parquet",
+    "hard": "C:\\Users\\Professional\\product_matching\\reports\\architecture_ensemble_v1\\hard_aligned_scores.parquet",
+    "OOD": "C:\\Users\\Professional\\product_matching\\reports\\architecture_ensemble_v1\\ood_aligned_scores.parquet"
+  },
+  "csv": "C:\\Users\\Professional\\product_matching\\reports\\architecture_ensemble_v1\\ensemble_results.csv",
+  "elapsed_seconds": 4.870361
+}

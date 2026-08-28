@@ -101,6 +101,9 @@ class ValidationResult:
     scores: np.ndarray
     scores_ab: np.ndarray
     scores_ba: np.ndarray
+    logits: np.ndarray
+    logits_ab: np.ndarray
+    logits_ba: np.ndarray
 
 
 def load_config_from_cli() -> tuple[Path, dict[str, Any]]:
@@ -428,7 +431,7 @@ def evaluate(
     model_backend: str,
 ) -> ValidationResult | None:
     model.eval()
-    local: list[tuple[int, bool, float]] = []
+    local: list[tuple[int, bool, float, float]] = []
     with torch.inference_mode():
         for packed in loader:
             pair_indices = packed.pop("pair_indices").tolist()
@@ -441,11 +444,12 @@ def evaluate(
             }
             with torch.autocast(device_type="cuda", dtype=amp_dtype):
                 logits = relevance_logits(model(**batch), model_backend)
-            probabilities = logits.float().sigmoid().cpu().tolist()
+            raw_logits = logits.float().cpu()
+            probabilities = raw_logits.sigmoid().tolist()
             local.extend(
-                (int(index), bool(reverse), float(probability))
-                for index, reverse, probability in zip(
-                    pair_indices, orientations, probabilities
+                (int(index), bool(reverse), float(probability), float(raw_logit))
+                for index, reverse, probability, raw_logit in zip(
+                    pair_indices, orientations, probabilities, raw_logits.tolist()
                 )
             )
 
@@ -459,15 +463,19 @@ def evaluate(
 
     scores_ab = np.full(len(targets), np.nan, dtype=np.float32)
     scores_ba = np.full(len(targets), np.nan, dtype=np.float32)
+    logits_ab = np.full(len(targets), np.nan, dtype=np.float32)
+    logits_ba = np.full(len(targets), np.nan, dtype=np.float32)
     for part in gathered:
-        for index, reverse, score in part:
-            destination = scores_ba if reverse else scores_ab
-            if np.isfinite(destination[index]):
+        for index, reverse, score, raw_logit in part:
+            score_destination = scores_ba if reverse else scores_ab
+            logit_destination = logits_ba if reverse else logits_ab
+            if np.isfinite(score_destination[index]):
                 raise RuntimeError(
                     f"Validation produced a duplicate score for pair {index}, "
                     f"reverse={reverse}"
                 )
-            destination[index] = score
+            score_destination[index] = score
+            logit_destination[index] = raw_logit
     if not np.isfinite(scores_ab).all():
         missing = int((~np.isfinite(scores_ab)).sum())
         raise RuntimeError(f"Validation produced {missing} missing A/B scores")
@@ -479,6 +487,11 @@ def evaluate(
         (scores_ab + scores_ba) / 2.0
         if has_reverse_scores
         else scores_ab.copy()
+    )
+    logits = (
+        (logits_ab + logits_ba) / 2.0
+        if has_reverse_scores
+        else logits_ab.copy()
     )
     frame = pd.DataFrame({"target": targets, "predict": scores, "category": categories})
     per_category = frame.groupby("category").apply(
@@ -504,6 +517,9 @@ def evaluate(
         scores=scores,
         scores_ab=scores_ab,
         scores_ba=scores_ba,
+        logits=logits,
+        logits_ab=logits_ab,
+        logits_ba=logits_ba,
     )
 
 
@@ -555,6 +571,12 @@ def build_validation_predictions(
     predictions["score"] = result.scores
     predictions["score_ab"] = result.scores_ab
     predictions["score_ba"] = result.scores_ba
+    predictions["logit"] = result.logits
+    predictions["logit_ab"] = result.logits_ab
+    predictions["logit_ba"] = result.logits_ba
+    predictions["probability"] = result.scores
+    predictions["probability_ab"] = result.scores_ab
+    predictions["probability_ba"] = result.scores_ba
     predictions["score_order_gap"] = np.abs(result.scores_ab - result.scores_ba)
     predictions["token_length_ab"] = validation_cache.forward_lengths.astype(np.int32)
     predictions["token_length_ba"] = validation_cache.reverse_lengths.astype(np.int32)
@@ -644,6 +666,7 @@ def main() -> None:
             tokenizer.pad_token = tokenizer.unk_token
         else:
             raise ValueError("Cross-encoder tokenizer must define pad_token_id")
+    tokenization_started = time.perf_counter()
     train_cache, validation_caches = create_caches(
         train,
         validations,
@@ -653,6 +676,7 @@ def main() -> None:
         distributed,
         control_group,
     )
+    tokenization_seconds = time.perf_counter() - tokenization_started
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     train_targets = train["target"].to_numpy(dtype=np.float32)
@@ -1120,6 +1144,9 @@ def main() -> None:
         primary_name = "iid" if "iid" in validation_reports else next(iter(validation_reports))
         primary = validation_reports[primary_name]
         report = {
+            "world_size": world_size,
+            "amp_dtype": str(amp_dtype),
+            "tokenization_seconds": tokenization_seconds,
             "training_seconds": float(elapsed.item()),
             "validation_seconds": validation_seconds,
             "validation_seconds_by_split": validation_seconds_by_split,

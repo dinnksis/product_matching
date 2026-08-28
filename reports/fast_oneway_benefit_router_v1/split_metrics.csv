@@ -1,0 +1,16 @@
+split,method,coverage,macro_ap
+iid,bge_oneway,0.0,0.7800717774401389
+iid,full_oneway,1.0,0.7914059079703963
+iid,uncertainty,0.2,0.7855241892817824
+iid,score_title,0.4,0.7881950552432775
+iid,score_title,0.6,0.7900522336322378
+hard,bge_oneway,0.0,0.376408555384703
+hard,full_oneway,1.0,0.3722587637468829
+hard,uncertainty,0.2,0.37750069191423
+hard,score_title,0.4,0.37708810054523534
+hard,score_title,0.6,0.37578158058164646
+ood,bge_oneway,0.0,0.6365235077978559
+ood,full_oneway,1.0,0.6387084060770963
+ood,uncertainty,0.2,0.6381724244519182
+ood,score_title,0.4,0.6392545436659138
+ood,score_title,0.6,0.6383866758381097

@@ -182,11 +182,22 @@ def code(text: str) -> nbf.NotebookNode:
 
 
 def google_sheets_tracking_cells(
-    *, sync_stem: str = "google_sheets_sync"
+    *,
+    sync_stem: str = "google_sheets_sync",
+    sync_target: str = "default",
 ) -> list[nbf.NotebookNode]:
     """Cells shared by every generated training notebook."""
     if not sync_stem or any(character not in "abcdefghijklmnopqrstuvwxyzABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789_-" for character in sync_stem):
         raise ValueError("sync_stem must contain only letters, digits, underscores, and hyphens")
+    sync_functions = {
+        "default": "sync_from_kaggle_credentials",
+        "architecture": "sync_architecture_from_kaggle_credentials",
+    }
+    if sync_target not in sync_functions:
+        raise ValueError(
+            f"sync_target must be one of {sorted(sync_functions)}, got {sync_target!r}"
+        )
+    sync_function = sync_functions[sync_target]
     pending_filename = (
         "sheets_sync_pending.json"
         if sync_stem == "google_sheets_sync"
@@ -240,7 +251,7 @@ def google_sheets_tracking_cells(
                         ],
                         check=True,
                     )
-                sync_result = logger_module.sync_from_kaggle_credentials(
+                sync_result = logger_module.{sync_function}(
                     spreadsheet_id=spreadsheet_id,
                     completion=completion,
                 )

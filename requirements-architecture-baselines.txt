@@ -1,0 +1,9 @@
+# Shared 2xT4 environment for the four architecture baseline notebooks.
+transformers==4.57.3
+torch>=2.5,<3
+pandas>=2.2,<3
+pyarrow>=18,<24
+scikit-learn>=1.6,<2
+numpy>=1.26,<3
+google-auth>=2.38,<3
+requests>=2.32,<3

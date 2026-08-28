@@ -1,0 +1,22 @@
+{
+  "target": "logloss(oneway_50_50_bge_minilm) - logloss(rumodern_oneway)",
+  "feature_columns": [
+    "category",
+    "bge_probability",
+    "bge_logit",
+    "bge_abs_from_half",
+    "bge_uncertainty",
+    "bge_entropy",
+    "bge_raw_logit",
+    "minilm_probability",
+    "minilm_logit",
+    "bge_minilm_disagreement",
+    "bge_minilm_signed_difference",
+    "bge_minilm_mean",
+    "bge_minilm_min",
+    "bge_minilm_max"
+  ],
+  "categorical_columns": [
+    "category"
+  ]
+}

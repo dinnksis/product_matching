@@ -1,0 +1,21 @@
+{
+  "router_artifact_dir": "artifacts/benefit_router_bge_minilm_v1",
+  "human_train_pairs_path": "data/validation_splits_v1/human_train_pairs.parquet",
+  "train_feature_cache_path": "artifacts/catboost1_negative_router_v2/feature_cache/base_features.parquet",
+  "validation_feature_cache_dir": "artifacts/catboost2_trust_router_v1/validation_feature_cache",
+  "predictions_root": "preds",
+  "output_dir": "reports/minilm_coverage_sweep_v1",
+  "learned_budgets": [0.05, 0.10, 0.15, 0.20, 0.30, 0.40, 0.50, 0.70, 1.00],
+  "baseline_budgets": [0.10, 0.20, 0.40],
+  "specialist_weights": [0.25, 0.50, 0.75, 1.00],
+  "mean_loss_tolerances": [0.001, 0.002],
+  "runtime_protocol": {
+    "backend": "sentence-transformers CrossEncoder 5.1.2",
+    "attention": "sdpa",
+    "precision": "FP16",
+    "max_length": 192,
+    "batch_size": 1024,
+    "symmetric_inference": false,
+    "absolute_private_seconds_available": false
+  }
+}

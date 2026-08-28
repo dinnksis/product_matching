@@ -1,0 +1,107 @@
+{
+  "anchor": {
+    "bge_oneway_oof_ap": 0.7793964824174952,
+    "full_oneway_oof_ap": 0.7895553983610971,
+    "full_oneway_weight": 0.5,
+    "all_policy_candidates": [
+      {
+        "method": "score_category",
+        "coverage": 0.2,
+        "mini_weight": 0.5,
+        "oof_macro_ap": 0.7846882561480977,
+        "oof_delta_vs_bge": 0.0052917737306025225,
+        "oof_delta_vs_full_oneway": -0.004867142212999442
+      },
+      {
+        "method": "score_category",
+        "coverage": 0.4,
+        "mini_weight": 0.5,
+        "oof_macro_ap": 0.7878452242381437,
+        "oof_delta_vs_bge": 0.008448741820648586,
+        "oof_delta_vs_full_oneway": -0.0017101741229533785
+      },
+      {
+        "method": "score_category",
+        "coverage": 0.6,
+        "mini_weight": 0.5,
+        "oof_macro_ap": 0.7891296370919669,
+        "oof_delta_vs_bge": 0.009733154674471778,
+        "oof_delta_vs_full_oneway": -0.0004257612691301871
+      },
+      {
+        "method": "score_title",
+        "coverage": 0.2,
+        "mini_weight": 0.5,
+        "oof_macro_ap": 0.7848285009408393,
+        "oof_delta_vs_bge": 0.005432018523344184,
+        "oof_delta_vs_full_oneway": -0.004726897420257781
+      },
+      {
+        "method": "score_title",
+        "coverage": 0.4,
+        "mini_weight": 0.5,
+        "oof_macro_ap": 0.787916747346173,
+        "oof_delta_vs_bge": 0.008520264928677856,
+        "oof_delta_vs_full_oneway": -0.0016386510149241085
+      },
+      {
+        "method": "score_title",
+        "coverage": 0.6,
+        "mini_weight": 0.5,
+        "oof_macro_ap": 0.7891427495259979,
+        "oof_delta_vs_bge": 0.009746267108502793,
+        "oof_delta_vs_full_oneway": -0.00041264883509917194
+      },
+      {
+        "method": "uncertainty",
+        "coverage": 0.2,
+        "mini_weight": 0.5,
+        "oof_macro_ap": 0.7848287893893514,
+        "oof_delta_vs_bge": 0.00543230697185626,
+        "oof_delta_vs_full_oneway": -0.004726608971745705
+      },
+      {
+        "method": "uncertainty",
+        "coverage": 0.4,
+        "mini_weight": 0.5,
+        "oof_macro_ap": 0.787810191459045,
+        "oof_delta_vs_bge": 0.00841370904154981,
+        "oof_delta_vs_full_oneway": -0.0017452069020521543
+      },
+      {
+        "method": "uncertainty",
+        "coverage": 0.6,
+        "mini_weight": 0.5,
+        "oof_macro_ap": 0.789125823005872,
+        "oof_delta_vs_bge": 0.009729340588376822,
+        "oof_delta_vs_full_oneway": -0.00042957535522514245
+      }
+    ]
+  },
+  "policies": [
+    {
+      "coverage": 0.2,
+      "method": "uncertainty",
+      "mini_weight": 0.5,
+      "oof_macro_ap": 0.7848287893893514,
+      "oof_delta_vs_bge": 0.00543230697185626,
+      "oof_delta_vs_full_oneway": -0.004726608971745705
+    },
+    {
+      "coverage": 0.4,
+      "method": "score_title",
+      "mini_weight": 0.5,
+      "oof_macro_ap": 0.787916747346173,
+      "oof_delta_vs_bge": 0.008520264928677856,
+      "oof_delta_vs_full_oneway": -0.0016386510149241085
+    },
+    {
+      "coverage": 0.6,
+      "method": "score_title",
+      "mini_weight": 0.5,
+      "oof_macro_ap": 0.7891427495259979,
+      "oof_delta_vs_bge": 0.009746267108502793,
+      "oof_delta_vs_full_oneway": -0.00041264883509917194
+    }
+  ]
+}

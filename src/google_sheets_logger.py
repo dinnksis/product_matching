@@ -26,6 +26,7 @@ DEFAULT_EXPERIMENT_SPREADSHEET_ID = (
     "1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA"
 )
 EXPERIMENTS_SHEET = "experiments_v2"
+ARCHITECTURE_EXPERIMENTS_SHEET = "architecture_exps"
 CATEGORY_METRICS_SHEET = "category_metrics"
 COMPARISON_SHEETS = {
     "pretrain": "pretrain_exps",
@@ -79,6 +80,95 @@ EXPERIMENT_HEADERS = (
     "learning_rate",
     "max_length",
     "seed",
+)
+
+ARCHITECTURE_EXPERIMENT_HEADERS = (
+    "run_id",
+    "completed_at_utc",
+    "status",
+    "experiment",
+    "architecture",
+    "model",
+    "initial_checkpoint_ref",
+    "dataset_ref",
+    "kaggle_kernel_ref",
+    "code_bundle_sha256",
+    "serialization",
+    "serialization_sha256",
+    "iid_macro_ap",
+    "hard_macro_ap",
+    "ood_macro_ap",
+    "iid_overall_ap",
+    "hard_overall_ap",
+    "ood_overall_ap",
+    "iid_roc_auc",
+    "hard_roc_auc",
+    "ood_roc_auc",
+    "hard_recall_at_p99",
+    "ood_log_loss",
+    "train_pairs",
+    "epochs",
+    "precision",
+    "batch_size",
+    "gradient_accumulation",
+    "world_size",
+    "effective_batch",
+    "learning_rate",
+    "max_length",
+    "serialization_prep_seconds",
+    "tokenization_seconds",
+    "training_seconds",
+    "iid_inference_seconds",
+    "hard_inference_seconds",
+    "ood_inference_seconds",
+    "total_pipeline_seconds",
+    "peak_vram_gib",
+    "checkpoint_path",
+    "iid_predictions_path",
+    "hard_predictions_path",
+    "ood_predictions_path",
+    "technical_notes",
+    "ensemble_models",
+    "aggregation_method",
+    "ensemble_size",
+    "mean_ap",
+    "analysis_type",
+    "validation_split",
+    "model_a",
+    "model_b",
+    "threshold_a",
+    "threshold_b",
+    "pearson",
+    "spearman",
+    "pearson_positive",
+    "spearman_positive",
+    "pearson_negative",
+    "spearman_negative",
+    "both_correct",
+    "both_wrong",
+    "a_correct_b_wrong",
+    "b_correct_a_wrong",
+    "positive_both_correct",
+    "positive_both_wrong",
+    "positive_a_correct_b_wrong",
+    "positive_b_correct_a_wrong",
+    "negative_both_correct",
+    "negative_both_wrong",
+    "negative_a_correct_b_wrong",
+    "negative_b_correct_a_wrong",
+    "disagreement_rate",
+    "oracle_accuracy",
+    "unique_correct",
+    "unique_errors",
+    "unique_correct_positive",
+    "unique_correct_negative",
+    "unique_errors_positive",
+    "unique_errors_negative",
+    "reference_model",
+    "corrected_hard_negatives",
+    "regressed_hard_negatives",
+    "corrected_hard_positives",
+    "regressed_hard_positives",
 )
 
 COMPARISON_HEADERS = EXPERIMENT_HEADERS + (
@@ -242,6 +332,152 @@ def build_experiment_row(
         "seed": args.get("seed"),
     }
     return [_cell(values[header]) for header in EXPERIMENT_HEADERS]
+
+
+def build_architecture_experiment_row(
+    completion: Mapping[str, Any],
+    *,
+    synced_at_utc: str | None = None,
+) -> list[Any]:
+    """Build one architecture-baseline row without comparison statistics."""
+    del synced_at_utc  # Kept for API symmetry with build_experiment_row.
+    run_id = str(completion.get("run_id", "")).strip()
+    if not run_id:
+        raise SheetsLoggerError("Architecture completion is missing a non-empty run_id")
+    report = _mapping(completion.get("training_report"))
+    args = _mapping(report.get("args"))
+    validation_splits = _mapping(report.get("validation_splits"))
+    missing_splits = [
+        split for split in ("iid", "hard", "ood") if split not in validation_splits
+    ]
+    if missing_splits:
+        raise SheetsLoggerError(
+            "Architecture completion is missing validation splits: "
+            f"{missing_splits}"
+        )
+    validation_seconds = _mapping(report.get("validation_seconds_by_split"))
+    artifacts = _mapping(completion.get("artifacts"))
+    predictions = _mapping(artifacts.get("predictions"))
+
+    def metric(split: str, *names: str) -> Any:
+        split_metrics = _mapping(validation_splits.get(split))
+        for name in names:
+            if name in split_metrics:
+                return split_metrics[name]
+        return None
+
+    world_size = report.get("world_size") or completion.get("world_size")
+    batch_size = args.get("batch_size")
+    gradient_accumulation = args.get("gradient_accumulation")
+    effective_batch: Any = completion.get("effective_batch")
+    if (
+        effective_batch is None
+        and isinstance(batch_size, int)
+        and isinstance(gradient_accumulation, int)
+        and isinstance(world_size, int)
+    ):
+        effective_batch = batch_size * gradient_accumulation * world_size
+    values = {
+        "run_id": run_id,
+        "completed_at_utc": completion.get("completed_at_utc"),
+        "status": completion.get("status"),
+        "experiment": completion.get("experiment"),
+        "architecture": completion.get("architecture"),
+        "model": completion.get("model") or args.get("model"),
+        "initial_checkpoint_ref": completion.get("initial_checkpoint_ref"),
+        "dataset_ref": completion.get("dataset_ref"),
+        "kaggle_kernel_ref": completion.get("kaggle_kernel_ref"),
+        "code_bundle_sha256": completion.get("code_bundle_sha256"),
+        "serialization": completion.get("serialization"),
+        "serialization_sha256": completion.get("serialization_sha256"),
+        "iid_macro_ap": metric("iid", "macro_average_precision"),
+        "hard_macro_ap": metric("hard", "macro_average_precision"),
+        "ood_macro_ap": metric("ood", "macro_average_precision"),
+        "iid_overall_ap": metric("iid", "overall_average_precision"),
+        "hard_overall_ap": metric("hard", "overall_average_precision"),
+        "ood_overall_ap": metric("ood", "overall_average_precision"),
+        "iid_roc_auc": metric("iid", "roc_auc", "overall_roc_auc"),
+        "hard_roc_auc": metric("hard", "roc_auc", "overall_roc_auc"),
+        "ood_roc_auc": metric("ood", "roc_auc", "overall_roc_auc"),
+        "hard_recall_at_p99": metric(
+            "hard", "recall_at_precision_0_99", "recall_at_p99"
+        ),
+        "ood_log_loss": metric("ood", "log_loss"),
+        "train_pairs": report.get("original_training_examples"),
+        "epochs": args.get("epochs"),
+        "precision": report.get("amp_dtype") or completion.get("precision"),
+        "batch_size": batch_size,
+        "gradient_accumulation": gradient_accumulation,
+        "world_size": world_size,
+        "effective_batch": effective_batch,
+        "learning_rate": args.get("learning_rate"),
+        "max_length": args.get("max_length"),
+        "serialization_prep_seconds": completion.get(
+            "serialization_prep_seconds"
+        ),
+        "tokenization_seconds": report.get("tokenization_seconds"),
+        "training_seconds": report.get("training_seconds"),
+        "iid_inference_seconds": validation_seconds.get("iid"),
+        "hard_inference_seconds": validation_seconds.get("hard"),
+        "ood_inference_seconds": validation_seconds.get("ood"),
+        "total_pipeline_seconds": report.get("total_pipeline_seconds"),
+        "peak_vram_gib": _peak_vram(report),
+        "checkpoint_path": artifacts.get("checkpoint") or completion.get("checkpoint_path"),
+        "iid_predictions_path": predictions.get("iid"),
+        "hard_predictions_path": predictions.get("hard"),
+        "ood_predictions_path": predictions.get("ood"),
+        "technical_notes": completion.get("technical_notes"),
+        "ensemble_models": completion.get("ensemble_models"),
+        "aggregation_method": completion.get("aggregation_method"),
+        "ensemble_size": completion.get("ensemble_size"),
+        "mean_ap": completion.get("mean_ap"),
+        "analysis_type": completion.get("analysis_type"),
+        "validation_split": completion.get("validation_split"),
+        "model_a": completion.get("model_a"),
+        "model_b": completion.get("model_b"),
+        "threshold_a": completion.get("threshold_a"),
+        "threshold_b": completion.get("threshold_b"),
+        "pearson": completion.get("pearson"),
+        "spearman": completion.get("spearman"),
+        "pearson_positive": completion.get("pearson_positive"),
+        "spearman_positive": completion.get("spearman_positive"),
+        "pearson_negative": completion.get("pearson_negative"),
+        "spearman_negative": completion.get("spearman_negative"),
+        "both_correct": completion.get("both_correct"),
+        "both_wrong": completion.get("both_wrong"),
+        "a_correct_b_wrong": completion.get("a_correct_b_wrong"),
+        "b_correct_a_wrong": completion.get("b_correct_a_wrong"),
+        "positive_both_correct": completion.get("positive_both_correct"),
+        "positive_both_wrong": completion.get("positive_both_wrong"),
+        "positive_a_correct_b_wrong": completion.get(
+            "positive_a_correct_b_wrong"
+        ),
+        "positive_b_correct_a_wrong": completion.get(
+            "positive_b_correct_a_wrong"
+        ),
+        "negative_both_correct": completion.get("negative_both_correct"),
+        "negative_both_wrong": completion.get("negative_both_wrong"),
+        "negative_a_correct_b_wrong": completion.get(
+            "negative_a_correct_b_wrong"
+        ),
+        "negative_b_correct_a_wrong": completion.get(
+            "negative_b_correct_a_wrong"
+        ),
+        "disagreement_rate": completion.get("disagreement_rate"),
+        "oracle_accuracy": completion.get("oracle_accuracy"),
+        "unique_correct": completion.get("unique_correct"),
+        "unique_errors": completion.get("unique_errors"),
+        "unique_correct_positive": completion.get("unique_correct_positive"),
+        "unique_correct_negative": completion.get("unique_correct_negative"),
+        "unique_errors_positive": completion.get("unique_errors_positive"),
+        "unique_errors_negative": completion.get("unique_errors_negative"),
+        "reference_model": completion.get("reference_model"),
+        "corrected_hard_negatives": completion.get("corrected_hard_negatives"),
+        "regressed_hard_negatives": completion.get("regressed_hard_negatives"),
+        "corrected_hard_positives": completion.get("corrected_hard_positives"),
+        "regressed_hard_positives": completion.get("regressed_hard_positives"),
+    }
+    return [_cell(values[header]) for header in ARCHITECTURE_EXPERIMENT_HEADERS]
 
 
 def experiment_group(completion: Mapping[str, Any]) -> str | None:
@@ -1244,6 +1480,79 @@ def ensure_comparison_tables(client: SheetsRestClient) -> dict[str, int]:
     return sheet_ids
 
 
+def ensure_architecture_table(client: SheetsRestClient) -> int:
+    """Create or validate the architecture-only experiment worksheet."""
+    metadata = client.metadata()
+    properties = _sheet_properties(metadata)
+    sheet = properties.get(ARCHITECTURE_EXPERIMENTS_SHEET)
+    if sheet is None:
+        client.batch_update_spreadsheet(
+            [
+                {
+                    "addSheet": {
+                        "properties": {
+                            "title": ARCHITECTURE_EXPERIMENTS_SHEET,
+                            "gridProperties": {
+                                "rowCount": 1000,
+                                "columnCount": max(
+                                    50, len(ARCHITECTURE_EXPERIMENT_HEADERS)
+                                ),
+                            },
+                        }
+                    }
+                }
+            ]
+        )
+        properties = _sheet_properties(client.metadata())
+        sheet = properties.get(ARCHITECTURE_EXPERIMENTS_SHEET)
+    if sheet is None:
+        raise SheetsLoggerError(
+            f"Google Sheets did not create worksheet {ARCHITECTURE_EXPERIMENTS_SHEET!r}"
+        )
+    sheet_id = int(sheet["sheetId"])
+    formatting: list[dict[str, Any]] = []
+    current_columns = int(
+        _mapping(sheet.get("gridProperties")).get("columnCount", 0) or 0
+    )
+    if current_columns < len(ARCHITECTURE_EXPERIMENT_HEADERS):
+        formatting.append(
+            {
+                "updateSheetProperties": {
+                    "properties": {
+                        "sheetId": sheet_id,
+                        "gridProperties": {
+                            "columnCount": len(ARCHITECTURE_EXPERIMENT_HEADERS)
+                        },
+                    },
+                    "fields": "gridProperties.columnCount",
+                }
+            }
+        )
+    last_column = column_letter(len(ARCHITECTURE_EXPERIMENT_HEADERS))
+    header_range = f"{_a1_sheet(ARCHITECTURE_EXPERIMENTS_SHEET)}!A1:{last_column}1"
+    header_rows = client.get_values(header_range)
+    existing = list(header_rows[0]) if header_rows else []
+    while existing and existing[-1] == "":
+        existing.pop()
+    if existing and list(ARCHITECTURE_EXPERIMENT_HEADERS[: len(existing)]) != existing:
+        raise SheetsLoggerError(
+            f"Worksheet {ARCHITECTURE_EXPERIMENTS_SHEET!r} has an incompatible "
+            "header; refusing to shift data"
+        )
+    if existing != list(ARCHITECTURE_EXPERIMENT_HEADERS):
+        client.update_values(header_range, [ARCHITECTURE_EXPERIMENT_HEADERS])
+    formatting.extend(
+        _format_requests(
+            sheet_id,
+            len(ARCHITECTURE_EXPERIMENT_HEADERS),
+            json_columns=False,
+        )
+    )
+    if formatting:
+        client.batch_update_spreadsheet(formatting)
+    return sheet_id
+
+
 def ensure_tables(client: SheetsRestClient) -> dict[str, int]:
     tables = {
         EXPERIMENTS_SHEET: EXPERIMENT_HEADERS,
@@ -1400,6 +1709,49 @@ def _upsert_experiment(client: SheetsRestClient, row: Sequence[Any]) -> str:
     _append_with_verification(
         client,
         f"{_a1_sheet(EXPERIMENTS_SHEET)}!A:{last_column}",
+        [row],
+        committed,
+    )
+    return "appended"
+
+
+def _upsert_architecture_experiment(
+    client: SheetsRestClient,
+    row: Sequence[Any],
+) -> str:
+    run_id = str(row[0])
+    last_column = column_letter(len(ARCHITECTURE_EXPERIMENT_HEADERS))
+    rows = client.get_values(
+        f"{_a1_sheet(ARCHITECTURE_EXPERIMENTS_SHEET)}!A2:{last_column}"
+    )
+    matches = [
+        index + 2
+        for index, current in enumerate(rows)
+        if current and str(current[0]) == run_id
+    ]
+    if len(matches) > 1:
+        raise SheetsLoggerError(
+            f"Worksheet {ARCHITECTURE_EXPERIMENTS_SHEET!r} contains duplicate "
+            f"run_id {run_id!r}"
+        )
+    if matches:
+        row_number = matches[0]
+        client.update_values(
+            f"{_a1_sheet(ARCHITECTURE_EXPERIMENTS_SHEET)}!"
+            f"A{row_number}:{last_column}{row_number}",
+            [row],
+        )
+        return "updated"
+
+    def committed() -> bool:
+        current = client.get_values(
+            f"{_a1_sheet(ARCHITECTURE_EXPERIMENTS_SHEET)}!A2:A"
+        )
+        return any(values and str(values[0]) == run_id for values in current)
+
+    _append_with_verification(
+        client,
+        f"{_a1_sheet(ARCHITECTURE_EXPERIMENTS_SHEET)}!A:{last_column}",
         [row],
         committed,
     )
@@ -1588,6 +1940,56 @@ def sync_experiment(
     return result
 
 
+def sync_architecture_experiment(
+    *,
+    spreadsheet_id: str,
+    service_account_json: str,
+    completion: Mapping[str, Any],
+    request: RequestCallable | None = None,
+    sleep: SleepCallable = time.sleep,
+) -> dict[str, Any]:
+    """Upsert one run only into architecture_exps.
+
+    This deliberately does not call ``sync_experiment`` and therefore does not
+    write to experiments_v2 or any pretrain/sft/data comparison worksheet.
+    """
+    spreadsheet_id = spreadsheet_id.strip()
+    if not spreadsheet_id:
+        raise SheetsLoggerError("Google spreadsheet_id must not be empty")
+    token = service_account_token(service_account_json)
+    if request is None:
+        try:
+            import requests
+        except ImportError as error:
+            raise SheetsLoggerError(
+                "requests is required for Google Sheets synchronization"
+            ) from error
+        request = requests.request
+    client = SheetsRestClient(
+        spreadsheet_id=spreadsheet_id,
+        access_token=token,
+        request=request,
+        sleep=sleep,
+    )
+    ensure_architecture_table(client)
+    synced_at = utc_now()
+    row = build_architecture_experiment_row(
+        completion,
+        synced_at_utc=synced_at,
+    )
+    action = _upsert_architecture_experiment(client, row)
+    return {
+        "run_id": str(completion["run_id"]),
+        "synced_at_utc": synced_at,
+        "spreadsheet_id": spreadsheet_id,
+        "spreadsheet_url": (
+            f"https://docs.google.com/spreadsheets/d/{spreadsheet_id}/edit"
+        ),
+        "worksheet": ARCHITECTURE_EXPERIMENTS_SHEET,
+        "architecture_action": action,
+    }
+
+
 def sync_from_kaggle_secrets(
     *,
     spreadsheet_id: str,
@@ -1612,6 +2014,28 @@ def sync_from_kaggle_credentials(
 ) -> dict[str, Any]:
     """Sync using a Kaggle Secret or the attached private credential Dataset."""
     return sync_experiment(
+        spreadsheet_id=spreadsheet_id,
+        service_account_json=kaggle_service_account_json(
+            secret_name=secret_name,
+            input_root=input_root,
+            dataset_slug=dataset_slug,
+            credential_filename=credential_filename,
+        ),
+        completion=completion,
+    )
+
+
+def sync_architecture_from_kaggle_credentials(
+    *,
+    spreadsheet_id: str,
+    completion: Mapping[str, Any],
+    secret_name: str = DEFAULT_SECRET_NAME,
+    input_root: Path = Path("/kaggle/input"),
+    dataset_slug: str = DEFAULT_CREDENTIAL_DATASET_SLUG,
+    credential_filename: str = DEFAULT_CREDENTIAL_FILENAME,
+) -> dict[str, Any]:
+    """Sync an architecture run only to architecture_exps."""
+    return sync_architecture_experiment(
         spreadsheet_id=spreadsheet_id,
         service_account_json=kaggle_service_account_json(
             secret_name=secret_name,
