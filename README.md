@@ -417,30 +417,3 @@ python -u run.py \
 Ближайшие практические эксперименты: char/word TF-IDF baseline и
 human-only fine-tuning `Qwen3-Reranker-0.6B` на одном и том же component-disjoint
 split, после чего — OOF blending и профилирование скорости.
-## MiniLM hyperparameter sweep
-
-Completed 14 Kaggle runs from `model/pretrain_minilm_5ep`, varying `learning_rate`, `epochs`, and `max_length`. Scores are macro average precision (higher is better).
-
-| Run | `max_length` | `lr` | Epochs | IID | Hard | OOD |
-|---:|---:|---:|---:|---:|---:|---:|
-| 01 | 384 | 2e-5 | 1 | 0.789560 | 0.365720 | 0.642278 |
-| 02 | 384 | 5e-6 | 1 | 0.768028 | 0.353765 | 0.617102 |
-| 03 | 384 | 1e-5 | 1 | 0.779445 | 0.359668 | 0.630597 |
-| 04 | 384 | 3e-5 | 1 | 0.794219 | 0.369896 | 0.644576 |
-| 05 | 384 | 5e-5 | 1 | 0.797364 | 0.376278 | 0.648159 |
-| 06 | 384 | 2e-5 | 2 | 0.797194 | 0.383476 | 0.647774 |
-| 07 | 384 | 2e-5 | 3 | **0.803063** | **0.396926** | 0.648261 |
-| 08 | 512 | 2e-5 | 1 | 0.790255 | 0.367911 | 0.640635 |
-| 09 | 512 | 5e-6 | 1 | 0.768416 | 0.354497 | 0.614839 |
-| 10 | 512 | 1e-5 | 1 | 0.780449 | 0.360117 | 0.628853 |
-| 11 | 512 | 3e-5 | 1 | 0.794986 | 0.372394 | 0.646747 |
-| 12 | 512 | 5e-5 | 1 | 0.799207 | 0.377776 | **0.653021** |
-| 13 | 512 | 2e-5 | 2 | 0.798649 | 0.383580 | 0.647748 |
-| 14 | 512 | 2e-5 | 3 | **0.803345** | 0.394125 | 0.647916 |
-
-### Conclusions
-
-- Best `Hard`: run 07 — `max_length=384`, `lr=2e-5`, 3 epochs; AP `0.396926`.
-- Best `IID`: run 14 — `max_length=512`, `lr=2e-5`, 3 epochs; AP `0.803345`.
-- Best `OOD`: run 12 — `max_length=512`, `lr=5e-5`, 1 epoch; AP `0.653021`.
-- Recommended robust baseline: run 07, because it leads on `Hard`, is nearly tied for `IID`, and is second on `OOD`.
