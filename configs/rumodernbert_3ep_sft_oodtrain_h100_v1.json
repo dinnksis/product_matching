@@ -1,0 +1,138 @@
+{
+  "schema_version": 1,
+  "campaign": "rumodernbert_3ep_sft_oodtrain_h100_v1",
+  "objective": "Run exactly five sequential RuModernBERT human-SFT experiments on one H100, with former OOD labels included in train and no OOD evaluation.",
+  "checkpoint": {
+    "path": "model/pretrain_rumodernbert_3ep",
+    "architecture": "ModernBertForSequenceClassification",
+    "parameters": 149605633,
+    "trainable_parameter_tensors": 138,
+    "files": {
+      "added_tokens.json": "b1fc4b8b19f7e5c2264144bf4cfdb8a5a0c62d99edce903970b889ac82f3285f",
+      "config.json": "de2e907e5cd29eef9d19e24c3322abaaff959daa534ddb8041cd4cb2aa0db9d0",
+      "merges.txt": "53226b9ceaf7a1f79cf0674b94fc5e147411ef52410dadc71037a4572584ccfa",
+      "model.safetensors": "e8b7ebda4904c2e7f8d2ec42645cfcbda928f90fa8dbd59d03e314318118673d",
+      "special_tokens_map.json": "2ea3c1eb27baf06d75115d453c067c1832d7101a97243b298a4af8d59c916d62",
+      "tokenizer.json": "588f17299b8a7c06a895439aee50a2de95e78a03d3d0ae2e30adf23aa81a0f3f",
+      "tokenizer_config.json": "6030cf18a07362d8209899769e3af19cfada7363a1d3056ba47ef2f0dcaf7360",
+      "vocab.json": "65be01b3421087106b17bed0981826443bfddcba641af6428558be1bdac95a5c"
+    }
+  },
+  "source_data": {
+    "human_dir": "prepared/validation_splits_v1/human",
+    "files": {
+      "items.parquet": "a787b58485632bad9039ad04f5b6210080e8d91e0c03e3a5c79d678962a14b1d",
+      "train_pairs.parquet": "ffc8ac7283ca0fe1ac8a39e8ca31cb4fa069465576eeb636005c72636935e616",
+      "ood_validation_pairs.parquet": "e12eebba6afd6c307bd70475eea29d80df513280b262328cf819bac65e8b22a4",
+      "iid_validation_pairs.parquet": "8964422e8c3b254a355d35b5fb60568fed4b6532abb1e8918aba1050f7ecb798",
+      "hard_validation_pairs.parquet": "6731ff9c41100b0ea21d6868cd91cbfab1038832d500753cbab8d4e6962fb064"
+    },
+    "expected": {
+      "items": 711304,
+      "human_train_pairs": 306669,
+      "former_ood_pairs": 41171,
+      "combined_train_pairs": 347840,
+      "combined_train_positives": 89291,
+      "combined_train_categories": 20,
+      "iid_pairs": 12000,
+      "iid_categories": 18,
+      "hard_pairs": 5814,
+      "hard_categories": 18,
+      "train_iid_item_overlap": 0,
+      "train_hard_item_overlap": 0
+    },
+    "train_order": [
+      "train_pairs.parquet",
+      "ood_validation_pairs.parquet"
+    ],
+    "label_sources": [
+      "human_train",
+      "human_former_ood"
+    ],
+    "validation_splits": [
+      "iid",
+      "hard"
+    ],
+    "ood_policy": "included_in_train_not_evaluated"
+  },
+  "training": {
+    "model_backend": "sequence_classification",
+    "trust_remote_code": false,
+    "batch_size": 192,
+    "eval_batch_size": 512,
+    "gradient_accumulation": 1,
+    "effective_batch": 192,
+    "weight_decay": 0.01,
+    "warmup_ratio": 0.05,
+    "max_length": 384,
+    "attention_implementation": "sdpa",
+    "sampling": "none",
+    "train_subset": "all",
+    "loss_weighting": "none",
+    "lexical_hard_negative_strength": 0.0,
+    "bucket_size_multiplier": 50,
+    "dataloader_workers": 16,
+    "prefetch_factor": 4,
+    "tokenization_batch_size": 1024,
+    "tokenization_log_every": 50,
+    "gradient_checkpointing": false,
+    "symmetric_validation": true,
+    "label_smoothing": 0.0,
+    "max_grad_norm": 0.5,
+    "log_every": 50,
+    "seed": 42,
+    "loss": "finite_plain_bce",
+    "amp_dtype": "bfloat16",
+    "gpu": "one_H100_80GB",
+    "fresh_start_each_run": true,
+    "scheduler": "cosine_with_full_run_horizon"
+  },
+  "experiments": {
+    "fixed_count": 5,
+    "ordered_stages": [
+      {
+        "key": "e1_lr8e5",
+        "role": "transferred_anchor",
+        "epochs": 1,
+        "learning_rate": 0.00008
+      },
+      {
+        "key": "e1_lr4e5",
+        "role": "lower_lr_challenger",
+        "epochs": 1,
+        "learning_rate": 0.00004
+      },
+      {
+        "key": "e1_lr1p6e4",
+        "role": "upper_lr_challenger",
+        "epochs": 1,
+        "learning_rate": 0.00016
+      },
+      {
+        "key": "e2_selected_lr",
+        "role": "selected_lr_epoch_extension",
+        "epochs": 2,
+        "learning_rate": "selected_from_first_three"
+      },
+      {
+        "key": "e3_selected_lr",
+        "role": "mandatory_three_epoch_finalist",
+        "epochs": 3,
+        "learning_rate": "selected_from_first_three"
+      }
+    ]
+  },
+  "selection": {
+    "primary_metric": "iid_macro_average_precision",
+    "hard_is_diagnostic_only": true,
+    "ood_is_evaluated": false,
+    "ood_metric_sentinel": -1,
+    "practical_tie_margin": 0.002,
+    "lr_anchor": 0.00008,
+    "lr_tie_break": "prefer_anchor_then_smaller_learning_rate",
+    "epoch_tie_break": "fewest_epochs_within_practical_tie_of_numeric_best",
+    "paired_permutations": 2000,
+    "paired_bootstrap_resamples": 2000,
+    "multiple_testing": "holm_within_lr_and_epoch_families"
+  }
+}

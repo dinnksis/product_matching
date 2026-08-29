@@ -1,0 +1,2 @@
+-r requirements-cross-encoder.txt
+transformers==4.57.6
