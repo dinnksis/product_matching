@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Plan, launch and validate the five-run RuModernBERT Kaggle campaign."""
+"""Plan, launch and validate one RuModernBERT Kaggle experiment at a time."""
 
 from __future__ import annotations
 
@@ -42,6 +42,11 @@ SUMMARY_PATH = REPORT_ROOT / "campaign_summary.json"
 LOCK_PATH = ROOT / ".kaggle" / "locks" / f"{builder.CAMPAIGN}.lock"
 FIRST_KEYS = ("e1_lr8e5", "e1_lr4e5", "e1_lr1p6e4")
 ALL_KEYS = (*FIRST_KEYS, "e2_selected_lr", "e3_selected_lr")
+TOMBSTONED_KERNEL_SLUGS = {
+    "pm-rmb-e1-lr8e5-06abd6796702-s42-v1",
+    "pm-rmb-e1-lr8e5-c37bbe4011cc-s42-v1",
+    "pm-rmb-e1-lr8e5-092f927d6256-s42-v1",
+}
 
 
 class CampaignError(RuntimeError):
@@ -125,6 +130,23 @@ def validate_run_output(directory: Path, entry: Mapping[str, Any]) -> dict[str, 
         raise CampaignError("downloaded training config differs from frozen recipe")
     if completion.get("training_report") != report:
         raise CampaignError("completion/report payload differs")
+    preflight = completion.get("memory_preflight")
+    if not isinstance(preflight, dict):
+        raise CampaignError("memory preflight payload is missing")
+    expected_preflight = {
+        "status": "passed",
+        "world_size": 2,
+        "parameters": builder.EXPECTED_PARAMETERS,
+        "optimizer_state_parameters_per_rank": builder.EXPECTED_PARAMETER_TENSORS,
+        "optimizer_state_tensor_elements_per_rank": 2 * builder.EXPECTED_PARAMETERS,
+        "optimizer_state_materialization_policy": builder.EXPECTED_PREFLIGHT_STATE_POLICY,
+        "optimizer_state_expected_parameter_tensors": builder.EXPECTED_PARAMETER_TENSORS,
+        "gradient_checkpointing": False,
+        "activation_checkpointing_policy": builder.EXPECTED_ACTIVATION_CHECKPOINTING_POLICY,
+        "full_training_uses_synthetic_zero_gradients": False,
+    }
+    if any(preflight.get(key) != value for key, value in expected_preflight.items()):
+        raise CampaignError("memory preflight contract differs")
     if report.get("original_training_examples") != builder.EXPECTED_TRAIN:
         raise CampaignError("training row count differs")
     if report.get("training_sampling") != "none" or report.get("training_loss_weighting") != "none":
@@ -438,6 +460,8 @@ def summarize(results: Sequence[Mapping[str, Any]], selected_lr: float) -> dict[
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser()
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
+    parser.add_argument("--key", choices=ALL_KEYS, required=True)
+    parser.add_argument("--selected-lr", type=float)
     parser.add_argument("--execute", action="store_true")
     parser.add_argument("--stage-only", action="store_true")
     return parser.parse_args()
@@ -447,6 +471,10 @@ def main() -> int:
     args = parse_args()
     if args.execute and args.stage_only:
         raise SystemExit("choose --execute or --stage-only")
+    if args.key in FIRST_KEYS and args.selected_lr is not None:
+        raise SystemExit("--selected-lr is allowed only for e2/e3")
+    if args.key not in FIRST_KEYS and args.selected_lr is None:
+        raise SystemExit("e2/e3 require --selected-lr")
     env_file = args.env_file if args.env_file.is_absolute() else ROOT / args.env_file
     kaggle.load_dotenv(env_file)
     owner = kaggle.validate_slug(os.getenv("KAGGLE_USERNAME", "").strip(), "KAGGLE_USERNAME")
@@ -461,26 +489,30 @@ def main() -> int:
     with campaign_lock():
         if execute:
             verify_remote_authorities(cli, owner)
-        results: list[dict[str, Any]] = []
-        for key in FIRST_KEYS:
-            entry, notebook = build_entry(owner, key)
-            result = run_entry(cli=cli, owner=owner, env_file=env_file, entry=entry, notebook=notebook, execute=execute)
-            if result is not None:
-                results.append(result)
-        if not execute:
-            for key in ("e2_selected_lr", "e3_selected_lr"):
-                entry, notebook = build_entry(owner, key, 8e-5)
-                run_entry(cli=cli, owner=owner, env_file=env_file, entry=entry, notebook=notebook, execute=False)
-            print(json.dumps({"campaign":builder.CAMPAIGN,"runs":5,"mutation":False,"hypothetical_selected_lr":8e-5}, indent=2))
-            return 0
-        selected_lr = select_learning_rate(results)
-        for key in ("e2_selected_lr", "e3_selected_lr"):
-            entry, notebook = build_entry(owner, key, selected_lr)
-            result = run_entry(cli=cli, owner=owner, env_file=env_file, entry=entry, notebook=notebook, execute=True)
-            assert result is not None
-            results.append(result)
-        summary = summarize(results, selected_lr)
-        print(json.dumps(summary, ensure_ascii=False, indent=2))
+        entry, notebook = build_entry(owner, args.key, args.selected_lr)
+        if entry["kernel_slug"] in TOMBSTONED_KERNEL_SLUGS:
+            raise CampaignError("refusing to reuse a tombstoned terminal-failed slug")
+        result = run_entry(
+            cli=cli,
+            owner=owner,
+            env_file=env_file,
+            entry=entry,
+            notebook=notebook,
+            execute=execute,
+        )
+        print(
+            json.dumps(
+                {
+                    "campaign": builder.CAMPAIGN,
+                    "key": args.key,
+                    "kernel_slug": entry["kernel_slug"],
+                    "mutation": execute,
+                    "result": result,
+                },
+                ensure_ascii=False,
+                indent=2,
+            )
+        )
     return 0
 
 

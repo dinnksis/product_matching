@@ -45,6 +45,8 @@ EXPECTED_MICROBATCH = 24
 EXPECTED_EVAL_BATCH = 96
 EXPECTED_ACCUMULATION = 4
 EXPECTED_EFFECTIVE_BATCH = 192
+EXPECTED_PREFLIGHT_STATE_POLICY = "explicit_rumodernbert_optimizer_tensor_count_v1"
+EXPECTED_ACTIVATION_CHECKPOINTING_POLICY = "disabled_after_modernbert_autocast_checkpoint_error_v1"
 MODEL_SHA256 = "e8b7ebda4904c2e7f8d2ec42645cfcbda928f90fa8dbd59d03e314318118673d"
 
 RUNTIME_FILES = validation_builder.EMBEDDED_FILES + (
@@ -114,7 +116,7 @@ def load_plan(path: Path = DEFAULT_CONFIG) -> dict[str, Any]:
         "gradient_accumulation": EXPECTED_ACCUMULATION,
         "effective_batch": EXPECTED_EFFECTIVE_BATCH,
         "max_length": 384,
-        "gradient_checkpointing": True,
+        "gradient_checkpointing": False,
         "world_size": 2,
         "gpu": "two_Tesla_T4",
     }
@@ -486,7 +488,11 @@ def _preflight_training_cell() -> nbf.NotebookNode:
                 'effective_batch':{EXPECTED_EFFECTIVE_BATCH}, 'eval_batch_per_gpu':{EXPECTED_EVAL_BATCH},
                 'optimizer_state_parameters_per_rank':{EXPECTED_PARAMETER_TENSORS},
                 'optimizer_state_tensor_elements_per_rank':{2 * EXPECTED_PARAMETERS},
-                'amp_dtype':'float16', 'gradient_checkpointing':True,
+                'amp_dtype':'float16', 'gradient_checkpointing':False,
+                'optimizer_state_materialization_policy':{EXPECTED_PREFLIGHT_STATE_POLICY!r},
+                'optimizer_state_expected_parameter_tensors':{EXPECTED_PARAMETER_TENSORS},
+                'activation_checkpointing_policy':{EXPECTED_ACTIVATION_CHECKPOINTING_POLICY!r},
+                'full_training_uses_synthetic_zero_gradients':False,
             }}
             if any(memory_preflight.get(k) != v for k,v in required.items()):
                 raise RuntimeError('RuModernBERT two-T4 memory preflight contract failed')

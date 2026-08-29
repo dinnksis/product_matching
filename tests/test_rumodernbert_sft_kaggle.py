@@ -1,10 +1,13 @@
 from __future__ import annotations
 
 import json
+import os
 import sys
 import tempfile
 import unittest
+from contextlib import nullcontext
 from pathlib import Path
+from unittest import mock
 
 import nbformat as nbf
 import torch
@@ -23,10 +26,11 @@ import train_rumodernbert_2xt4 as adapter
 
 
 class RuModernBertKaggleTest(unittest.TestCase):
-    def test_exact_five_run_plan_and_geometry(self) -> None:
+    def test_exact_variant_catalog_and_geometry(self) -> None:
         plan = builder.load_plan()
         self.assertEqual([row["key"] for row in plan["experiments"]], list(launcher.ALL_KEYS))
         self.assertEqual(plan["experiments"][-1]["epochs"], 3)
+        self.assertIs(plan["training"]["gradient_checkpointing"], False)
         self.assertEqual(plan["training"]["effective_batch"], 192)
         self.assertEqual(
             plan["training"]["batch_size"]
@@ -142,6 +146,7 @@ class RuModernBertKaggleTest(unittest.TestCase):
                 "EXPECTED_EVAL_BATCH",
                 "EXPECTED_GRADIENT_ACCUMULATION",
                 "EXPECTED_EFFECTIVE_BATCH",
+                "validate_memory_geometry",
             )
         }
         try:
@@ -152,6 +157,106 @@ class RuModernBertKaggleTest(unittest.TestCase):
         finally:
             for name, value in previous.items():
                 setattr(distributed_amp, name, value)
+
+    def test_preflight_classifier_overrides_captured_bge_default(self) -> None:
+        outcome = adapter.classify_amp_optimizer_attempt(
+            gradients_finite=True,
+            scale_before=65536.0,
+            scale_after=65536.0,
+            optimizer_state_parameters=adapter.EXPECTED_PARAMETER_TENSORS,
+        )
+        self.assertEqual(outcome, "optimizer_step")
+        with self.assertRaises(RuntimeError):
+            adapter.classify_amp_optimizer_attempt(
+                gradients_finite=True,
+                scale_before=65536.0,
+                scale_after=65536.0,
+                optimizer_state_parameters=393,
+            )
+
+    def test_rumodernbert_geometry_disables_activation_checkpointing(self) -> None:
+        config = builder.resolved_config(
+            builder.load_plan(),
+            builder.resolve_variant(builder.load_plan(), "e1_lr8e5", None),
+            "/tmp/model",
+        )
+        with mock.patch.multiple(
+            distributed_amp,
+            EXPECTED_PARAMETERS=adapter.EXPECTED_PARAMETERS,
+            EXPECTED_TRAINABLE_PARAMETER_TENSORS=adapter.EXPECTED_PARAMETER_TENSORS,
+            EXPECTED_MICROBATCH=adapter.EXPECTED_MICROBATCH,
+            EXPECTED_EVAL_BATCH=adapter.EXPECTED_EVAL_BATCH,
+            EXPECTED_GRADIENT_ACCUMULATION=adapter.EXPECTED_GRADIENT_ACCUMULATION,
+            EXPECTED_EFFECTIVE_BATCH=adapter.EXPECTED_EFFECTIVE_BATCH,
+        ):
+            adapter.validate_memory_geometry(config)
+            config["gradient_checkpointing"] = True
+            with self.assertRaises(distributed_amp.BgeTrainingContractError):
+                adapter.validate_memory_geometry(config)
+        self.assertIsNone(
+            adapter.disable_gradient_checkpointing_enable(
+                object(), {"use_reentrant": False}
+            )
+        )
+
+    def test_failed_first_slug_is_tombstoned_and_new_identity_differs(self) -> None:
+        failed = "pm-rmb-e1-lr8e5-06abd6796702-s42-v1"
+        self.assertIn(failed, launcher.TOMBSTONED_KERNEL_SLUGS)
+        self.assertIn(
+            "pm-rmb-e1-lr8e5-c37bbe4011cc-s42-v1",
+            launcher.TOMBSTONED_KERNEL_SLUGS,
+        )
+        self.assertIn(
+            "pm-rmb-e1-lr8e5-092f927d6256-s42-v1",
+            launcher.TOMBSTONED_KERNEL_SLUGS,
+        )
+        _, entry = builder.build_variant(owner="alexproger23", key="e1_lr8e5")
+        self.assertNotEqual(entry["kernel_slug"], failed)
+        self.assertNotIn(entry["kernel_slug"], launcher.TOMBSTONED_KERNEL_SLUGS)
+
+    def test_launcher_invocation_runs_exactly_one_requested_entry(self) -> None:
+        entry = {"kernel_slug": "pm-rmb-single-test"}
+        argv = [
+            "run_rumodernbert_sft_kaggle.py",
+            "--key",
+            "e1_lr8e5",
+            "--stage-only",
+        ]
+        with (
+            mock.patch.object(sys, "argv", argv),
+            mock.patch.object(launcher.kaggle, "load_dotenv"),
+            mock.patch.dict(
+                os.environ,
+                {
+                    "KAGGLE_USERNAME": "alexproger23",
+                    "KAGGLE_ACCELERATOR": "NvidiaTeslaT4",
+                    "KAGGLE_IS_PRIVATE": "true",
+                },
+            ),
+            mock.patch.object(launcher.kaggle, "kaggle_command", return_value=["kaggle"]),
+            mock.patch.object(launcher, "campaign_lock", return_value=nullcontext()),
+            mock.patch.object(
+                launcher,
+                "build_entry",
+                return_value=(entry, Path("single.ipynb")),
+            ) as build,
+            mock.patch.object(launcher, "run_entry", return_value=None) as run,
+        ):
+            self.assertEqual(launcher.main(), 0)
+        build.assert_called_once_with("alexproger23", "e1_lr8e5", None)
+        run.assert_called_once()
+
+    def test_launcher_requires_explicit_key_and_dynamic_lr(self) -> None:
+        with mock.patch.object(sys, "argv", ["run_rumodernbert_sft_kaggle.py"]):
+            with self.assertRaises(SystemExit):
+                launcher.parse_args()
+        with mock.patch.object(
+            sys,
+            "argv",
+            ["run_rumodernbert_sft_kaggle.py", "--key", "e2_selected_lr"],
+        ):
+            with self.assertRaises(SystemExit):
+                launcher.main()
 
     def test_kaggle_not_found_parser_is_exact(self) -> None:
         self.assertEqual(launcher._listed_kernel_refs("Not found\n"), set())

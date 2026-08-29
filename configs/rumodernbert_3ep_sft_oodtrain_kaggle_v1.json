@@ -23,7 +23,7 @@
     "prefetch_factor": 2,
     "tokenization_batch_size": 512,
     "tokenization_log_every": 50,
-    "gradient_checkpointing": true,
+    "gradient_checkpointing": false,
     "symmetric_validation": true,
     "label_smoothing": 0.0,
     "max_grad_norm": 0.5,
