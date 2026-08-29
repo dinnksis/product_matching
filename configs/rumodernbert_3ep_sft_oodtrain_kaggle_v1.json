@@ -1,0 +1,84 @@
+{
+  "schema_version": 1,
+  "campaign": "rumodernbert_3ep_sft_oodtrain_kaggle_v1",
+  "checkpoint_dataset_slug": "product-matching-rumodernbert-pretrain-3ep",
+  "validation_dataset_slug": "product-matching-validation-splits-v1",
+  "training": {
+    "model_backend": "sequence_classification",
+    "trust_remote_code": false,
+    "batch_size": 24,
+    "eval_batch_size": 96,
+    "gradient_accumulation": 4,
+    "effective_batch": 192,
+    "weight_decay": 0.01,
+    "warmup_ratio": 0.05,
+    "max_length": 384,
+    "attention_implementation": "sdpa",
+    "sampling": "none",
+    "train_subset": "all",
+    "loss_weighting": "none",
+    "lexical_hard_negative_strength": 0.0,
+    "bucket_size_multiplier": 50,
+    "dataloader_workers": 4,
+    "prefetch_factor": 2,
+    "tokenization_batch_size": 512,
+    "tokenization_log_every": 50,
+    "gradient_checkpointing": true,
+    "symmetric_validation": true,
+    "label_smoothing": 0.0,
+    "max_grad_norm": 0.5,
+    "log_every": 50,
+    "seed": 42,
+    "loss": "finite_plain_bce",
+    "amp_dtype": "float16",
+    "world_size": 2,
+    "gpu": "two_Tesla_T4"
+  },
+  "experiments": [
+    {
+      "key": "e1_lr8e5",
+      "slug_token": "e1-lr8e5",
+      "role": "transferred_anchor",
+      "epochs": 1,
+      "learning_rate": 0.00008
+    },
+    {
+      "key": "e1_lr4e5",
+      "slug_token": "e1-lr4e5",
+      "role": "lower_lr_challenger",
+      "epochs": 1,
+      "learning_rate": 0.00004
+    },
+    {
+      "key": "e1_lr1p6e4",
+      "slug_token": "e1-lr16e4",
+      "role": "upper_lr_challenger",
+      "epochs": 1,
+      "learning_rate": 0.00016
+    },
+    {
+      "key": "e2_selected_lr",
+      "slug_token": "e2-selected",
+      "role": "selected_lr_epoch_extension",
+      "epochs": 2,
+      "learning_rate": "selected_from_first_three"
+    },
+    {
+      "key": "e3_selected_lr",
+      "slug_token": "e3-selected",
+      "role": "mandatory_three_epoch_finalist",
+      "epochs": 3,
+      "learning_rate": "selected_from_first_three"
+    }
+  ],
+  "selection": {
+    "primary_metric": "iid_macro_average_precision",
+    "hard_is_diagnostic_only": true,
+    "ood_is_evaluated": false,
+    "ood_metric_sentinel": -1,
+    "practical_tie_margin": 0.002,
+    "lr_anchor": 0.00008,
+    "lr_tie_break": "prefer_anchor_then_smaller_learning_rate",
+    "epoch_tie_break": "fewest_epochs_within_practical_tie_of_numeric_best"
+  }
+}
