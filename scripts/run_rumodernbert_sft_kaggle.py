@@ -83,15 +83,26 @@ def campaign_lock():
 
 def macro_ap(frame: pd.DataFrame) -> float:
     values = [
-        average_precision_score(group["target"], group["score_symmetric"])
-        for _, group in frame.groupby("category", sort=True)
+        average_precision_score(group["target"], group["score"])
+        for _, group in frame.groupby("category_1", sort=True)
     ]
     return float(np.mean(values))
 
 
 def expected_truth(split: str) -> pd.DataFrame:
-    path = builder.DEFAULT_SOURCE_DIR / "human" / f"{split}_validation_pairs.parquet"
-    return pd.read_parquet(path).reset_index(drop=True)
+    human_root = builder.DEFAULT_SOURCE_DIR / "human"
+    path = human_root / f"{split}_validation_pairs.parquet"
+    truth = pd.read_parquet(path, columns=["id1", "id2", "target"]).reset_index(drop=True)
+    category_by_id = pd.read_parquet(
+        human_root / "items.parquet", columns=["id", "category"]
+    ).set_index("id")["category"]
+    truth["category_1"] = truth["id1"].map(category_by_id)
+    truth["category_2"] = truth["id2"].map(category_by_id)
+    if truth[["category_1", "category_2"]].isnull().any().any():
+        raise CampaignError(f"{split} frozen validation has unknown item IDs")
+    if not truth["category_1"].equals(truth["category_2"]):
+        raise CampaignError(f"{split} frozen validation contains cross-category pairs")
+    return truth
 
 
 def validate_run_output(directory: Path, entry: Mapping[str, Any]) -> dict[str, Any]:
@@ -163,20 +174,30 @@ def validate_run_output(directory: Path, entry: Mapping[str, Any]) -> dict[str, 
     for split, rows in (("iid", builder.EXPECTED_IID), ("hard", builder.EXPECTED_HARD)):
         predictions = pd.read_parquet(output / f"{split}_validation_predictions.parquet").reset_index(drop=True)
         truth = expected_truth(split)
-        required = {"id1", "id2", "target", "category", "score_symmetric"}
+        required = {
+            "pair_index",
+            "id1",
+            "id2",
+            "target",
+            "category_1",
+            "category_2",
+            "score",
+        }
         if len(predictions) != rows or required - set(predictions):
             raise CampaignError(f"{split} prediction schema/rows differ")
-        for column in ("id1", "id2", "target"):
+        if predictions[list(required)].isnull().any().any():
+            raise CampaignError(f"{split} predictions contain nulls")
+        if not predictions["pair_index"].equals(
+            pd.Series(range(rows), name="pair_index", dtype=predictions["pair_index"].dtype)
+        ):
+            raise CampaignError(f"{split} pair_index order differs")
+        for column in ("id1", "id2", "target", "category_1", "category_2"):
             if not predictions[column].equals(truth[column]):
                 raise CampaignError(f"{split} {column} binding differs")
-        categories = truth["id1"].map(
-            pd.read_parquet(builder.DEFAULT_SOURCE_DIR / "human" / "items.parquet")
-            .set_index("id")["category"]
-        ).astype(str)
-        if not predictions["category"].astype(str).equals(categories):
-            raise CampaignError(f"{split} category binding differs")
-        if not np.isfinite(predictions["score_symmetric"]).all():
+        if not np.isfinite(predictions["score"]).all():
             raise CampaignError(f"{split} scores are non-finite")
+        if not predictions["score"].between(0.0, 1.0).all():
+            raise CampaignError(f"{split} scores are not probabilities")
         measured = macro_ap(predictions)
         declared = float(splits[split]["macro_average_precision"])
         if not math.isclose(measured, declared, rel_tol=0.0, abs_tol=1e-12):

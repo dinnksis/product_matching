@@ -10,6 +10,7 @@ from pathlib import Path
 from unittest import mock
 
 import nbformat as nbf
+import pandas as pd
 import torch
 
 
@@ -262,6 +263,18 @@ class RuModernBertKaggleTest(unittest.TestCase):
         self.assertEqual(launcher._listed_kernel_refs("Not found\n"), set())
         with self.assertRaises(launcher.CampaignError):
             launcher._listed_kernel_refs("Not found extra")
+
+    def test_macro_ap_uses_canonical_shared_trainer_schema(self) -> None:
+        frame = pd.DataFrame(
+            {
+                "target": [1.0, 0.0, 1.0, 0.0],
+                "category_1": ["a", "a", "b", "b"],
+                "score": [0.9, 0.1, 0.8, 0.2],
+            }
+        )
+        self.assertEqual(launcher.macro_ap(frame), 1.0)
+        with self.assertRaises(KeyError):
+            launcher.macro_ap(frame.rename(columns={"score": "score_symmetric"}))
 
     def test_uploader_contract_restores_shared_globals(self) -> None:
         original = distributed = uploader.hardened.CHECKPOINT_FILES
