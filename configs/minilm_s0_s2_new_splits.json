@@ -1,0 +1,48 @@
+{
+  "experiment": "minilm_s0_s2_new_validation_splits",
+  "model": "cross-encoder/mmarco-mMiniLMv2-L12-H384-v1",
+  "variants": ["S0_TITLE", "S2_VALUES_ONLY"],
+  "validation_splits": {
+    "iid": "iid_validation_pairs.parquet",
+    "hard": "hard_validation_pairs.parquet",
+    "ood": "ood_validation_pairs.parquet"
+  },
+  "expected_pairs": {
+    "train": 306669,
+    "iid": 12000,
+    "hard": 5814,
+    "ood": 41171
+  },
+  "epochs": 1,
+  "batch_size": 64,
+  "eval_batch_size": 192,
+  "gradient_accumulation": 1,
+  "learning_rate": 0.00002,
+  "weight_decay": 0.01,
+  "warmup_ratio": 0.05,
+  "max_length": 256,
+  "attention_implementation": "sdpa",
+  "bucket_size_multiplier": 50,
+  "dataloader_workers": 2,
+  "prefetch_factor": 2,
+  "tokenization_batch_size": 512,
+  "tokenization_log_every": 50,
+  "gradient_checkpointing": false,
+  "symmetric_validation": true,
+  "label_smoothing": 0.0,
+  "max_grad_norm": 1.0,
+  "log_every": 50,
+  "parallel_runs": 2,
+  "hybrid_frequency": {
+    "strategy": "occurrence_coverage",
+    "target_coverage": 0.8,
+    "minimum_item_support": 100,
+    "maximum_frequent_keys": 1024
+  },
+  "catboost_gate": {
+    "primary_split": "iid",
+    "minimum_primary_delta": 0.0,
+    "maximum_hard_or_ood_drop": 0.01
+  },
+  "seed": 42
+}

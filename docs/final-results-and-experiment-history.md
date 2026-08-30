@@ -65,6 +65,13 @@ weight decay, label smoothing, classifier dropout и несколько loss-ф�
 LR `8e-5`, plain BCE, dropout `0.1`. Dropout `0` и `0.2`, а также дополнительные
 regularization coordinates не дали практического IID-прироста.
 
+Ранний 14-run sweep по `max_length ∈ {384, 512}`, LR
+`{5e-6, 1e-5, 2e-5, 3e-5, 5e-5}` и горизонту 1–3 эпох дал лучшие отдельные
+значения: IID `0.803345` (`512`, `2e-5`, 3 ep), hard `0.396926` (`384`,
+`2e-5`, 3 ep) и OOD `0.653021` (`512`, `5e-5`, 1 ep). Эта линия была
+предварительной; последующий locked campaign с другим выбранным pretrain
+checkpoint поднял MiniLM anchor до IID `0.808502`.
+
 ### BGE
 
 BGE checkpoint — `XLMRobertaForSequenceClassification`: 24 слоя, hidden size

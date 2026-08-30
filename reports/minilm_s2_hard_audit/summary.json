@@ -1,0 +1,300 @@
+{
+  "experiment": "minilm_s2_hard_validation_audit",
+  "pairs": 5814,
+  "positives": 1481,
+  "categories": 18,
+  "idf_source": "C:\\Users\\Professional\\product_matching\\artifacts\\s2_catboost_new_splits_local_smoke\\char_idf.npy",
+  "order_gap_p90_threshold": 0.13181574642658234,
+  "s2": {
+    "eligible_categories": 18,
+    "macro_average_precision": 0.30731926550219124,
+    "macro_roc_auc": 0.5847155788049906,
+    "overall_average_precision": 0.33894509865568945,
+    "per_category_average_precision": {
+      "Автотовары": 0.15533794199759976,
+      "Аптека": 0.2654931134894137,
+      "Бытовая химия": 0.5181370388989699,
+      "Галантерея и аксессуары": 0.1927346381292287,
+      "Детские товары": 0.5211708994167756,
+      "Дом и сад": 0.3245191389089348,
+      "Канцелярские товары": 0.3817858120143368,
+      "Красота и гигиена": 0.3634810406696459,
+      "Мебель": 0.15631241595855894,
+      "Музыкальные инструменты": 0.34502533476255803,
+      "Обувь": 0.08491830793588868,
+      "Продукты питания": 0.39355565839927537,
+      "Спорт и отдых": 0.2106877126537231,
+      "Строительство и ремонт": 0.25188165879953867,
+      "Товары для животных": 0.407856941452999,
+      "Хобби и творчество": 0.5292317809292744,
+      "Электроника": 0.3014940395154282,
+      "Ювелирные изделия": 0.12812330510729392
+    }
+  },
+  "catboost": {
+    "eligible_categories": 18,
+    "macro_average_precision": 0.314516913783088,
+    "macro_roc_auc": 0.5844953278086312,
+    "overall_average_precision": 0.344447543420508,
+    "per_category_average_precision": {
+      "Автотовары": 0.16590100764131074,
+      "Аптека": 0.26803066586286384,
+      "Бытовая химия": 0.513990328157186,
+      "Галантерея и аксессуары": 0.2026480245714935,
+      "Детские товары": 0.5530389335903239,
+      "Дом и сад": 0.32802101014272467,
+      "Канцелярские товары": 0.38314616236759963,
+      "Красота и гигиена": 0.3750474851627051,
+      "Мебель": 0.14535921715104583,
+      "Музыкальные инструменты": 0.35927447924816514,
+      "Обувь": 0.08228547226144972,
+      "Продукты питания": 0.3950509032825666,
+      "Спорт и отдых": 0.2016953391569807,
+      "Строительство и ремонт": 0.24383628365585108,
+      "Товары для животных": 0.4245480309994786,
+      "Хобби и творчество": 0.5532872469335711,
+      "Электроника": 0.29987365009605377,
+      "Ювелирные изделия": 0.1662702078142138
+    }
+  },
+  "catboost_minus_s2_macro_ap": 0.007197648280896751,
+  "catboost_delta_bootstrap": {
+    "samples": 1000,
+    "seed": 20260815,
+    "mean_delta": 0.006785021827049135,
+    "median_delta": 0.006834057608674638,
+    "ci95_low": 0.0006478892246334455,
+    "ci95_high": 0.01273649927493036,
+    "probability_delta_positive": 0.988
+  },
+  "catboost_delta_category_bootstrap": {
+    "samples": 10000,
+    "seed": 20260815,
+    "mean_delta": 0.007204682448986692,
+    "median_delta": 0.007079759935749886,
+    "ci95_low": 0.0012604506770305239,
+    "ci95_high": 0.013661152073490387,
+    "probability_delta_positive": 0.9927
+  },
+  "catboost_category_concentration": {
+    "improved_categories": 12,
+    "degraded_categories": 6,
+    "top_3_categories": [
+      "Ювелирные изделия",
+      "Детские товары",
+      "Хобби и творчество"
+    ],
+    "top_3_share_of_summed_delta": 0.7260890348683418,
+    "top_5_categories": [
+      "Ювелирные изделия",
+      "Детские товары",
+      "Хобби и творчество",
+      "Товары для животных",
+      "Музыкальные инструменты"
+    ],
+    "top_5_share_of_summed_delta": 0.9649034119522609
+  },
+  "coverage": {
+    "all_hard": 5814,
+    "title_exact": 209,
+    "token_budget_hit": 1088,
+    "no_token_budget_hit": 4726,
+    "high_order_instability": 582,
+    "high_title_similarity": 3077,
+    "critical_conflict": 2003,
+    "numeric_context_conflict": 1192,
+    "unit_conflict": 586,
+    "code_conflict": 537,
+    "model_conflict": 479,
+    "memory_conflict": 17,
+    "sku_human_asymmetry": 622,
+    "high_attribute_value_overlap": 3,
+    "low_attribute_value_overlap": 3711,
+    "negative_exact_title": 204,
+    "positive_critical_conflict": 424,
+    "positive_numeric_conflict": 259,
+    "positive_code_conflict": 109
+  },
+  "hard_vs_iid_slice_comparison": [
+    {
+      "slice": "all",
+      "hard_support": 5814,
+      "hard_support_rate": 1.0,
+      "hard_positive_rate": 0.2547299621603027,
+      "iid_support": 12000,
+      "iid_support_rate": 1.0,
+      "iid_positive_rate": 0.25983333333333336,
+      "hard_vs_iid_support_enrichment": 1.0
+    },
+    {
+      "slice": "title_exact",
+      "hard_support": 209,
+      "hard_support_rate": 0.03594771241830065,
+      "hard_positive_rate": 0.023923444976076555,
+      "iid_support": 102,
+      "iid_support_rate": 0.0085,
+      "iid_positive_rate": 0.37254901960784315,
+      "hard_vs_iid_support_enrichment": 4.2291426374471355
+    },
+    {
+      "slice": "high_title_similarity",
+      "hard_support": 3077,
+      "hard_support_rate": 0.5292397660818714,
+      "hard_positive_rate": 0.09912252193695158,
+      "iid_support": 3159,
+      "iid_support_rate": 0.26325,
+      "iid_positive_rate": 0.3817663817663818,
+      "hard_vs_iid_support_enrichment": 2.0104074684971374
+    },
+    {
+      "slice": "token_budget_hit",
+      "hard_support": 1088,
+      "hard_support_rate": 0.1871345029239766,
+      "hard_positive_rate": 0.19117647058823528,
+      "iid_support": 2239,
+      "iid_support_rate": 0.18658333333333332,
+      "iid_positive_rate": 0.19740955783832068,
+      "hard_vs_iid_support_enrichment": 1.0029540129913888
+    },
+    {
+      "slice": "critical_conflict",
+      "hard_support": 2003,
+      "hard_support_rate": 0.34451324389404886,
+      "hard_positive_rate": 0.21168247628557163,
+      "iid_support": 4316,
+      "iid_support_rate": 0.3596666666666667,
+      "iid_positive_rate": 0.11260426320667284,
+      "hard_vs_iid_support_enrichment": 0.957868147990868
+    },
+    {
+      "slice": "numeric_context_conflict",
+      "hard_support": 1192,
+      "hard_support_rate": 0.20502235982112144,
+      "hard_positive_rate": 0.21728187919463088,
+      "iid_support": 2629,
+      "iid_support_rate": 0.21908333333333332,
+      "iid_positive_rate": 0.09851654621529099,
+      "hard_vs_iid_support_enrichment": 0.935819063466511
+    },
+    {
+      "slice": "unit_conflict",
+      "hard_support": 586,
+      "hard_support_rate": 0.10079119367045064,
+      "hard_positive_rate": 0.30716723549488056,
+      "iid_support": 1422,
+      "iid_support_rate": 0.1185,
+      "iid_positive_rate": 0.11181434599156118,
+      "hard_vs_iid_support_enrichment": 0.8505585963751109
+    },
+    {
+      "slice": "code_exact",
+      "hard_support": 415,
+      "hard_support_rate": 0.07137942896456828,
+      "hard_positive_rate": 0.14216867469879518,
+      "iid_support": 519,
+      "iid_support_rate": 0.04325,
+      "iid_positive_rate": 0.41811175337186895,
+      "hard_vs_iid_support_enrichment": 1.6503914211460875
+    },
+    {
+      "slice": "code_conflict",
+      "hard_support": 537,
+      "hard_support_rate": 0.09236326109391124,
+      "hard_positive_rate": 0.20297951582867785,
+      "iid_support": 1226,
+      "iid_support_rate": 0.10216666666666667,
+      "iid_positive_rate": 0.08482871125611746,
+      "hard_vs_iid_support_enrichment": 0.9040449699240904
+    },
+    {
+      "slice": "brand_match",
+      "hard_support": 571,
+      "hard_support_rate": 0.09821121431028552,
+      "hard_positive_rate": 0.22066549912434325,
+      "iid_support": 1088,
+      "iid_support_rate": 0.09066666666666667,
+      "iid_positive_rate": 0.2610294117647059,
+      "hard_vs_iid_support_enrichment": 1.0832119225399137
+    },
+    {
+      "slice": "brand_conflict",
+      "hard_support": 503,
+      "hard_support_rate": 0.08651530787753697,
+      "hard_positive_rate": 0.2664015904572565,
+      "iid_support": 1239,
+      "iid_support_rate": 0.10325,
+      "iid_positive_rate": 0.2397094430992736,
+      "hard_vs_iid_support_enrichment": 0.8379206574095591
+    },
+    {
+      "slice": "model_match",
+      "hard_support": 36,
+      "hard_support_rate": 0.006191950464396285,
+      "hard_positive_rate": 0.16666666666666666,
+      "iid_support": 88,
+      "iid_support_rate": 0.007333333333333333,
+      "iid_positive_rate": 0.625,
+      "hard_vs_iid_support_enrichment": 0.8443568815085843
+    },
+    {
+      "slice": "model_conflict",
+      "hard_support": 479,
+      "hard_support_rate": 0.0823873409012728,
+      "hard_positive_rate": 0.19832985386221294,
+      "iid_support": 1183,
+      "iid_support_rate": 0.09858333333333333,
+      "iid_positive_rate": 0.15469146238377007,
+      "hard_vs_iid_support_enrichment": 0.8357126718641366
+    },
+    {
+      "slice": "memory_match",
+      "hard_support": 34,
+      "hard_support_rate": 0.005847953216374269,
+      "hard_positive_rate": 0.14705882352941177,
+      "iid_support": 130,
+      "iid_support_rate": 0.010833333333333334,
+      "iid_positive_rate": 0.06923076923076923,
+      "hard_vs_iid_support_enrichment": 0.5398110661268556
+    },
+    {
+      "slice": "memory_conflict",
+      "hard_support": 17,
+      "hard_support_rate": 0.0029239766081871343,
+      "hard_positive_rate": 0.11764705882352941,
+      "iid_support": 35,
+      "iid_support_rate": 0.002916666666666667,
+      "iid_positive_rate": 0.14285714285714285,
+      "hard_vs_iid_support_enrichment": 1.0025062656641603
+    },
+    {
+      "slice": "color_match",
+      "hard_support": 948,
+      "hard_support_rate": 0.16305469556243551,
+      "hard_positive_rate": 0.20042194092827004,
+      "iid_support": 1765,
+      "iid_support_rate": 0.14708333333333334,
+      "iid_positive_rate": 0.21246458923512748,
+      "hard_vs_iid_support_enrichment": 1.1085871652970118
+    },
+    {
+      "slice": "color_conflict",
+      "hard_support": 1358,
+      "hard_support_rate": 0.23357413140694874,
+      "hard_positive_rate": 0.17673048600883653,
+      "iid_support": 2842,
+      "iid_support_rate": 0.23683333333333334,
+      "iid_positive_rate": 0.1171710063335679,
+      "hard_vs_iid_support_enrichment": 0.9862384155113951
+    },
+    {
+      "slice": "sku_human_asymmetry",
+      "hard_support": 622,
+      "hard_support_rate": 0.10698314413484693,
+      "hard_positive_rate": 0.4292604501607717,
+      "iid_support": 1757,
+      "iid_support_rate": 0.14641666666666667,
+      "iid_positive_rate": 0.21343198634035287,
+      "hard_vs_iid_support_enrichment": 0.7306759986443728
+    }
+  ]
+}
