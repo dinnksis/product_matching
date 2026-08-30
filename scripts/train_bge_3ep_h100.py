@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+import hashlib
 import json
 import os
 import random
@@ -30,8 +31,14 @@ import train_cross_encoder as shared_trainer
 
 EXPECTED_PARAMETERS = 567_755_777
 EXPECTED_PARAMETER_TENSORS = 393
-EXPECTED_MODEL_DIRNAME = "pretrain_bge_2ep"
 EXPECTED_TRANSFORMERS_VERSION = "4.57.6"
+EXPECTED_CHECKPOINT_FILES = {
+    "config.json": "3f143138299caf72270c79814d1f0e3c38fc168e2d30f1e6cc4c70f6cdb481f5",
+    "model.safetensors": "cdaf66bb271e6cc742267aa0aec0c890be1c898a93c469c137f5174ea9eeba72",
+    "special_tokens_map.json": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835",
+    "tokenizer.json": "8bf8afbfd11306bd872018c53bfdf2e160a56f8edbcf49933324404791c148d3",
+    "tokenizer_config.json": "b87c8703482b0300d3da30e201519aa641f6a450f5eb5bf1e624afbf70c74d80",
+}
 EXPECTED_CONFIG = {
     "model_backend": "sequence_classification",
     "model_load_kwargs": {"local_files_only": True},
@@ -67,6 +74,30 @@ class BgeH100TrainingError(RuntimeError):
     """Raised when the frozen one-H100 contract is violated."""
 
 
+def sha256_file(path: Path) -> str:
+    digest = hashlib.sha256()
+    with path.open("rb") as source:
+        for chunk in iter(lambda: source.read(8 * 1024 * 1024), b""):
+            digest.update(chunk)
+    return digest.hexdigest()
+
+
+def validate_checkpoint_files(model_path: Path) -> None:
+    if not model_path.is_dir():
+        raise BgeH100TrainingError(f"BGE model directory does not exist: {model_path}")
+    for name, expected_hash in EXPECTED_CHECKPOINT_FILES.items():
+        path = model_path / name
+        if path.is_symlink() or not path.is_file():
+            raise BgeH100TrainingError(
+                f"BGE checkpoint file must be regular and non-symlink: {path}"
+            )
+        actual_hash = sha256_file(path)
+        if actual_hash != expected_hash:
+            raise BgeH100TrainingError(
+                f"BGE checkpoint hash differs for {name}: {actual_hash} != {expected_hash}"
+            )
+
+
 def atomic_write_json(path: Path, payload: dict[str, Any]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     temporary = path.with_name(path.name + ".pending")
@@ -99,10 +130,7 @@ def load_training_config(path: Path) -> dict[str, Any]:
                 f"{payload.get(key)!r} != {expected!r}"
             )
     model_path = Path(str(payload["model"])).expanduser().resolve()
-    if model_path.name != EXPECTED_MODEL_DIRNAME or not model_path.is_dir():
-        raise BgeH100TrainingError(
-            f"BGE model path must end in {EXPECTED_MODEL_DIRNAME!r}: {model_path}"
-        )
+    validate_checkpoint_files(model_path)
     return payload
 
 

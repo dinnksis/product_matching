@@ -44,7 +44,7 @@ class BgeThreeEpochH100Test(unittest.TestCase):
     def test_training_wrapper_accepts_only_exact_recipe(self) -> None:
         with tempfile.TemporaryDirectory() as temporary:
             root = Path(temporary)
-            model = root / "pretrain_bge_2ep"
+            model = root / "checkpoint-epoch-03"
             model.mkdir()
             payload = json.loads(
                 (ROOT / "configs" / "bge_3ep_sft_oodtrain_h100_v1.json").read_text(
@@ -54,11 +54,31 @@ class BgeThreeEpochH100Test(unittest.TestCase):
             payload["model"] = str(model)
             config = root / "config.json"
             config.write_text(json.dumps(payload), encoding="utf-8")
-            self.assertEqual(trainer.load_training_config(config), payload)
-            payload["epochs"] = 2
-            config.write_text(json.dumps(payload), encoding="utf-8")
-            with self.assertRaisesRegex(trainer.BgeH100TrainingError, "epochs"):
-                trainer.load_training_config(config)
+            with mock.patch.object(trainer, "validate_checkpoint_files") as checkpoint_gate:
+                self.assertEqual(trainer.load_training_config(config), payload)
+                checkpoint_gate.assert_called_once_with(model.resolve())
+                payload["epochs"] = 2
+                config.write_text(json.dumps(payload), encoding="utf-8")
+                with self.assertRaisesRegex(trainer.BgeH100TrainingError, "epochs"):
+                    trainer.load_training_config(config)
+
+    def test_checkpoint_gate_allows_extra_training_state_but_binds_core_files(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            model = Path(temporary) / "checkpoint-epoch-03"
+            model.mkdir()
+            expected = {}
+            for name in trainer.EXPECTED_CHECKPOINT_FILES:
+                path = model / name
+                path.write_text(name, encoding="utf-8")
+                expected[name] = trainer.sha256_file(path)
+            (model / "optimizer.pt").write_bytes(b"ignored training state")
+            with mock.patch.dict(trainer.EXPECTED_CHECKPOINT_FILES, expected, clear=True):
+                trainer.validate_checkpoint_files(model)
+                (model / "model.safetensors").write_bytes(b"drift")
+                with self.assertRaisesRegex(
+                    trainer.BgeH100TrainingError, "model.safetensors"
+                ):
+                    trainer.validate_checkpoint_files(model)
 
     def test_loss_hook_is_finite_plain_bce(self) -> None:
         class ExactRows:

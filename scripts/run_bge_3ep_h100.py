@@ -31,7 +31,7 @@ LOSS_HOOK = ROOT / "scripts" / "bge_h100_finite_bce.py"
 EXPECTED_CONFIG_SHA256 = "93cf66d22535b9580af2e26e89d33e0f4f8c7b1ce5023679ddaaa5a68e2946e0"
 EXPECTED_CHECKPOINT_FILES = {
     "config.json": "3f143138299caf72270c79814d1f0e3c38fc168e2d30f1e6cc4c70f6cdb481f5",
-    "model.safetensors": "c21ccfcd5de310ca0328620bf8ba09e838dbe3f6394be656bd7fec16ad8377d1",
+    "model.safetensors": "cdaf66bb271e6cc742267aa0aec0c890be1c898a93c469c137f5174ea9eeba72",
     "special_tokens_map.json": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835",
     "tokenizer.json": "8bf8afbfd11306bd872018c53bfdf2e160a56f8edbcf49933324404791c148d3",
     "tokenizer_config.json": "b87c8703482b0300d3da30e201519aa641f6a450f5eb5bf1e624afbf70c74d80",
@@ -45,7 +45,7 @@ EXPECTED_DATA_FILES = {
 }
 EXPECTED_EXECUTION_FILES = {
     "configs/bge_3ep_sft_oodtrain_h100_v1.json": EXPECTED_CONFIG_SHA256,
-    "scripts/train_bge_3ep_h100.py": "52ee9e120b90daea0dd1286357836cb521e94082bb2d10cb08844ad7bb9f0f84",
+    "scripts/train_bge_3ep_h100.py": "134a318bddea37a25513604a797c0e1f2ff5416edc1b8ebc0ff0725723ee5140",
     "scripts/bge_h100_finite_bce.py": "ca805008554f686599882edcb573777ce2182ef60b9de00369540158e7cb260e",
     "requirements-bge-h100.txt": "d6992082889c25c70db2babff8c92f8caab0e5a34df1e72a249ba5ab35625621",
     "scripts/train_cross_encoder.py": "f13e06a42c6517e9674b47c8c95f0d7e41c8e5373cafdb47411aa624e9143a39",
@@ -630,7 +630,7 @@ def main(argv: list[str] | None = None) -> int:
     base_config = load_base_config(config_path)
     execution_hashes = validate_execution_sources()
     checkpoint_hashes = validate_hashed_files(
-        model_dir, EXPECTED_CHECKPOINT_FILES, "BGE checkpoint", exact_names=True
+        model_dir, EXPECTED_CHECKPOINT_FILES, "BGE checkpoint"
     )
     _, data_report = validate_data(human_dir)
     plan = {
