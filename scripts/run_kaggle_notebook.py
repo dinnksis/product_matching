@@ -202,13 +202,39 @@ def push_kernel(stage_dir: Path, *, timeout: int, accelerator: str | None) -> No
     """Push through the Python API so a rejected SaveKernel keeps its message."""
     try:
         import requests
+        import ssl
         from kaggle.api.kaggle_api_extended import KaggleApi
+        from kagglesdk.kaggle_http_client import KaggleHttpClient
     except ImportError as error:
         fail(f"Kaggle Python API is unavailable: {error}")
+
+    # Some Windows networks terminate Kaggle's automatically negotiated TLS
+    # connection with SSLEOFError while accepting TLS 1.2 to the same endpoint.
+    # Mounting a scoped adapter on Kaggle SDK sessions avoids changing global
+    # requests behavior or disabling certificate verification.
+    original_init_session = KaggleHttpClient._init_session
+
+    class KaggleTls12Adapter(requests.adapters.HTTPAdapter):
+        def init_poolmanager(self, *args: object, **kwargs: object) -> None:
+            context = ssl.create_default_context()
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+            context.maximum_version = ssl.TLSVersion.TLSv1_2
+            kwargs["ssl_context"] = context
+            super().init_poolmanager(*args, **kwargs)
+
+    def init_tls12_session(client: object) -> object:
+        result = original_init_session(client)
+        session = getattr(client, "_session", None)
+        if session is not None and not getattr(session, "_kaggle_tls12", False):
+            session.mount("https://", KaggleTls12Adapter())
+            session._kaggle_tls12 = True
+        return result
+
+    KaggleHttpClient._init_session = init_tls12_session
     api = KaggleApi()
-    api.authenticate()
-    print(f"$ KaggleApi.kernels_push({stage_dir})", flush=True)
     try:
+        api.authenticate()
+        print(f"$ KaggleApi.kernels_push({stage_dir}) [TLS 1.2]", flush=True)
         response = api.kernels_push(
             str(stage_dir),
             timeout=str(timeout),
@@ -220,6 +246,14 @@ def push_kernel(stage_dir: Path, *, timeout: int, accelerator: str | None) -> No
             + safe_http_error_message(error),
             1,
         )
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as error:
+        fail(
+            "Kaggle connection failed before SaveKernel completed: "
+            + safe_http_error_message(error),
+            1,
+        )
+    finally:
+        KaggleHttpClient._init_session = original_init_session
     print("Kaggle accepted the kernel version.", flush=True)
     if getattr(response, "error_message", None):
         fail(f"Kaggle returned an error after SaveKernel: {response.error_message}")
@@ -360,6 +394,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dataset", action="append", default=[], help="attach owner/dataset")
     parser.add_argument("--competition", action="append", default=[], help="attach competition slug")
     parser.add_argument("--kernel", action="append", default=[], help="attach owner/kernel-slug output")
+    parser.add_argument(
+        "--model",
+        action="append",
+        default=[],
+        help="attach owner/model/framework/variation/version",
+    )
     parser.add_argument("--no-wait", action="store_true", help="return immediately after push")
     parser.add_argument("--no-download", action="store_true", help="do not download outputs")
     parser.add_argument(
@@ -447,9 +487,10 @@ def main() -> int:
     kernel_sources = args.kernel + (
         [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_KERNEL_SOURCES"))
     )
-    model_sources = (
+    model_sources = args.model + (
         [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_MODEL_SOURCES"))
     )
+    model_sources = unique_sources(model_sources)
 
     stage_dir = STAGE_ROOT / slug
     stage_dir.mkdir(parents=True, exist_ok=True)
@@ -494,7 +535,10 @@ def main() -> int:
             else "GPU preflight disabled"
         )
         print(f"GPU:      {accelerator} ({gpu_check_note})")
-    print(f"Sources:  {len(datasets)} dataset(s), {len(competitions)} competition(s)")
+    print(
+        f"Sources:  {len(datasets)} dataset(s), {len(competitions)} competition(s), "
+        f"{len(model_sources)} model(s)"
+    )
     if args.dry_run:
         print("Dry run complete; Kaggle was not contacted.")
         return 0

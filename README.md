@@ -1,425 +1,155 @@
 # E-CUP 2026 — Product Matching
 
-Репозиторий решения задачи поиска дублей товарных карточек. Retrieval уже
-выполнен организаторами: на вход подаются товары и подготовленные пары
-кандидатов, для каждой пары нужно вернуть непрерывный score того, что товары
-являются дублями.
+Решение задачи идентификации одинаковых товаров по названиям, категориям и
+структурированным атрибутам. Retrieval выполнен организаторами: на вход решения
+поступают карточки товаров и готовые пары-кандидаты, на выходе формируется
+непрерывный `predict` для каждой пары.
 
-Основное направление — cross-encoder на базе
-[Qwen3-Reranker-0.6B](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B),
-дополненный быстрыми строковыми/атрибутными моделями, эвристиками и OOF-ансамблем.
-Скорость считается частью качества решения: закрытые наборы нужно обработать за
-жёстко ограниченное время в автономном Docker-контейнере.
+Метрика соревнования — средний по 20 категориям
+`sklearn.metrics.average_precision_score` (macro AP). Решение запускается без
+интернета на NVIDIA H100 80 GB; лимит Private — 13 минут.
 
-## Задача и метрика
+## Итоговая архитектура
 
-Данные охватывают 20 категорий. Обучающая разметка приходит из двух источников:
+Использованы три multilingual cross-encoder модели:
 
-- около 365 тыс. пар с ручной разметкой;
-- более 11 млн вероятностно размеченных LLM пар (ещё не добавлены в этот
-  репозиторий).
+- `BAAI/bge-reranker-v2-m3` — основной backbone;
+- `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` — быстрый дополнительный эксперт;
+- `deepvk/RuModernBERT-base` — русскоязычный дополнительный эксперт.
 
-Метрика — macro averaged PR-AUC: отдельно для каждой категории считается
-`sklearn.metrics.average_precision_score`, затем 20 результатов усредняются.
-Использовать `auc(precision, recall)` нельзя — это другая процедура подсчёта.
-
-```python
-from sklearn.metrics import average_precision_score
-
-category_ap = pairs.groupby("category").apply(
-    lambda part: average_precision_score(part["target"], part["predict"]),
-    include_groups=False,
-)
-macro_ap = category_ap.mean()
-```
-
-В submit нужны все входные пары ровно один раз и строго три столбца:
-`id1,id2,predict`. Для PR-AUC следует сохранять непрерывные scores, а не
-пороговые классы.
-
-Официальное описание структуры данных:
-[страница соревнования ODS](https://ods.ai/competitions/e-cup-2026-matching/dataset).
-
-## Данные в репозитории
-
-Сейчас локально исследована только ручная разметка:
-
-| Файл | Строк | Схема |
-|---|---:|---|
-| `data/items_human.parquet` | 711 304 | `id`, `name`, `attributes`, `category` |
-| `data/matches.parquet` | 365 654 | `id1`, `id2`, `target` |
-
-Parquet-файлы игнорируются Git. Подробнее — в [data/README.md](data/README.md).
-
-Проверки текущей выгрузки:
-
-- 93 890 положительных и 271 764 отрицательных пар;
-- все 711 304 ID уникальны, все ссылки из пар существуют;
-- нет пропусков, self-pairs, повторов неупорядоченных пар и межкатегорийных пар;
-- все `attributes` разбираются как JSON-объекты;
-- доля дублей сильно зависит от категории: от 7,3% до 56,2%;
-- 97,7% карточек встречаются только в одной размеченной паре.
-
-Последний пункт важен для валидации: пары делятся на фолды по компонентам графа,
-чтобы одна карточка не попадала одновременно в train и validation.
-
-## Воспроизводимый EDA
-
-Готовые артефакты:
-
-- [notebooks/01_human_data_eda.ipynb](notebooks/01_human_data_eda.ipynb) —
-  выполненный notebook с кодом и выводами;
-- [reports/human_data_eda.html](reports/human_data_eda.html) — статический отчёт;
-- [docs/inferred-human-matching-guidelines.md](docs/inferred-human-matching-guidelines.md) —
-  восстановленная по 2000 ручным примерам инструкция о границе `target=1/0`;
-- [docs/llm-label-quality-audit.md](docs/llm-label-quality-audit.md) — ручной
-  аудит 2000 LLM-пар, оценка шума по confidence/category и рекомендации по
-  использованию weak labels;
-- `reports/category_summary.csv`, `reports/univariate_feature_scores.csv`,
-  `reports/light_baseline_by_category.csv` — таблицы для следующих экспериментов;
-- `reports/eda_summary.json` — компактная сводка основных метрик.
-
-Отчёт проверяет схему и связи, показывает распределения категорий/таргета,
-анализирует JSON-атрибуты и граф пар, оценивает быстрые similarity-признаки и
-строит component-disjoint 5-fold OOF baseline.
-
-На текущих данных:
-
-- лучший одиночный быстрый признак (`token_set_ratio` названий) даёт macro AP
-  около **0,363**;
-- лёгкий `HistGradientBoostingClassifier` на строковых, числовых, брендовых и
-  JSON-признаках даёт **OOF macro AP 0,535** и overall AP 0,616;
-- самые трудные для этого baseline категории — одежда, обувь и ювелирные
-  изделия; сильнее всего он работает на детских товарах, хобби, бытовой технике
-  и музыкальных инструментах;
-- точное совпадение нормализованных названий не является достаточным правилом:
-  только 39,5% таких размеченных пар положительны.
-
-Цифры baseline нужны как нижняя граница, а не как оценка будущего leaderboard:
-они получены на доступной ручной выборке.
-
-## Быстрый старт
-
-Нужны Python 3.11–3.12 и [uv](https://docs.astral.sh/uv/).
-
-```bash
-uv sync
-make report
-```
-
-`make report` пересоздаёт notebook, исполняет его на локальных parquet-файлах и
-экспортирует HTML. На текущем объёме расчёт занимает примерно 1–2 минуты на CPU.
-
-## Fine-tuning Qwen3-Reranker
-
-Сначала нужно заново подготовить данные. Каждый товар записывается плоским
-списком, по одному полю на строку: `Категория: значение`, `Название: значение`,
-затем приоритетные артикулы, бренд, модель, размер и остальные характеристики.
-
-```bash
-python scripts/prepare_human_data.py
-```
-
-Обучение на двух GPU запускается через DDP. `--batch-size` задаётся на одну GPU;
-приведённая конфигурация имеет глобальный batch 32 без gradient accumulation:
-
-```bash
-torchrun --standalone --nproc_per_node=2 scripts/train_qwen_names.py \
-  --batch-size 16 \
-  --max-length 384 \
-  --epochs 2 \
-  --dataloader-workers 2
-```
-
-При первом запуске rank 0 пакетно токенизирует обе ориентации каждой пары и
-сохраняет mmap-кэш в `artifacts/token_cache/`. Следующие запуски с теми же
-данными, моделью, prompt и `max-length` переиспользуют его. DataLoader каждого
-DDP-процесса использует отдельные worker-процессы, prefetch, pinned memory и
-length bucketing. Validation запускается один раз после всех эпох, делится между
-GPU и по умолчанию усредняет scores для порядков A/B и B/A.
-
-Gradient checkpointing по умолчанию выключен. Если выбранные длина и batch не
-помещаются в VRAM, сначала уменьшите `--batch-size`; checkpointing включается
-явно флагом `--gradient-checkpointing`. На T4 следует оставлять `--attention-implementation sdpa`.
-
-По умолчанию sampler выравнивает сочетания категории и класса, LoRA добавляется
-как в attention, так и в MLP-проекции. Отключить это для контрольной абляции
-можно через `--sampling none --lora-targets attention`. Внешний результат
-hard-negative mining подключается Parquet-файлом с `id1,id2` и необязательным
-нулевым `target`:
-
-```bash
-torchrun --standalone --nproc_per_node=2 scripts/train_qwen_names.py \
-  --hard-negatives prepared/hard_negatives.parquet \
-  --hard-negative-weight 2
-```
-
-Hard negatives, содержащие товары из validation, автоматически исключаются.
-Итоговые throughput, padding efficiency, peak VRAM и macro/category AP пишутся
-в `training_report.json` рядом с adapter/model checkpoint.
-
-## Компактный MiniLM cross-encoder
-
-Для быстрого full fine-tuning без PEFT добавлен multilingual checkpoint
-`cross-encoder/mmarco-mMiniLMv2-L12-H384-v1`. Все параметры находятся в
-`configs/cross_encoder_minilm.json`; текущий preset обучается одну эпоху на
-2×T4 с batch 96 на GPU и validation только после обучения.
-
-```bash
-make kaggle-cross-build
-make kaggle-train-data
-make kaggle-cross-dry-run
-make kaggle-cross-run
-```
-
-Последующие изменения только гиперпараметров не требуют новой версии Dataset —
-достаточно изменить JSON и повторить последние две команды. Полная инструкция:
-[`docs/cross-encoder-training.md`](docs/cross-encoder-training.md).
-
-Для full fine-tuning на всех 10,04 млн non-OOD LLM-парах на одной серверной
-H100 добавлен отдельный потоковый trainer. Он сохраняет все дробные soft labels,
-использует `S1_KEY_VALUE` serialization из MiniLM ablation, обучается с длиной
-до 512 токенов, применяет ELR против запоминания noisy labels, валидируется после
-каждой из 10 эпох на IID/hard/OOD, не материализует 10 млн пар текстов в pandas
-и поддерживает полный checkpoint/resume:
-[`docs/llm-full-server-training.md`](docs/llm-full-server-training.md).
-
-Завершённые Kaggle training runs автоматически журналируются в Google Sheets:
-компактная строка с IID/hard/OOD macro AP, Hard R@P99, Hard ROC-AUC и OOD
-LogLoss попадает в `experiments_v2`. Родственные запуски дополнительно можно
-направить в `pretrain_exps`, `sft_exps` или `data_exps`, где сохраняются paired
-p-value, Holm correction и 95% CI. Отдельный private credential Dataset
-автоматически подключается даже к новым notebook slug; настройка описана в
-[`docs/kaggle-notebook.md`](docs/kaggle-notebook.md#автоматический-журнал-экспериментов-в-google-sheets).
-
-Для командных MiniLM 5ep data/loss-абляций готов locked notebook с явным выбором
-тематического листа и автоматическим сравнением с общим frozen baseline:
-[`notebooks/minilm_5ep_team_ablation/`](notebooks/minilm_5ep_team_ablation/README.md).
-
-Отдельный эксперимент с `mixedbread-ai/mxbai-rerank-xsmall-v1` физически
-выравнивает все категории и классы, сохраняя весь human train и дополняя его
-только наиболее уверенными LLM-метками. Подробности подготовки, sample weights
-и отдельного Kaggle payload описаны в
-[`docs/mxbai-balanced-training.md`](docs/mxbai-balanced-training.md).
-
-## Удалённый запуск notebook на Kaggle (2×T4)
-
-Один раз установите окружение и заполните локальный `.env`:
-
-```bash
-uv sync
-# В .env обязательны KAGGLE_API_TOKEN и KAGGLE_USERNAME.
-```
-
-Токен создаётся в настройках Kaggle API. `.env` игнорируется Git и используется
-только локальным CLI: его значение не попадает внутрь notebook. Проверить
-подготовленную конфигурацию без обращения к Kaggle:
-
-```bash
-make kaggle-dry-run NOTEBOOK=notebooks/train.ipynb
-```
-
-Отправить notebook, дождаться полного выполнения и скачать файлы из
-`/kaggle/working`:
-
-```bash
-make kaggle-run NOTEBOOK=notebooks/train.ipynb
-```
-
-Скрипт создаёт или обновляет приватный kernel, запрашивает ускоритель
-`NvidiaTeslaT4`, проверяет в первой ячейке наличие ровно двух T4, опрашивает
-статус и сохраняет результаты в `artifacts/kaggle/<kernel-slug>/`. Исходный
-`.ipynb` не меняется; отправляемая копия лежит в `.kaggle/staging/`.
-
-Локальные данные и файлы репозитория автоматически не загружаются. Нужные
-Kaggle datasets/competition/model sources перечисляются через запятую в `.env`.
-В notebook входы доступны в `/kaggle/input/<dataset-slug>/`, а сохраняемые
-модели, checkpoints и метрики нужно писать в `/kaggle/working`, иначе Kaggle не
-вернёт их как output. Выделение двух GPU само по себе не распараллеливает
-обучение: notebook должен использовать DDP, `accelerate` или multi-GPU режим
-конкретного trainer.
-
-Готовый DDP notebook для полного human-labelled обучения создаётся вместе с
-приватным Kaggle Dataset payload:
-
-```bash
-make kaggle-train-build
-make kaggle-train-data
-uv run python scripts/run_kaggle_notebook.py \
-  notebooks/qwen3_reranker_training_2xt4.ipynb \
-  --dataset owner/product-matching-qwen-training \
-  --no-env-sources \
-  --no-wait
-```
-
-Dataset включает исходные parquet, текущую реализацию `src/`, training scripts
-и manifest их SHA-256. Notebook проверяет bundle, разворачивает проект в
-`/kaggle/working`, использует batch 32 на каждую T4 и по два DataLoader worker'а
-на DDP process. Подробный сценарий описан в
-[`docs/kaggle-notebook.md`](docs/kaggle-notebook.md).
-
-### Zero-shot Qwen3 reranker через vLLM
-
-[notebooks/qwen3_vllm_inference_10k.ipynb](notebooks/qwen3_vllm_inference_10k.ipynb)
-запускает `Qwen/Qwen3-Reranker-0.6B` без обучения на фиксированной
-стратифицированной выборке из 10 000 ручных пар. Карточка сериализуется как
-категория, название и полный упорядоченный JSON атрибутов; затем каждый товар
-ограничивается 448 токенами. Обе T4 используются через
-`tensor_parallel_size=2`.
-
-Пересоздать notebook и локальный Parquet для приватного Kaggle Dataset:
-
-```bash
-uv run python scripts/create_qwen3_vllm_notebook.py
-make kaggle-dry-run NOTEBOOK=notebooks/qwen3_vllm_inference_10k.ipynb
-make kaggle-run NOTEBOOK=notebooks/qwen3_vllm_inference_10k.ipynb
-```
-
-Первый успешный zero-shot прогон выполнен приватной Kaggle-версией 3 на 2×T4:
-
-- 10 000 пар за 412,6 секунды чистого inference — **24,23 пары/с**;
-- загрузка модели — 95,3 секунды, токенизация — 13,5 секунды;
-- truncation затронул 6,12% отдельных карточек;
-- overall AP — **0,284**, macro AP — **0,336**;
-- медиана score — 0,965, а 84,4% пар получили score не ниже 0,9.
-
-Таким образом, технический inference работает, но исходный retrieval-reranker
-не откалиброван под бинарное понятие дубля в этой задаче и в zero-shot режиме
-уступает лёгкому OOF baseline. Предсказания, category AP, hard examples,
-диагностический график и runtime JSON скачаны в
-`artifacts/kaggle/product-matching-training/`.
-
-### Контейнерный zero-shot submit
-
-В `submits/qwen3-reranker-vllm-zero-shot/` лежит автономный speed-submit с
-локальными весами Qwen3, vLLM 0.14.0 и vendored PyArrow. Он использует короткий
-контекст 256 токенов и один H100 без tensor parallel. Готовый архив создаётся в
-`submits/qwen3-reranker-vllm-zero-shot.zip`; модель не обучена и предназначена
-в первую очередь для проверки end-to-end лимитов контейнера.
-
-## План решения
-
-### 1. Валидация
-
-- Фиксированный 5-fold split по компонентам графа всех размеченных пар.
-- Контроль отсутствия пересечения ID между train/validation.
-- Основной критерий — macro AP; дополнительно сохраняются category AP, overall
-  AP, wall-clock, pairs/sec, пиковая RAM/VRAM и размер артефактов.
-- Все base-модели отдают OOF scores на одних и тех же фолдах. Stacker никогда не
-  обучается на in-fold predictions.
-
-### 2. Лёгкая модель и эвристики
-
-- Нормализация Unicode, регистра, пробелов, единиц измерения и вариантов ключей.
-- RapidFuzz, word/char TF-IDF, token/number overlap, признаки бренда,
-  артикула/OEM/EAN, модели, размера, цвета и комплектации.
-- CatBoost/LightGBM либо компактная линейная модель с category-specific
-  взаимодействиями.
-- High-precision правила только с проверкой variant-конфликтов: одинакового имени
-  или бренда недостаточно.
-
-Лёгкая ветка нужна сразу в трёх ролях: быстрый baseline, независимый сигнал для
-ансамбля и gate для дорогой модели.
-
-### 3. Cross-encoder
-
-Первый кандидат — `Qwen/Qwen3-Reranker-0.6B`: это открытая Apache-2.0 модель для
-text reranking на 0,6 млрд параметров; официальный model card показывает варианты
-запуска через `sentence-transformers` и `transformers`.
-
-Предлагаемый вход:
+Все модели получают две независимо сериализованные карточки:
 
 ```text
 Категория: <category>
-Товар A: <name> | бренд: ... | артикул: ... | размер: ... | ...
-Товар B: <name> | бренд: ... | артикул: ... | размер: ... | ...
+Название: <name>
+<ключ атрибута>: <значение>
+...
 ```
 
-Ключевые решения для абляций:
+Пустые атрибуты удаляются, остальные располагаются в детерминированном порядке.
+На этапе final inference используется SentenceTransformers `CrossEncoder`, FP16,
+SDPA, `max_length=384` для всей пары, batch 1024 и один проход `A → B`. Отказ от
+симметричного `A → B` + `B → A` inference был главным runtime-ускорением.
 
-- длина 128/256/384/512 токенов и порядок атрибутов;
-- случайная перестановка A/B для симметрии;
-- category-balanced sampling и/или веса категорий;
-- hard-negative mining из уверенных ошибок текущих моделей;
-- human-only обучение как контрольный эксперимент;
-- LLM pretraining/distillation с меньшим весом, затем human fine-tuning;
-- BF16, quantization, dynamic padding и length bucketing для H100.
+## Подготовленные финальные submissions
 
-### 4. Ансамбль и каскад
+| Решение | Вычисления | Итоговый score | Builder |
+|---|---|---|---|
+| Full BGE + MiniLM | BGE 100%, MiniLM 100% | 50/50 sigmoid probabilities | `scripts/build_bge_minilm_full_oneway_final_submit.py` |
+| Full triple | BGE 100%, MiniLM 100%, RuModernBERT 100% | среднее трёх sigmoid probabilities | `scripts/build_bge_minilm_rumodern_full_oneway_submit.py` |
+| Routed 40/5 | BGE 100%, MiniLM 40%, RuModernBERT 5% | последовательные 50/50 blends | `scripts/build_bge_minilm_rumodern_fast_oneway_final_40_5_submit.py` |
 
-На OOF-предсказаниях обучается небольшой stacker из:
+Также отправлялся BGE-only diagnostic, но он не рассматривается как основной
+финальный ансамбль. Full triple и routed 40/5 прошли контейнерный запуск. В
+routed-варианте MiniLM выбирается 7-признаковым CatBoost benefit-router, а
+RuModernBERT — 14-признаковым sequential router внутри MiniLM subset. Эти routers
+обучались на component-disjoint OOF predictions предыдущей версии нейросетевых
+checkpoints; это ограничение явно записано в submission manifest.
 
-- cross-encoder logits;
-- TF-IDF/лёгкого model score;
-- identifier и variant-conflict признаков;
-- категории.
+ZIP-файлы и веса не хранятся в Git. После размещения финальных checkpoints в
+`configs/bge_final`, `configs/minilm_final` и `configs/rumodernbert_final` сборка
+выполняется командами:
 
-Сравниваются глобальный stacker и category-wise калибровка. Для ускорения можно
-пропускать через cross-encoder только серую зону лёгкой модели, но такой каскад
-должен сохранять глобальное ранжирование scores внутри каждой категории.
-
-### 5. Работа с 11 млн LLM-меток
-
-До смешивания с human labels:
-
-1. канонизировать `(min(id1,id2), max(id1,id2))`;
-2. удалить повторы и найти конфликты источников;
-3. измерить согласие LLM с ручной разметкой по категориям и confidence-бинам;
-4. оставить component-disjoint human holdout полностью чистым;
-5. сравнить `human-only`, `LLM → human fine-tune` и weighted joint training.
-
-Разрешены только модели с открытой лицензией; код обучения и переразметки должен
-быть воспроизводимым.
-
-## Ограничения контейнера
-
-Решение запускается без интернета на 20 CPU, 200 GB RAM и NVIDIA H100 80 GB.
-Ограничения времени: Check — 1 минута, Public — 6 минут, Private — 13 минут.
-Архив решения — до 5 GB, Docker-образ в архивированном виде — до 15 GB.
-
-Ожидаемый CLI:
-
-```bash
-python -u run.py \
-  --items_path /data/items.parquet \
-  --matches_path /data/matches.parquet \
-  --output-path /output/submit.csv
+```powershell
+.\.venv\Scripts\python.exe scripts\build_bge_minilm_full_oneway_final_submit.py
+.\.venv\Scripts\python.exe scripts\build_bge_minilm_rumodern_full_oneway_submit.py
+.\.venv\Scripts\python.exe scripts\build_bge_minilm_rumodern_fast_oneway_final_40_5_submit.py
 ```
 
-Перед отправкой контейнер должен локально пройти контрактные проверки:
+Builder поддерживает обычный `model.safetensors`, Hugging Face sharding и
+транспортные части `model.safetensors.partNNN` с manifest-проверкой SHA-256.
 
-- работает без сети и содержит все веса/зависимости;
-- сохраняет результат для каждой пары и не меняет порядок/ID;
-- выдаёт только `id1,id2,predict`, без NaN/inf;
-- укладывается в лимит времени на экстраполированном Private-объёме;
-- `metadata.json` указывает существующий image и корректный `entry_point`.
+## Финальное human fine-tuning MiniLM и RuModernBERT
 
-## Структура проекта
+Этот репозиторий фиксирует последний этап обучения двух специалистов на всех
+`365 654` human-labelled парах без validation holdout и без фильтрации. Выбор
+гиперпараметров был сделан на более ранних component-disjoint экспериментах;
+финальный all-human fit не использовался для выбора параметров.
+
+MiniLM стартует с checkpoint после пяти эпох на предоставленной организаторами
+LLM-разметке и затем обучается три эпохи на human labels:
+
+| Параметр | Значение |
+|---|---:|
+| Epochs | 3 |
+| Per-GPU batch | 96 |
+| GPU / accumulation | 2 / 1 |
+| Effective batch | 192 |
+| Learning rate | `8e-5` |
+| Weight decay / warmup | `0.01` / `0.05` |
+| Classifier dropout | `0.1` |
+| Max grad norm | `1.0` |
+
+RuModernBERT стартует с checkpoint после трёх эпох competition-pretrain и также
+дообучается три эпохи на всех human labels:
+
+| Параметр | Значение |
+|---|---:|
+| Epochs | 3 |
+| Per-GPU batch / accumulation | 24 / 4 |
+| GPU / effective batch | 2 / 192 |
+| Learning rate | `4e-5` |
+| Scheduler | cosine |
+| Weight decay / warmup | `0.01` / `0.05` |
+| Max grad norm | `0.5` |
+
+Общее для обеих моделей: seed 42, FP16, SDPA, BCE loss, `max_length=384`,
+детерминированная сериализация из `src/data_pipeline.py`, sampling/weights/label
+smoothing отключены. Точные configs:
+
+- `configs/cross_encoder_minilm_5ep_full_human_final.json`;
+- `configs/cross_encoder_rumodernbert_3ep_full_human_final.json`.
+
+Kaggle notebook генерируется из текущего source bundle и перед запуском проверяет
+число строк, SHA-256 исходников, locked config, наличие двух GPU и итоговый training
+report. Запуск:
+
+```powershell
+.\.venv\Scripts\python.exe scripts\run_minilm_5ep_full_human_kaggle.py --no-wait --no-download
+.\.venv\Scripts\python.exe scripts\run_rumodernbert_3ep_full_human_kaggle.py --no-wait --no-download
+```
+
+Подробный контракт входов, outputs и проверок описан в
+[`docs/final-human-finetuning.md`](docs/final-human-finetuning.md).
+
+## Воспроизводимость: границы текущего commit
+
+В текущем состоянии полностью зафиксированы:
+
+- финальный all-human этап MiniLM и RuModernBERT;
+- общая сериализация;
+- inference трёх итоговых архитектур;
+- сборка submission ZIP и проверка checkpoint hashes;
+- код обучения CatBoost routers и их configs.
+
+Отдельным командным вкладом должны быть добавлены исходные скрипты и configs
+competition-pretrain для MiniLM/RuModernBERT, а также точный training pipeline
+финального BGE. Приватные Kaggle checkpoint datasets не считаются единственным
+воспроизводимым источником: они являются кэшем результатов предыдущего этапа.
+
+Организаторские parquet и модельные веса не публикуются в Git. Их ожидаемые пути,
+размеры и SHA-256 фиксируются генераторами notebooks и submission manifests.
+
+## Лицензии
+
+Все три upstream модели заявлены авторами под Apache License 2.0. Точные ссылки,
+назначение моделей и основные runtime-зависимости перечислены в
+[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Проприетарные LLM API в
+финальном training/inference pipeline не используются. 11M probabilistic labels
+предоставлены организаторами соревнования; самостоятельная проприетарная
+переразметка в финальные checkpoints не входит.
+
+## Структура
 
 ```text
-.
-├── data/                       # локальные parquet-файлы (не в Git)
-├── notebooks/
-│   ├── 01_human_data_eda.ipynb
-│   ├── cross_encoder_minilm_training_2xt4.ipynb
-│   ├── qwen3_reranker_training_2xt4.ipynb
-│   └── qwen3_vllm_inference_10k.ipynb
-├── reports/                    # HTML и компактные таблицы EDA
-├── scripts/
-│   ├── create_eda_notebook.py
-│   ├── create_cross_encoder_training_notebook.py
-│   ├── create_qwen_training_notebook.py
-│   ├── create_qwen3_vllm_notebook.py
-│   ├── push_kaggle_training_dataset.py
-│   ├── run_cross_encoder_kaggle.py
-│   └── run_kaggle_notebook.py
-├── src/product_matching/
-│   └── eda.py                  # проверки, признаки, CV baseline
-├── Makefile
-├── pyproject.toml
-└── uv.lock
+configs/       фиксированные experiment configs; веса *_final игнорируются Git
+docs/          протоколы, результаты и инструкции
+notebooks/     сгенерированные Kaggle notebooks
+scripts/       обучение, OOF/router experiments и submission builders
+src/           сериализация, splits, features и training utilities
+submits/       лёгкие runtime-шаблоны; ZIP и model weights игнорируются Git
+tests/         проверки locked training recipes и notebook contracts
 ```
 
-Ближайшие практические эксперименты: char/word TF-IDF baseline и
-human-only fine-tuning `Qwen3-Reranker-0.6B` на одном и том же component-disjoint
-split, после чего — OOF blending и профилирование скорости.
+История основных ансамблевых и routing-экспериментов находится в
+[`docs/final-ensemble-architecture.md`](docs/final-ensemble-architecture.md).

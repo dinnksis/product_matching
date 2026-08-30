@@ -37,6 +37,10 @@ artifacts/
 models/
 checkpoints/
 wandb/
+configs/bge_final/
+configs/minilm_final/
+configs/rumodernbert_final/
+configs/rubertmodern_final/
 
 # Generated container-submission payloads are kept locally, not in Git.
 submits/*.zip

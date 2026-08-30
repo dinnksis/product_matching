@@ -1,0 +1,184 @@
+{
+  "experiment": "bge_minilm_rumodern_fast_oneway_40_5_st_final_v1",
+  "backend": "sentence-transformers CrossEncoder 5.1.2",
+  "attention": "sdpa",
+  "precision": "float16",
+  "serialization": {
+    "implementation": "src/data_pipeline.py:serialize_product",
+    "format": "Категория, Название, then deterministic key: value lines",
+    "max_attribute_chars": 6000
+  },
+  "max_length": 384,
+  "max_length_scope": "combined cross-encoder pair including special tokens",
+  "batch_size": 1024,
+  "direction": "AB only",
+  "routing": {
+    "minilm_coverage": 0.4,
+    "rumodernbert_coverage": 0.05,
+    "rumodern_subset_of_minilm": true,
+    "mini_router_features": 7,
+    "rumodern_router_features": 14,
+    "router_checkpoint_status": "reused; trained on previous-checkpoint OOF scores"
+  },
+  "blend": {
+    "minilm": "50% current BGE score + 50% MiniLM on routed pairs",
+    "rumodernbert": "50% current BGE/MiniLM score + 50% RuModernBERT"
+  },
+  "offline_validation": "not transferable to final checkpoints; fresh evaluation required",
+  "docker_image": "dinakepech/ecup26-bge-minilm-rumodern-router-sdpa:1.0",
+  "weights": {
+    "bge": {
+      "source": "configs/bge_final",
+      "files": {
+        "model.safetensors": {
+          "bytes": 2271071852,
+          "sha256": "d7e899ea3cd305db970aa6f3466eb71a138ad418c74b8b6ac730d1828c4a4ab8"
+        }
+      }
+    },
+    "minilm": {
+      "source": "configs/minilm_final",
+      "files": {
+        "model.safetensors": {
+          "bytes": 470588492,
+          "sha256": "88c2c430e1d2357cafc4d9be45fa63cccd84d587fb9bb13a920140d77610280b"
+        }
+      }
+    },
+    "rumodernbert": {
+      "source": "configs/rubertmodern_final",
+      "files": {
+        "model.safetensors": {
+          "bytes": 598436708,
+          "sha256": "92a50d9f05f280fe2124fabe6d7a4ea1cd0979a4eb05aa80792f680936926878"
+        }
+      }
+    }
+  },
+  "files": {
+    "README.md": {
+      "size": 1234,
+      "sha256": "ff812356e1309d8e073057899244152031a81605824588f388b3de7a9f8b600c"
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "size": 522,
+      "sha256": "15994d1af31ce0becdbaa54032fe770d9715d9df501a8349ae37f8bc64b67203"
+    },
+    "data_pipeline.py": {
+      "size": 6685,
+      "sha256": "4e449f2c2fe1b1f4cee6fe8c42e72647b0929bda7bbfe8f68a2ca8aad7729bd4"
+    },
+    "ensemble_base.py": {
+      "size": 2727,
+      "sha256": "e7f76e2c395cdb8695ad912a90ef116547a138a59ca119263335a1a68bd47c4d"
+    },
+    "fast_benefit_router.py": {
+      "size": 5610,
+      "sha256": "c48400bdc52efd1cff97e584784b85c2f090ffb65e041ba9ddef56e5ec1e1648"
+    },
+    "fast_sequential_router.py": {
+      "size": 1608,
+      "sha256": "6796cf25417e9f20fb71f8d7fa75ac3de1e8658ce95b880ac924837bc7bd9f4a"
+    },
+    "metadata.json": {
+      "size": 108,
+      "sha256": "7979e4439a0a5fb6279eae1f274dd342301a1da510751f0f60862729eda967ce"
+    },
+    "mini_router_manifest.json": {
+      "size": 267,
+      "sha256": "730a31ceea7f790323601fd7a645849cf40174ae8d1a77e78627234b375d617f"
+    },
+    "models/bge_final/config.json": {
+      "size": 764,
+      "sha256": "3f143138299caf72270c79814d1f0e3c38fc168e2d30f1e6cc4c70f6cdb481f5"
+    },
+    "models/bge_final/model.safetensors": {
+      "size": 2271071852,
+      "sha256": "d7e899ea3cd305db970aa6f3466eb71a138ad418c74b8b6ac730d1828c4a4ab8"
+    },
+    "models/bge_final/special_tokens_map.json": {
+      "size": 964,
+      "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+    },
+    "models/bge_final/tokenizer.json": {
+      "size": 17082998,
+      "sha256": "efcbc2e883c0ef3f67ce522db4e6e4e114532aeb827b5e2cbfa89bac7da8252f"
+    },
+    "models/bge_final/tokenizer_config.json": {
+      "size": 1207,
+      "sha256": "272dabf15417f68de99532ca6a2f7c402afdf654d4dc4134f35db97af1edc8b0"
+    },
+    "models/minilm_final/config.json": {
+      "size": 849,
+      "sha256": "c88aece85d1cb987f3a13bc12f682b800c6c59287097945f9e2bf4f9bee1004c"
+    },
+    "models/minilm_final/model.safetensors": {
+      "size": 470588492,
+      "sha256": "88c2c430e1d2357cafc4d9be45fa63cccd84d587fb9bb13a920140d77610280b"
+    },
+    "models/minilm_final/special_tokens_map.json": {
+      "size": 1015,
+      "sha256": "66715ae6a0dd4aff4fe228bcaaccac6e52c83fd0ba80992c2be7d0e43b362307"
+    },
+    "models/minilm_final/tokenizer.json": {
+      "size": 18083008,
+      "sha256": "7181bb29e282376c150310ecc6808b121fb0ffb25ae5efb2e5ee07c5c6925643"
+    },
+    "models/minilm_final/tokenizer_config.json": {
+      "size": 1349,
+      "sha256": "a662d97ce86aefa3ccb91ee748e77ce2c61d15b130eedc0cb3dcfe29167a2a5a"
+    },
+    "models/rumodernbert_final/added_tokens.json": {
+      "size": 1849,
+      "sha256": "768c5bdf771e3745cb743d0a54640886aa8421cefb8ce9672a4d51b9a2195aa9"
+    },
+    "models/rumodernbert_final/config.json": {
+      "size": 2373,
+      "sha256": "1c50672f67c16908ddecd6279f20a7f1d50afdba0fb53f49e0640428540af464"
+    },
+    "models/rumodernbert_final/merges.txt": {
+      "size": 1092567,
+      "sha256": "d46318945ce029825e80505fddcf7338299ac9f546c62c80cde532b58b3353f8"
+    },
+    "models/rumodernbert_final/model.safetensors": {
+      "size": 598436708,
+      "sha256": "92a50d9f05f280fe2124fabe6d7a4ea1cd0979a4eb05aa80792f680936926878"
+    },
+    "models/rumodernbert_final/special_tokens_map.json": {
+      "size": 883,
+      "sha256": "0ca00a90ed7d5a7b6b569883c0ca7fb853eb9f4285625b4b80dd0c66ac5c7821"
+    },
+    "models/rumodernbert_final/tokenizer.json": {
+      "size": 5004186,
+      "sha256": "fd656392d0af676cfd340e5192cc079b63936ca81e9f133e81f3d59b15f7d1ee"
+    },
+    "models/rumodernbert_final/tokenizer_config.json": {
+      "size": 21035,
+      "sha256": "b490174b11e18e3bbb22f76f73e0cb2383bbc32a5266a5eecce1dd65495e4375"
+    },
+    "models/rumodernbert_final/vocab.json": {
+      "size": 1384902,
+      "sha256": "65be01b3421087106b17bed0981826443bfddcba641af6428558be1bdac95a5c"
+    },
+    "router_minilm_oneway_score_category.cbm": {
+      "size": 983432,
+      "sha256": "6ee28c8f4a3c454c5cadb3f976750174bc908e744072f74c0a7ae5ddae2cfaeb"
+    },
+    "router_rumodern_oneway_score_category.cbm": {
+      "size": 806276,
+      "sha256": "5e3b0065584e97fce41f6dda4bb06b5d588f9c882ea65316413073e675fb6855"
+    },
+    "rumodern_router_manifest.json": {
+      "size": 498,
+      "sha256": "5ae698aedee5366fb288a5b894c6cea9b79964eeb4ba7e560431fdbc190c5ea3"
+    },
+    "run.py": {
+      "size": 6344,
+      "sha256": "2dc13edc005cc86245798890d297dde40ece7a17f376e8246c05ce112a24e33a"
+    },
+    "runtime_base.py": {
+      "size": 6280,
+      "sha256": "5e27ae6b785efb998859adb95a937f3247a499c8bb2d29693a58cdf19d6c93ae"
+    }
+  }
+}
