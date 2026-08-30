@@ -1,0 +1,32 @@
+{
+  "model": "model/pretrain_bge_2ep",
+  "model_backend": "sequence_classification",
+  "model_load_kwargs": {
+    "local_files_only": true
+  },
+  "trust_remote_code": false,
+  "epochs": 3,
+  "batch_size": 64,
+  "eval_batch_size": 192,
+  "gradient_accumulation": 3,
+  "learning_rate": 2e-5,
+  "weight_decay": 0.01,
+  "warmup_ratio": 0.05,
+  "max_length": 384,
+  "attention_implementation": "sdpa",
+  "sampling": "none",
+  "train_subset": "all",
+  "loss_weighting": "none",
+  "lexical_hard_negative_strength": 0.0,
+  "bucket_size_multiplier": 50,
+  "dataloader_workers": 16,
+  "prefetch_factor": 4,
+  "tokenization_batch_size": 1024,
+  "tokenization_log_every": 50,
+  "gradient_checkpointing": false,
+  "symmetric_validation": true,
+  "label_smoothing": 0.0,
+  "max_grad_norm": 0.5,
+  "log_every": 50,
+  "seed": 42
+}
