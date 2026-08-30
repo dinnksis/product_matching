@@ -21,6 +21,14 @@ p-value/95% CI на трёх split и отправляет результат в
 
 Notebook: [`minilm_5ep_team_ablation_2xt4.ipynb`](minilm_5ep_team_ablation_2xt4.ipynb).
 
+Для подбора epochs, learning rate, batch size, weight decay, warmup и других
+параметров supervised recipe не ослабляйте этот locked notebook. Используйте
+отдельный SFT protocol из
+[`docs/minilm-5ep-sft-hparam-search.md`](../../docs/minilm-5ep-sft-hparam-search.md):
+он сохраняет тот же checkpoint, human train и frozen validation, но создаёт
+отдельный immutable notebook для каждой разрешённой точки и направляет её в
+`sft_exps`.
+
 ## Что нужно задать перед запуском
 
 В ячейке `RUN SETUP — label and comparison sheet` задаются только три поля:

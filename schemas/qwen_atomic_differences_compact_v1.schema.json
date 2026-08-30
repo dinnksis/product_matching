@@ -1,0 +1,50 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "qwen_atomic_differences_compact_v1.schema.json",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["differences"],
+  "properties": {
+    "differences": {
+      "type": "array",
+      "maxItems": 24,
+      "items": { "$ref": "#/$defs/atomic_difference" }
+    }
+  },
+  "$defs": {
+    "side": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "source", "attribute", "fragment"],
+      "properties": {
+        "value": { "type": "string", "minLength": 1, "maxLength": 500 },
+        "source": { "enum": ["title", "attribute"] },
+        "attribute": { "type": ["string", "null"], "maxLength": 300 },
+        "fragment": { "type": "string", "minLength": 1, "maxLength": 500 }
+      }
+    },
+    "atomic_difference": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["concept", "relation", "a", "b"],
+      "properties": {
+        "concept": {
+          "type": "string",
+          "pattern": "^[a-z][a-z0-9_]*$",
+          "minLength": 2,
+          "maxLength": 80
+        },
+        "relation": {
+          "enum": [
+            "different_value",
+            "a_more_specific",
+            "b_more_specific",
+            "incompatible"
+          ]
+        },
+        "a": { "$ref": "#/$defs/side" },
+        "b": { "$ref": "#/$defs/side" }
+      }
+    }
+  }
+}

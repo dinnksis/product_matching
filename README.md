@@ -5,11 +5,37 @@
 кандидатов, для каждой пары нужно вернуть непрерывный score того, что товары
 являются дублями.
 
-Основное направление — cross-encoder на базе
-[Qwen3-Reranker-0.6B](https://huggingface.co/Qwen/Qwen3-Reranker-0.6B),
-дополненный быстрыми строковыми/атрибутными моделями, эвристиками и OOF-ансамблем.
-Скорость считается частью качества решения: закрытые наборы нужно обработать за
-жёстко ограниченное время в автономном Docker-контейнере.
+После серии controlled-абляций основное направление — supervised multilingual
+cross-encoder на архитектуре XLM-R/BGE. Финальный подготовленный submission
+использует трёхэпоховый BGE checkpoint, обученный на H100, plain BCE и
+`max_length=384`; компактный MiniLM сохраняется как независимый ансамблевый
+сигнал. Скорость остаётся частью качества решения: закрытые наборы нужно
+обработать за жёстко ограниченное время в автономном Docker-контейнере.
+
+## Текущее состояние и результаты
+
+Главные ссылки:
+
+- [полная история, итоговые рецепты и ограничения интерпретации](docs/final-results-and-experiment-history.md);
+- [таблица всех экспериментов и paired-сравнений](https://docs.google.com/spreadsheets/d/1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA/edit?usp=sharing);
+- [хронология reranker/cross-encoder экспериментов](docs/reranker-experiments.md);
+- [финальный H100 submission bundle](submits/bge-reranker-v2-m3-3ep-h100/README.md).
+
+Краткая сводка на component-disjoint human validation:
+
+| модель/рецепт | IID macro AP | hard macro AP | примечание |
+|---|---:|---:|---|
+| MiniLM, 3 эпохи, LR `8e-5` | 0.808502 | 0.423286 | лучший MiniLM anchor |
+| BGE, 1 эпоха, LR `2e-5` | 0.818291 | 0.414717 | BGE baseline |
+| BGE, 2 эпохи, LR `2e-5` | **0.823461** | 0.437775 | лучший строго сопоставимый BGE run |
+| BGE, 2 эпохи, sqrt category×class BCE | 0.822150 | 0.431759 | хуже plain BCE |
+| BGE, 3 эпохи на H100, symmetric eval | **0.824975** | **0.461148** | другой стартовый checkpoint |
+| тот же H100 checkpoint, submission single-pass | 0.823629 | 0.462631 | один порядок пары для быстрого inference |
+
+Former OOD split включён в BGE SFT train, поэтому для BGE его метрика намеренно
+равна `-1` и не используется в выборе. IID остаётся primary split, hard — только
+диагностическим. Все числа выше — локальная validation, а не результат на
+скрытом тесте соревнования.
 
 ## Задача и метрика
 
@@ -297,7 +323,11 @@ make kaggle-run NOTEBOOK=notebooks/qwen3_vllm_inference_10k.ipynb
 `submits/qwen3-reranker-vllm-zero-shot.zip`; модель не обучена и предназначена
 в первую очередь для проверки end-to-end лимитов контейнера.
 
-## План решения
+## Исторический план решения
+
+Ниже сохранён первоначальный план поиска решения. Актуальный выбранный рецепт и
+фактически завершённые ветки описаны в
+[`docs/final-results-and-experiment-history.md`](docs/final-results-and-experiment-history.md).
 
 ### 1. Валидация
 
@@ -420,6 +450,6 @@ python -u run.py \
 └── uv.lock
 ```
 
-Ближайшие практические эксперименты: char/word TF-IDF baseline и
-human-only fine-tuning `Qwen3-Reranker-0.6B` на одном и том же component-disjoint
-split, после чего — OOF blending и профилирование скорости.
+Исторически следующими шагами здесь были char/word TF-IDF baseline и human-only
+fine-tuning reranker. Эти этапы уже выполнены или заменены более сильной
+MiniLM/BGE линией; актуальные результаты приведены в начале README.

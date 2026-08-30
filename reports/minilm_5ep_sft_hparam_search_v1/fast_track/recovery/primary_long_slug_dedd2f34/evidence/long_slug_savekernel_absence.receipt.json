@@ -1,0 +1,326 @@
+{
+  "schema_version": 1,
+  "kind": "minilm_5ep_sft_long_slug_recovery_absence_receipt",
+  "campaign": "minilm_5ep_sft_hparam_search_v1",
+  "audited_at_utc": "2026-08-28T11:30:28Z",
+  "audit_scope": "Fresh read-only Kaggle absence audit after a failed pre-creation SaveKernel attempt; no submit, resubmit, update, delete, version, output download, or other remote mutation was performed.",
+  "source_lock": {
+    "path": "reports/minilm_5ep_sft_hparam_search_v1/stage_locks/special_loss_screen__primary.lock.json",
+    "file_sha256": "b608ce860469f18afb7d68e5cce2204f1e9690d753817f6ec86fb748d9ffe694",
+    "lock_payload_sha256": "dedd2f34ef0b841c0ced0650d8493e3b52b0b34c204ae1c79f83b46c01c15f9f",
+    "schema_version": 2,
+    "execution_status": "runnable"
+  },
+  "failed_submit": {
+    "controller_state_path": "reports/minilm_5ep_sft_hparam_search_v1/fast_track/loss_controller_state.json",
+    "controller_state_file_sha256": "99004cc8f07adac9f5c1c05c5b93c4adb90ded61e642194fe117a306958deee5",
+    "controller_state_payload_sha256": "4c96f25c17ab2269281651803487882d7329db179df6ec9b18c9a019317a893c",
+    "status": "failed_closed",
+    "stop_reason": "kaggle_or_api_failure",
+    "source_lock_payload_sha256": "dedd2f34ef0b841c0ced0650d8493e3b52b0b34c204ae1c79f83b46c01c15f9f",
+    "submit_wait": {
+      "argv": [
+        "/Users/aekuleshevskii/product_matching/.venv/bin/python",
+        "/Users/aekuleshevskii/product_matching/scripts/run_minilm_5ep_sft_loss_fast_track_kaggle.py",
+        "--fast-track-policy",
+        "/Users/aekuleshevskii/product_matching/configs/minilm_5ep_sft_loss_fast_track_v1.json",
+        "--fast-track-receipt",
+        "/Users/aekuleshevskii/product_matching/reports/minilm_5ep_sft_hparam_search_v1/fast_track/max_grad_norm_skip.receipt.json",
+        "--fast-track-freeze-manifest",
+        "/Users/aekuleshevskii/product_matching/configs/minilm_5ep_sft_loss_fast_track_v1.freeze.json",
+        "--plan",
+        "/Users/aekuleshevskii/product_matching/configs/minilm_5ep_sft_hparam_search_v1.json",
+        "--stage-lock",
+        "/Users/aekuleshevskii/product_matching/reports/minilm_5ep_sft_hparam_search_v1/stage_locks/special_loss_screen__primary.lock.json",
+        "--submit",
+        "--wait"
+      ],
+      "phase": "submit_wait",
+      "returncode": 1
+    },
+    "savekernel_http400_output_persisted": false,
+    "savekernel_error_output": null,
+    "evidence_limitation": "The controller persisted the exact failed command and return code but did not persist its stdout/stderr; this receipt does not reconstruct or invent the HTTP 400 text."
+  },
+  "expected_owner": "alexproger23",
+  "expected_bad_kernel_slugs": [
+    "pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1",
+    "pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1",
+    "pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+    "pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1"
+  ],
+  "remote_observations": [
+    {
+      "owner_slug": "alexproger23/pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1",
+      "kernel_slug": "pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1",
+      "status_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "status",
+          "alexproger23/pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1"
+        ],
+        "returncode": 1,
+        "combined_output": "Cannot access kernel 'alexproger23/pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1' (Permission 'kernels.get' was denied). The most likely cause is a wrong kernel slug. The benchmark_task_slug returned by get_benchmark_leaderboard differs from the actual kernel slug — use the slug from the notebook URL (kaggle.com/code/owner/KERNEL-SLUG), not from the leaderboard. It can also occur if the notebook is private.\n",
+        "normalized_result": "kernels_get_denied"
+      },
+      "list_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "list",
+          "--mine",
+          "--search",
+          "pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1",
+          "--page-size",
+          "20"
+        ],
+        "returncode": 0,
+        "combined_output": "Not found\n",
+        "exact_ref_matches": 0,
+        "normalized_result": "owner_list_not_found"
+      },
+      "files_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "files",
+          "alexproger23/pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1",
+          "--format",
+          "json",
+          "--page-size",
+          "200"
+        ],
+        "returncode": 1,
+        "combined_output": "403 Client Error: Forbidden for url: https://api.kaggle.com/v1/kernels.KernelsApiService/ListKernelFiles\n",
+        "normalized_result": "readonly_output_endpoint_forbidden"
+      },
+      "remote_kernel_identity_state": "absent_from_authenticated_owner_scope",
+      "remote_outputs_state": "unknown_readonly_endpoint_forbidden"
+    },
+    {
+      "owner_slug": "alexproger23/pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1",
+      "kernel_slug": "pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1",
+      "status_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "status",
+          "alexproger23/pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1"
+        ],
+        "returncode": 1,
+        "combined_output": "Cannot access kernel 'alexproger23/pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1' (Permission 'kernels.get' was denied). The most likely cause is a wrong kernel slug. The benchmark_task_slug returned by get_benchmark_leaderboard differs from the actual kernel slug — use the slug from the notebook URL (kaggle.com/code/owner/KERNEL-SLUG), not from the leaderboard. It can also occur if the notebook is private.\n",
+        "normalized_result": "kernels_get_denied"
+      },
+      "list_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "list",
+          "--mine",
+          "--search",
+          "pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1",
+          "--page-size",
+          "20"
+        ],
+        "returncode": 0,
+        "combined_output": "Not found\n",
+        "exact_ref_matches": 0,
+        "normalized_result": "owner_list_not_found"
+      },
+      "files_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "files",
+          "alexproger23/pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1",
+          "--format",
+          "json",
+          "--page-size",
+          "200"
+        ],
+        "returncode": 1,
+        "combined_output": "403 Client Error: Forbidden for url: https://api.kaggle.com/v1/kernels.KernelsApiService/ListKernelFiles\n",
+        "normalized_result": "readonly_output_endpoint_forbidden"
+      },
+      "remote_kernel_identity_state": "absent_from_authenticated_owner_scope",
+      "remote_outputs_state": "unknown_readonly_endpoint_forbidden"
+    },
+    {
+      "owner_slug": "alexproger23/pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+      "kernel_slug": "pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+      "status_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "status",
+          "alexproger23/pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1"
+        ],
+        "returncode": 1,
+        "combined_output": "Cannot access kernel 'alexproger23/pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1' (Permission 'kernels.get' was denied). The most likely cause is a wrong kernel slug. The benchmark_task_slug returned by get_benchmark_leaderboard differs from the actual kernel slug — use the slug from the notebook URL (kaggle.com/code/owner/KERNEL-SLUG), not from the leaderboard. It can also occur if the notebook is private.\n",
+        "normalized_result": "kernels_get_denied"
+      },
+      "list_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "list",
+          "--mine",
+          "--search",
+          "pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+          "--page-size",
+          "20"
+        ],
+        "returncode": 0,
+        "combined_output": "Not found\n",
+        "exact_ref_matches": 0,
+        "normalized_result": "owner_list_not_found"
+      },
+      "files_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "files",
+          "alexproger23/pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+          "--format",
+          "json",
+          "--page-size",
+          "200"
+        ],
+        "returncode": 1,
+        "combined_output": "403 Client Error: Forbidden for url: https://api.kaggle.com/v1/kernels.KernelsApiService/ListKernelFiles\n",
+        "normalized_result": "readonly_output_endpoint_forbidden"
+      },
+      "remote_kernel_identity_state": "absent_from_authenticated_owner_scope",
+      "remote_outputs_state": "unknown_readonly_endpoint_forbidden"
+    },
+    {
+      "owner_slug": "alexproger23/pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1",
+      "kernel_slug": "pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1",
+      "status_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "status",
+          "alexproger23/pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1"
+        ],
+        "returncode": 1,
+        "combined_output": "Cannot access kernel 'alexproger23/pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1' (Permission 'kernels.get' was denied). The most likely cause is a wrong kernel slug. The benchmark_task_slug returned by get_benchmark_leaderboard differs from the actual kernel slug — use the slug from the notebook URL (kaggle.com/code/owner/KERNEL-SLUG), not from the leaderboard. It can also occur if the notebook is private.\n",
+        "normalized_result": "kernels_get_denied"
+      },
+      "list_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "list",
+          "--mine",
+          "--search",
+          "pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1",
+          "--page-size",
+          "20"
+        ],
+        "returncode": 0,
+        "combined_output": "Not found\n",
+        "exact_ref_matches": 0,
+        "normalized_result": "owner_list_not_found"
+      },
+      "files_command": {
+        "argv": [
+          ".venv/bin/kaggle",
+          "kernels",
+          "files",
+          "alexproger23/pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1",
+          "--format",
+          "json",
+          "--page-size",
+          "200"
+        ],
+        "returncode": 1,
+        "combined_output": "403 Client Error: Forbidden for url: https://api.kaggle.com/v1/kernels.KernelsApiService/ListKernelFiles\n",
+        "normalized_result": "readonly_output_endpoint_forbidden"
+      },
+      "remote_kernel_identity_state": "absent_from_authenticated_owner_scope",
+      "remote_outputs_state": "unknown_readonly_endpoint_forbidden"
+    }
+  ],
+  "local_staging_metadata": [
+    {
+      "kernel_slug": "pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1",
+      "path": ".kaggle/staging/pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1/kernel-metadata.json",
+      "file_sha256": "f3de65685e49256ca6201b46c9048afa98e1e2c41c13247bd5a0d1e4fc853dcb",
+      "id": "alexproger23/pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1",
+      "title": "pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1",
+      "title_length": 55,
+      "slug_length": 55
+    },
+    {
+      "kernel_slug": "pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1",
+      "path": ".kaggle/staging/pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1/kernel-metadata.json",
+      "file_sha256": "1f36707ceaf8f830fc798ffc321786d852a618f851708017089033d769486033",
+      "id": "alexproger23/pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1",
+      "title": "pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1",
+      "title_length": 68,
+      "slug_length": 68
+    },
+    {
+      "kernel_slug": "pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+      "path": ".kaggle/staging/pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1/kernel-metadata.json",
+      "file_sha256": "945ec489636cb57c532399513d496898a8b749378ca22506cb093efb37880492",
+      "id": "alexproger23/pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+      "title": "pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+      "title_length": 63,
+      "slug_length": 63
+    },
+    {
+      "kernel_slug": "pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1",
+      "path": ".kaggle/staging/pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1/kernel-metadata.json",
+      "file_sha256": "901b51b9fba54b362ca70919b36fd4ca8f33017b78268f85614cdcd508c7bf1c",
+      "id": "alexproger23/pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1",
+      "title": "pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1",
+      "title_length": 59,
+      "slug_length": 59
+    }
+  ],
+  "local_artifacts": [
+    {
+      "kernel_slug": "pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1",
+      "path": "artifacts/kaggle/pm-minilm5-sft-loss-balanced-binary-bce-ff031cb1-s42-v1",
+      "exists": false,
+      "file_count": 0
+    },
+    {
+      "kernel_slug": "pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1",
+      "path": "artifacts/kaggle/pm-minilm5-sft-loss-balanced-category-class-sqrt-bce-62369bd5-s42-v1",
+      "exists": false,
+      "file_count": 0
+    },
+    {
+      "kernel_slug": "pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+      "path": "artifacts/kaggle/pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+      "exists": false,
+      "file_count": 0
+    },
+    {
+      "kernel_slug": "pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1",
+      "path": "artifacts/kaggle/pm-minilm5-sft-loss-focal-bce-gamma2-scale4-3e01e93b-s42-v1",
+      "exists": false,
+      "file_count": 0
+    }
+  ],
+  "assertions": {
+    "expected_identity_count": 4,
+    "source_lock_identity_set_matches": true,
+    "all_status_requests_failed_as_missing_or_inaccessible": true,
+    "all_authenticated_owner_lists_returned_not_found": true,
+    "all_exact_owner_list_match_counts_zero": true,
+    "all_remote_kernel_identities_absent_from_authenticated_owner_scope": true,
+    "remote_output_file_counts_proven_zero": false,
+    "all_remote_output_metadata_requests_forbidden": true,
+    "all_local_staging_metadata_bound": true,
+    "all_local_artifact_dirs_absent": true,
+    "all_local_downloaded_output_file_counts_zero": true,
+    "no_mutating_commands": true
+  },
+  "receipt_hash_contract": "SHA-256 of UTF-8 canonical JSON for this object after removing receipt_payload_sha256; canonical JSON uses sorted keys, ensure_ascii=false and separators=(',', ':').",
+  "receipt_payload_sha256": "49423ea9fc8e14c6ac26d21fb1606cbac4fc99ef11770f362ed944e1af695abd"
+}

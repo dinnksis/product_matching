@@ -7,6 +7,7 @@ from pathlib import Path
 
 import pandas as pd
 
+from item_pipeline.cli import provider_credentials, read_env_value
 from item_pipeline.generate import run_generation
 from item_pipeline.validation import validate_generated_dataset
 
@@ -33,6 +34,23 @@ class FakeQwenClient:
             "completion_tokens": 50,
             "response_id": f"response-{seed}",
         }
+
+
+class FlakyQwenClient(FakeQwenClient):
+    def __init__(self, failures: int) -> None:
+        self.failures = failures
+        self.calls = 0
+
+    def generate(self, prompt, *, category, attribute_keys, seed):
+        self.calls += 1
+        if self.calls <= self.failures:
+            raise RuntimeError("synthetic transient failure")
+        return super().generate(
+            prompt,
+            category=category,
+            attribute_keys=attribute_keys,
+            seed=seed,
+        )
 
 
 def build_index(path: Path) -> None:
@@ -64,6 +82,54 @@ def build_index(path: Path) -> None:
 
 
 class PipelineTest(unittest.TestCase):
+    def test_provider_credentials_reads_env_file_without_exposing_key(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            env_file = Path(directory) / ".env"
+            env_file.write_text(
+                "TEST_PROVIDER_SECRET='secret-value'\nMODEL=z-ai/glm-5.3-flash\n",
+                encoding="utf-8",
+            )
+            self.assertEqual(
+                read_env_value(env_file, "TEST_PROVIDER_SECRET"), "secret-value"
+            )
+            args = type("Args", (), {
+                "api_key_env": "TEST_PROVIDER_SECRET",
+                "env_file": env_file,
+                "model": None,
+            })()
+            self.assertEqual(
+                provider_credentials(args),
+                ("secret-value", "z-ai/glm-5.3-flash"),
+            )
+
+    def test_failed_task_is_requeued_with_a_new_seed_range(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path(directory)
+            index_dir = root / "index"
+            output_dir = root / "generated"
+            build_index(index_dir)
+            client = FlakyQwenClient(failures=2)
+            summary = run_generation(
+                index_dir=index_dir,
+                output_dir=output_dir,
+                client=client,
+                system_prompt="test prompt",
+                count=1,
+                seed=17,
+                id_start=-1,
+                example_count=3,
+                categories=None,
+                workers=1,
+                generation_attempts=1,
+                checkpoint_every=1,
+                task_retries=2,
+            )
+            self.assertEqual(summary["generated"], 1)
+            self.assertEqual(summary["task_retry_events"], 2)
+            self.assertEqual(client.calls, 3)
+            metadata = pd.read_parquet(output_dir / "generation_metadata.parquet")
+            self.assertEqual(int(metadata.iloc[0]["task_retry_round"]), 2)
+
     def test_end_to_end_generation_checkpoint_and_validation(self) -> None:
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

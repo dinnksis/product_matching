@@ -1,0 +1,58 @@
+{
+  "schema_version": 1,
+  "campaign": "bge_2ep_sft_oodtrain_v1",
+  "workflow": "bge_2ep_sft_loss_confirmation_v1",
+  "status": "plan_only_default",
+  "primary_split": "iid",
+  "diagnostic_splits": [
+    "hard"
+  ],
+  "ood": {
+    "evaluated": false,
+    "metric_sentinel": -1.0,
+    "prediction_file": null,
+    "comparison": null
+  },
+  "selected_recipe_source": "exact completed and Sheets-synced LR/e2 workflow receipt",
+  "screen": {
+    "seed": 42,
+    "anchor_loss": "bce_finite_guard_v1",
+    "challenger_loss": "balanced_category_class_sqrt_bce",
+    "accept_challenger_only_if_iid_delta_strictly_greater_than": 0.002,
+    "reuse_exact_selected_bce_anchor": true,
+    "matched_bce_anchor_only_if_reuse_is_impossible": true
+  },
+  "confirmation": {
+    "seed": 17,
+    "if_seed42_winner_is_bce": [
+      "bce_finite_guard_v1"
+    ],
+    "if_seed42_winner_is_challenger": [
+      "bce_finite_guard_v1",
+      "balanced_category_class_sqrt_bce"
+    ],
+    "challenger_final_acceptance": {
+      "seed42_delta_strictly_positive": true,
+      "seed17_delta_strictly_positive": true,
+      "mean_iid_delta_at_least": 0.002
+    }
+  },
+  "execution": {
+    "sequential": true,
+    "fanout": false,
+    "resubmit_terminal_failure": false,
+    "ods": false,
+    "runtime_ablation": false,
+    "checkpoint_export": false,
+    "checkpoint_resume": false,
+    "append_only_attempt_ledger": true,
+    "remote_loss_prefix_audit_before_push": true,
+    "max_total_bge_kernel_slugs": 10,
+    "historical_bge_kernel_slugs_before_lr_e2": [
+      "pm-b2-base-9c1f4648466b-s42-v1",
+      "pm-b2-base-6ad383889383-s42-v1",
+      "pm-b2-base-97335fa432bd-s42-v1",
+      "pm-b2-base-de25c35eabf4-s42-v1"
+    ]
+  }
+}

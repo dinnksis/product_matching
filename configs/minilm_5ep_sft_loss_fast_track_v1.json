@@ -1,0 +1,56 @@
+{
+  "schema_version": 1,
+  "kind": "minilm_5ep_sft_loss_fast_track_policy",
+  "campaign": "minilm_5ep_sft_hparam_search_v1",
+  "source_plan": "configs/minilm_5ep_sft_hparam_search_v1.json",
+  "source_plan_canonical_sha256": "611396d4fcfc2150ce62f38d08efdea1668904d9bf530f6bc5d55e2ffef31857",
+  "authorization_scope": "User requested on 2026-08-28 to finish classifier_dropout, skip the max_grad_norm coordinate, move directly to the declared loss screen, avoid ODS, and use only one additional seed later.",
+  "source_stage": "regularization_coordinate_search__classifier_dropout",
+  "skipped_coordinates": [
+    "max_grad_norm"
+  ],
+  "skip_semantics": {
+    "claim_coordinate_was_evaluated": false,
+    "reuse_selected_source_parent": true,
+    "required_inherited_values": {
+      "max_grad_norm": 1.0
+    },
+    "reason": "Explicit scope reduction; no max_grad_norm challenger is trained and no metric claim is made for the skipped axis."
+  },
+  "loss_execution": {
+    "anchor_loss_variant": "bce",
+    "reuse_anchor_without_new_kernel": true,
+    "primary_new_loss_variants": [
+      "balanced_binary_bce",
+      "balanced_category_class_sqrt_bce",
+      "balanced_category_class_bce",
+      "focal_bce_gamma2_scale4"
+    ],
+    "primary_new_kernels": 4,
+    "allow_declared_conditional_overlay": true,
+    "allow_declared_loss_lr_refinement": true,
+    "default_stop_after": "special_loss_screen__lr_refine"
+  },
+  "external_actions": {
+    "kaggle_submit_requires_explicit_flag": true,
+    "google_sheets_tab": "sft_exps",
+    "require_exact_sheets_sync": true,
+    "ods_submission_allowed": false
+  },
+  "budget": {
+    "counting_identity": "kernel_slug_union",
+    "hard_limit": 37,
+    "expected_prior_unique_kernel_range": [
+      18,
+      22
+    ],
+    "maximum_new_loss_kernels": 7
+  },
+  "frozen_core_file_sha256": {
+    "scripts/create_minilm_5ep_sft_hparam_notebooks.py": "1a4bb3801a046bba58ab5d317ff93da62bab94aab5cd693a4dbd11b4494ac542",
+    "scripts/run_minilm_5ep_sft_hparam_kaggle.py": "be400d06a7367d42974e1c6dd4be0b901b7005a5fa0c9165f2dd65987b7fbe6b",
+    "scripts/summarize_minilm_5ep_sft_hparams.py": "c5e05ab18eed92f16c4aeb5594348c103c30caecad5d429a5a17d2176a5bb1f7",
+    "scripts/materialize_minilm_5ep_sft_loss_confirmation.py": "70d6f58c6850c798cc954db49c4191fcab92da613fc6b0e57c970bd80a695505",
+    "scripts/continue_minilm_5ep_sft_campaign.py": "3b0dc673da6b8444c692fa64f6c8a186cfbdc4ff67fa74c44a7d9ee2d702be24"
+  }
+}

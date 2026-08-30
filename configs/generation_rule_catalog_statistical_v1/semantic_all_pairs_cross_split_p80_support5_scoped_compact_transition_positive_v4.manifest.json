@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "catalog_version": "semantic_all_pairs_cross_split_p80_support5_scoped_compact_transition_positive_v4",
+  "source_catalog": "configs/generation_rule_catalog_statistical_v1/semantic_all_pairs_cross_split_p80_support5_scoped_compact_safe_positive_v3.json",
+  "source_catalog_sha256": "569518c074da166dcac74b12a0c8ee313d08840468ac6bfddafcd4d90cfb3be2",
+  "selection": {
+    "retain_all_label0_from_v3": true,
+    "positive_selection": "manual_exact_unordered_transition_allowlist",
+    "positive_allowlist": [
+      "gen_sem_all_2bd42ae67368b6da139a",
+      "gen_sem_all_fc1bf7245474d5979bbc",
+      "gen_sem_all_a29a2640f81133199b22",
+      "gen_sem_all_1fd8ee0362b4a69694eb"
+    ],
+    "excluded_v3_positive_ids": [
+      "gen_sem_all_bb884e95495f2e4053ad",
+      "gen_sem_all_3eab364eedff30a6ccec"
+    ],
+    "positive_manual_tier": "SEMANTIC_ALL_PAIRS_LABEL1_MANUAL_TRANSITION_ALLOWLIST_COMPACT_TRANSITION_POSITIVE_V4_EXPERIMENTAL_CORRELATIONAL",
+    "recommended_experiment_pair_count": 10000,
+    "recommended_target1_count": 46,
+    "recommended_label_one_fraction": 0.0046,
+    "recommended_two_rule_fraction": 0.0,
+    "label0_non_equivalence_prompt_guard": true
+  },
+  "transition_provenance": {
+    "method": "manual_review_of_v3_source_examples",
+    "semantics": "each listed pair is exact and unordered",
+    "rule_profile_evidence": "experimental_correlational_not_causal",
+    "cross_split_validation_scope": "rule_profile_only",
+    "exact_transitions_cross_split_validated": false,
+    "caveat": "The parent positive rule profiles passed cross-split statistics, but no individual exact value transition was cross-split validated."
+  },
+  "transition_rule_count": 4,
+  "transition_count": 23,
+  "transition_capacity": 46,
+  "exported_rules": 3678,
+  "label_counts": {
+    "0": 3674,
+    "1": 4
+  },
+  "category_counts": {
+    "Автотовары": 141,
+    "Аптека": 137,
+    "Бытовая химия": 30,
+    "Галантерея и аксессуары": 343,
+    "Детские товары": 41,
+    "Дом и сад": 317,
+    "Канцелярские товары": 155,
+    "Красота и гигиена": 86,
+    "Мебель": 409,
+    "Музыкальные инструменты": 154,
+    "Обувь": 105,
+    "Продукты питания": 210,
+    "Спорт и отдых": 236,
+    "Строительство и ремонт": 462,
+    "Товары для животных": 107,
+    "Хобби и творчество": 114,
+    "Электроника": 406,
+    "Ювелирные изделия": 225
+  },
+  "category_coverage": 18,
+  "tier_counts": {
+    "SEMANTIC_ALL_PAIRS_LABEL0_CROSS_SPLIT_SUPPORT5_P80_SCOPED_COMPACT_V2_EXPERIMENTAL_CORRELATIONAL": 3674,
+    "SEMANTIC_ALL_PAIRS_LABEL1_MANUAL_TRANSITION_ALLOWLIST_COMPACT_TRANSITION_POSITIVE_V4_EXPERIMENTAL_CORRELATIONAL": 4
+  },
+  "output": "configs/generation_rule_catalog_statistical_v1/semantic_all_pairs_cross_split_p80_support5_scoped_compact_transition_positive_v4.json",
+  "output_sha256": "a0aff8fa850c6b568c867c704b04be28a4f7c47a20dbb79723925c9dc2fd8245",
+  "deterministic_content": true
+}

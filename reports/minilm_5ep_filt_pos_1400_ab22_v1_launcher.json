@@ -1,0 +1,97 @@
+{
+  "baseline_comparison": {
+    "baseline_run_id": "67f4fe76886b43d6b52ed5cb49068e1e",
+    "candidate_run_id": "5c84bc8c38a64605adf19628f934843a",
+    "confidence_interval_method": "paired_component_bootstrap_percentile",
+    "method": "paired_component_permutation",
+    "multiple_testing_correction": "holm_3_splits",
+    "schema_version": 1,
+    "splits": {
+      "hard": {
+        "baseline_macro_average_precision": 0.3655009201486312,
+        "bootstrap_resamples": 2000,
+        "candidate_macro_average_precision": 0.36472574871053537,
+        "categories": 18,
+        "ci95_high": 0.0035634763716378063,
+        "ci95_low": -0.0041560277153034715,
+        "components": 5200,
+        "delta_macro_average_precision": -0.0007751714380958563,
+        "examples": 5814,
+        "p_value": 0.5907046476761619,
+        "p_value_holm": 1.0,
+        "permutations": 2000,
+        "seed": 43
+      },
+      "iid": {
+        "baseline_macro_average_precision": 0.789388132774931,
+        "bootstrap_resamples": 2000,
+        "candidate_macro_average_precision": 0.7894290756003026,
+        "categories": 18,
+        "ci95_high": 0.0028006363930390367,
+        "ci95_low": -0.0027139487890167624,
+        "components": 11263,
+        "delta_macro_average_precision": 4.094282537159266e-05,
+        "examples": 12000,
+        "p_value": 0.9790104947526237,
+        "p_value_holm": 1.0,
+        "permutations": 2000,
+        "seed": 42
+      },
+      "ood": {
+        "baseline_macro_average_precision": 0.6426602624552971,
+        "bootstrap_resamples": 2000,
+        "candidate_macro_average_precision": 0.6461724346714958,
+        "categories": 2,
+        "ci95_high": 0.005669769577109016,
+        "ci95_low": 0.0013722903354168342,
+        "components": 39594,
+        "delta_macro_average_precision": 0.0035121722161987057,
+        "examples": 41171,
+        "p_value": 0.004497751124437781,
+        "p_value_holm": 0.013493253373313342,
+        "permutations": 2000,
+        "seed": 44
+      }
+    },
+    "status": "ready",
+    "wall_seconds": 442.53596928799993
+  },
+  "contract_version": "soft_positive_quality_hardness_filter_v1",
+  "created_at": "2026-08-29T09:16:39.460841+00:00",
+  "dataset_ref": "alexproger23/pm-filt-pos-1400-ab22-v1",
+  "experiment": "minilm_5ep_filt_pos_1400_ab22_v1",
+  "finalized_from_local_output": true,
+  "google_sheets_sync": {
+    "comparison_action": "appended",
+    "comparison_sheet": "data_exps",
+    "experiment_action": "appended",
+    "experiment_group": "data",
+    "run_id": "5c84bc8c38a64605adf19628f934843a",
+    "spreadsheet_id": "1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA",
+    "spreadsheet_url": "https://docs.google.com/spreadsheets/d/1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA/edit",
+    "status": "synced",
+    "synced_at_utc": "2026-08-29T08:57:45Z"
+  },
+  "kernel_slug": "pm-m5-filt-pos-1400-ab22-v1",
+  "label_source": "qwen_soft_positive_ab_quality_hardness_v1",
+  "notebook": "/Users/aekuleshevskii/product_matching/notebooks/minilm_5ep_team_ablation/minilm_5ep_filt_pos_1400_ab22_v1_2xt4.ipynb",
+  "pair_count": 1400,
+  "run_id": "5c84bc8c38a64605adf19628f934843a",
+  "sample_weight_stats": {
+    "count": 1400,
+    "max": 2.5,
+    "min": 0.25,
+    "sha256": "4f814835e6939042d39daef8269b0b68413178863b12c9916a2ff7f27a7e6a09",
+    "sum": 897.7422875639492,
+    "version": "float64_le_pair_order_v1"
+  },
+  "schema_version": 1,
+  "source_fingerprint": "d85f487511018f9479da3d0067842927675432e7b867e677cbe00f1d8d69ddda",
+  "source_run_signature": "ab22cf3b07edde30e120a3b5868ac62ba8975f5298c29fb923632e6137e64cd8",
+  "status": "complete",
+  "target_counts": {
+    "0": 0,
+    "1": 1400
+  },
+  "upload_manifest_sha256": "5ec69d75ebacda055dbbbdf4b57824f1272e1bdd6f16a1e817cfefe022fee408"
+}

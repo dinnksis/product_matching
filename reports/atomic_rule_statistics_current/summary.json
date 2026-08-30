@@ -1,0 +1,84 @@
+{
+  "created_at": "2026-08-25T21:50:46.987030+00:00",
+  "checkpoint": {
+    "checkpoint_rows": 45700,
+    "unique_pairs": 45390,
+    "duplicate_or_retried_rows": 310,
+    "malformed_checkpoint_lines": 0,
+    "latest_status_counts": {
+      "ok": 45331,
+      "invalid": 59
+    },
+    "prompt_hash_counts": {
+      "d8e91254d295c18bfba890e9e7945c1243c8af005b36fafc68626dd3531cbcb0": 45700
+    }
+  },
+  "processed_ok_pairs": 45331,
+  "pairs_with_no_accepted_differences": 4183,
+  "pairs_with_one_accepted_difference": 8102,
+  "pairs_with_multiple_accepted_differences": 33046,
+  "accepted_atomic_occurrences": 146647,
+  "unique_canonical_concepts": 5525,
+  "provisional_concept_rules_lcb80": 10,
+  "strict_validated_rule_rows": 2,
+  "strict_validated_unique_concept_relations": 1,
+  "atomic_fact_count_distribution": {
+    "0": 4183,
+    "1": 8102,
+    "2": 7641,
+    "3": 8079,
+    "4": 6296,
+    "5": 4117,
+    "6": 2419,
+    "7": 1545,
+    "8": 1089,
+    "9": 719,
+    "10": 502,
+    "11": 312,
+    "12": 155,
+    "13": 89,
+    "14": 36,
+    "15": 20,
+    "16": 11,
+    "17": 7,
+    "18": 3,
+    "19": 1,
+    "20": 2,
+    "21": 2,
+    "22": 1
+  },
+  "rule_level_counts": {
+    "category_concept": {
+      "statistical_candidates": 9404,
+      "with_singleton_evidence": 1237,
+      "with_at_least_5_singletons": 244,
+      "discovery_high_confidence": 1,
+      "validated_high_confidence": 1
+    },
+    "category_exact": {
+      "statistical_candidates": 105167,
+      "with_singleton_evidence": 7446,
+      "with_at_least_5_singletons": 36,
+      "discovery_high_confidence": 0,
+      "validated_high_confidence": 0
+    },
+    "global_concept": {
+      "statistical_candidates": 6310,
+      "with_singleton_evidence": 747,
+      "with_at_least_5_singletons": 107,
+      "discovery_high_confidence": 1,
+      "validated_high_confidence": 1
+    }
+  },
+  "human_labels_joined_only_in_statistical_analysis": true,
+  "qwen_api_calls": 0,
+  "selection": {
+    "split": "80% discovery / 20% validation by SHA-256(pair_id)",
+    "discovery_min_singletons": 10,
+    "discovery_min_wilson_lcb95": 0.9,
+    "discovery_min_absolute_lift": 0.1,
+    "discovery_max_bh_q_value": 0.05,
+    "validation_min_singletons": 3,
+    "validation_min_observed_probability": 0.8
+  }
+}

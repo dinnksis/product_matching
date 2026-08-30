@@ -1,0 +1,65 @@
+{
+  "schema_version": 1,
+  "protocol_id": "minilm_5ep_sft_fast_loss_confirm_v1",
+  "source_campaign": "minilm_5ep_sft_hparam_search_v1",
+  "source_plan_canonical_sha256": "611396d4fcfc2150ce62f38d08efdea1668904d9bf530f6bc5d55e2ffef31857",
+  "purpose": "Directional two-seed replication of the selected special-loss recipe against the tuned BCE recipe after the user shortened confirmation.",
+  "fast_track_authority": {
+    "policy_path": "configs/minilm_5ep_sft_loss_fast_track_v1.json",
+    "policy_canonical_sha256": "e32559035aae79f85a99a035f0f6a23e7206fda0f5d785839e2f0396000ffef4",
+    "receipt_path": "reports/minilm_5ep_sft_hparam_search_v1/fast_track/max_grad_norm_skip.receipt.json",
+    "receipt_file_sha256": "d39c931c130c7addd5635c89cab96c4fdd3824fa40fc7e24926b1dc58738580f",
+    "receipt_payload_sha256": "4458e389a111c4aa09dd7fa211f289f7c7dab38910b43cac7fd98c84b0f61986",
+    "freeze_manifest_path": "configs/minilm_5ep_sft_loss_fast_track_v1.freeze.json",
+    "freeze_manifest_file_sha256": "eaf8d7479fd3bbf96e194e8e9f669ad70a3227fafd61031cda22ce10c75fe35b",
+    "freeze_manifest_payload_sha256": "28bd0ef53e24438ee37f3d447fbf8a9ebc18a84407dbe78e2275ad1f081851ef",
+    "legacy_receipt_freeze": {
+      "archive_path": "configs/minilm_5ep_sft_loss_fast_track_receipt_freeze_db7165.json",
+      "file_sha256": "db7165cb27abe41c2846b2bcc5b928b81750e87960d31b5915c72574a0181fbe",
+      "manifest_payload_sha256": "2e4ad36f81c2d5f294454955f1e5cad6b2ae86b22b4b3ae6595d05f82f1e3717"
+    },
+    "require_validated_policy_receipt_and_freeze_manifest": true,
+    "launcher_wrapper": "scripts/run_minilm_5ep_sft_fast_loss_confirmation_kaggle.py"
+  },
+  "screen_seed": 42,
+  "replication_seed": 17,
+  "replication_seed_rationale": "Seed 17 is the first non-screen seed prespecified by the frozen v1 confirmation plan; it is not selected after observing loss results.",
+  "recipes": {
+    "comparator_role": "selected_regularized_bce_recipe",
+    "candidate_role": "loss_finalist_1",
+    "candidate_rule": "best_non_bce_after_optional_lr_refinement"
+  },
+  "execution": {
+    "new_kernels": 2,
+    "sequential": true,
+    "background_fanout": false,
+    "force_resubmit": false,
+    "retry_failed": false,
+    "google_sheets_group": "sft",
+    "google_sheets_tab": "sft_exps"
+  },
+  "selection": {
+    "primary_metric": "iid_macro_ap",
+    "comparison": "candidate_loss_recipe_minus_tuned_bce_recipe_at_matched_seed",
+    "rationale": "Adopt the selected loss only when its direction replicates on the prespecified second seed and its two-seed mean clears the frozen practical margin.",
+    "require_each_seed_delta_strictly_positive": true,
+    "minimum_mean_iid_delta": 0.002,
+    "failure_or_tie_selects": "selected_regularized_bce_recipe",
+    "accepted_selects": "loss_finalist_1",
+    "selected_recipe_reference_seed": 42,
+    "hard_is_diagnostic_only": true,
+    "ood_is_diagnostic_only": true
+  },
+  "statistics": {
+    "within_seed_iid_method": "paired_component_permutation",
+    "within_seed_ci_method": "paired_component_bootstrap_percentile",
+    "training_seed_interpretation": "directional_replication_only",
+    "formal_training_seed_significance_claim": false
+  },
+  "checkpoint_handling": {
+    "download_supported": false,
+    "download_performed": false,
+    "reason": "The frozen selected-checkpoint downloader targets the original three-seed/runtime-gated confirmation and is intentionally not reused for this no-ODS fast confirmation."
+  },
+  "ods_runtime_check": false
+}

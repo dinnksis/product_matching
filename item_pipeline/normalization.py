@@ -109,3 +109,13 @@ def stable_hash64(seed: int, value: int | str) -> int:
 
 def json_dumps(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, separators=(",", ":"))
+
+
+def canonical_json_dumps(value: Any) -> str:
+    """Serialize a JSON value deterministically, independent of mapping order."""
+    return json.dumps(
+        value,
+        ensure_ascii=False,
+        separators=(",", ":"),
+        sort_keys=True,
+    )

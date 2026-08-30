@@ -1,0 +1,27 @@
+{
+  "contract_version": "soft_positive_quality_hardness_filter_v1",
+  "created_at": "2026-08-29T08:17:11.012594+00:00",
+  "dataset_ref": "alexproger23/pm-filt-pos-1417-ae83-v1",
+  "experiment": "minilm_5ep_filt_pos_1417_ae83_v1",
+  "kernel_slug": "pm-m5-filt-pos-1417-ae83-v1",
+  "label_source": "qwen_soft_positive_ab_quality_hardness_v1",
+  "notebook": "/Users/aekuleshevskii/product_matching/notebooks/minilm_5ep_team_ablation/minilm_5ep_filt_pos_1417_ae83_v1_2xt4.ipynb",
+  "pair_count": 1417,
+  "sample_weight_stats": {
+    "count": 1417,
+    "max": 2.5,
+    "min": 0.25,
+    "sha256": "e8005da415b54236f0d88b6361c6128617261757e641fd33b137b1f5bdf1cedd",
+    "sum": 917.5385677286824,
+    "version": "float64_le_pair_order_v1"
+  },
+  "schema_version": 1,
+  "source_fingerprint": "9847f8eae19fed153f8e8e33cb51671e15b6d85e5d19fcf56e6566699ecc5363",
+  "source_run_signature": "ae83a5cf53d6dbc597dfe0fb03ddd67a7df5e88376690cf393e4f25cdf226668",
+  "status": "dry_run_complete",
+  "target_counts": {
+    "0": 0,
+    "1": 1417
+  },
+  "upload_manifest_sha256": "eea1ca16fa593e34fd3002381acd63ac80883a28a06688566914e0926a9fafa7"
+}

@@ -1,0 +1,70 @@
+{
+  "schema_version": 1,
+  "name": "bge_minilm_final_blend_v1",
+  "bge_authority": {
+    "final_receipt_filename": "loss_confirmation_receipt.json",
+    "screen_receipt_filename": "loss_screen_receipt.json",
+    "lr_receipt_filename": "lr_selection_receipt.json",
+    "epoch_receipt_filename": "epoch_selection_receipt.json",
+    "selected_seed": 17,
+    "prediction_hash_source": "selected_loss_variant_seed17_prediction_binding"
+  },
+  "frozen_minilm": {
+    "experiment": "minilm5_sft_e3_lr8e5_v1",
+    "run_id": "2facdf6ad2b842a8a2f3e4c66410675e",
+    "directory_hint": "artifacts/kaggle/pm-minilm5-sft-e3-lr8e5-v1/minilm_5ep_team_data_loss_ablation",
+    "predictions": {
+      "iid": {
+        "filename": "iid_validation_predictions.parquet",
+        "rows": 12000,
+        "bytes": 5203122,
+        "sha256": "2fd79620059ad4425afe3998912b08f8cd6f9db06d54ca2fd042a9b5f7215e00"
+      },
+      "hard": {
+        "filename": "hard_validation_predictions.parquet",
+        "rows": 5814,
+        "bytes": 2394519,
+        "sha256": "da696070b57c310ba5378861780d624b62517c23fafd391deb84153e52700a28"
+      }
+    }
+  },
+  "splits": {
+    "primary": "iid",
+    "diagnostic": [
+      "hard"
+    ],
+    "expected_category_count": 18
+  },
+  "blend": {
+    "space": "logit",
+    "bge_weights": [
+      0.6,
+      0.7
+    ],
+    "score_domain": "strict_open_unit_interval_no_clipping"
+  },
+  "selection": {
+    "metric": "macro_average_precision",
+    "primary_split": "iid",
+    "hard_used_for_selection": false,
+    "tie_abs_tolerance": 1e-12,
+    "blend_tie_break_order": [
+      "logit_bge_0p7",
+      "logit_bge_0p6"
+    ],
+    "final_tie_break_order": [
+      "minilm_only",
+      "bge_only",
+      "logit_bge_0p7",
+      "logit_bge_0p6"
+    ]
+  },
+  "ood": {
+    "evaluated": false,
+    "macro_average_precision": -1.0,
+    "comparison": null,
+    "prediction_file": null,
+    "used_for_selection": false,
+    "reason": "former OOD categories were included in BGE supervised training"
+  }
+}

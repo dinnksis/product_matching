@@ -1,0 +1,492 @@
+{
+  "baseline_comparison": {
+    "baseline_experiment": "bge2_sft_oodtrain_e2_lr2e5_v1",
+    "baseline_manifest_sha256": "00deacd9d0ea298607da929931e878a8531bb748116e7e2d6f406c5d4da4271a",
+    "baseline_run_id": "a2e3e08c011c45a59599595a840600fe",
+    "candidate_experiment": "bge2_sft_loss_sqrt_s42_v1",
+    "candidate_run_id": "c4763e56b3674c24950cfa3fbef400cb",
+    "confidence_interval_method": "paired_component_bootstrap_percentile",
+    "diagnostic_splits": [
+      "hard"
+    ],
+    "holm_family": "bge2_sft_selected_recipe_loss_transfer_v1",
+    "holm_family_members": [
+      "bge2_sft_loss_sqrt_s42_v1"
+    ],
+    "iid_practical_relation": "practical_tie",
+    "method": "paired_component_permutation",
+    "multiple_testing_correction": "holm_within_planned_candidate_family_per_split",
+    "ood_policy": "disabled_train_contaminated_no_paired_comparison",
+    "practical_tie_margin": 0.002,
+    "primary_split": "iid",
+    "schema_version": 1,
+    "splits": {
+      "hard": {
+        "baseline_macro_average_precision": 0.4377746475442678,
+        "bootstrap_resamples": 2000,
+        "candidate_macro_average_precision": 0.4317593884271952,
+        "categories": 18,
+        "ci95_high": 0.0011256325434193814,
+        "ci95_low": -0.013083279675177185,
+        "components": 5200,
+        "delta_macro_average_precision": -0.006015259117072624,
+        "examples": 5814,
+        "holm_family": "bge2_sft_selected_recipe_loss_transfer_v1",
+        "holm_family_size": 1,
+        "p_value": 0.4052973513243378,
+        "p_value_holm": 0.4052973513243378,
+        "permutations": 2000,
+        "seed": 43
+      },
+      "iid": {
+        "baseline_macro_average_precision": 0.8234607352184464,
+        "bootstrap_resamples": 2000,
+        "candidate_macro_average_precision": 0.8221499119778222,
+        "categories": 18,
+        "ci95_high": 0.002628060873711104,
+        "ci95_low": -0.005334258122470489,
+        "components": 11263,
+        "delta_macro_average_precision": -0.0013108232406242593,
+        "examples": 12000,
+        "holm_family": "bge2_sft_selected_recipe_loss_transfer_v1",
+        "holm_family_size": 1,
+        "p_value": 0.7551224387806097,
+        "p_value_holm": 0.7551224387806097,
+        "permutations": 2000,
+        "seed": 42
+      },
+      "ood": {
+        "ci95_high": null,
+        "ci95_low": null,
+        "delta_macro_average_precision": null,
+        "evaluated": false,
+        "examples": 0,
+        "p_value": null,
+        "p_value_holm": null,
+        "reason": "former frozen OOD pairs are part of BGE supervised training",
+        "status": "disabled_train_contaminated"
+      }
+    },
+    "status": "ready_ood_disabled"
+  },
+  "campaign": "bge_2ep_sft_oodtrain_v1",
+  "campaign_identity_sha256": "3edac8a44f54ebb444c9804c46b9b40249ac41de4f95d0efd0d8406f0a0dc4fd",
+  "candidate_generator_sha256": "6f84e4aaed50c17f1451808d5cf6a82690ab3809411ffcc531afff6fd6b4f16e",
+  "code_bundle_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96",
+  "completed_at_utc": "2026-08-29T18:15:51Z",
+  "dataset_ref": "alexproger23/product-matching-validation-splits-v1",
+  "executable_cells_sha256": "dfdb2a001a7976e2c8bb03759a59e281cc8f340f0ffac12b2c7a59521ae3b85c",
+  "experiment": "bge2_sft_loss_sqrt_s42_v1",
+  "experiment_group": "sft",
+  "frozen_baseline_dataset": {
+    "baseline_identity_sha256": "de25c35eabf487178244d5ca32108435081a5118822bc8a18e09478a3b13f7ed",
+    "baseline_run_id": "e8b39f13d236484091ea65dd91112931",
+    "baseline_source_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96",
+    "dataset_ref": "alexproger23/product-matching-bge-2ep-sft-baseline-v1",
+    "dataset_version": 1,
+    "manifest_sha256": "00deacd9d0ea298607da929931e878a8531bb748116e7e2d6f406c5d4da4271a",
+    "ood_predictions": false,
+    "status": "passed"
+  },
+  "frozen_recipe_sha256": "d46be9217a43396ecc8c594fc1864ee93761d288c30e5a40041adbb28bd7adfe",
+  "initial_checkpoint_manifest_sha256": "9ce70e52e5981470b30126f34c0b6eacaf3b38d27da93c8d8c3aca3328850cf5",
+  "initial_checkpoint_model_sha256": "c21ccfcd5de310ca0328620bf8ba09e838dbe3f6394be656bd7fec16ad8377d1",
+  "initial_checkpoint_ref": "alexproger23/product-matching-bge-pretrain-2ep",
+  "kaggle_kernel_ref": "",
+  "loss_confirmation": {
+    "checkpoint_resume": false,
+    "diagnostic_splits": [
+      "hard"
+    ],
+    "fresh_start": true,
+    "loss_variant": "balanced_category_class_sqrt_bce",
+    "ood_comparison": null,
+    "ood_macro_average_precision": -1.0,
+    "parent": {
+      "campaign_identity_sha256": "2560faab82483b5efaf1652207d9dff0c1a30aecfd358b4d5227570f0a073082",
+      "experiment": "bge2_sft_oodtrain_e2_lr2e5_v1",
+      "loss_hook_sha256": "37a7173f708420128b8ca24aa0be073698dcad3e0e2bbc3a39c6d958be9c7e30",
+      "recipe_sha256": "d46be9217a43396ecc8c594fc1864ee93761d288c30e5a40041adbb28bd7adfe",
+      "run_id": "a2e3e08c011c45a59599595a840600fe"
+    },
+    "primary_split": "iid",
+    "role_in_stage": "single_challenger",
+    "schema_version": 1,
+    "seed": 42,
+    "stage": "loss_screen",
+    "workflow": "bge_2ep_sft_loss_confirmation_v1",
+    "workflow_ledger_sha256": "6f1337df397cfe8a913d4893ad9b6dc1997de8930dfaa9c9a680cf04fb4aa19d",
+    "workflow_source_ledger": [
+      {
+        "bytes": 1701,
+        "path": "configs/bge_2ep_sft_loss_confirmation_v1.json",
+        "sha256": "b1ae21cf72ed183a3850b604530e52a72bd625508c21b43dd3126e61f1726396"
+      },
+      {
+        "bytes": 42595,
+        "path": "scripts/create_bge_2ep_sft_loss_confirmation_notebooks.py",
+        "sha256": "6f84e4aaed50c17f1451808d5cf6a82690ab3809411ffcc531afff6fd6b4f16e"
+      },
+      {
+        "bytes": 96306,
+        "path": "scripts/run_bge_2ep_sft_loss_confirmation.py",
+        "sha256": "f136bd228bf9286e0ce06d46a47fc420d060f90e9ff542329498eabb7c659eb2"
+      }
+    ]
+  },
+  "loss_hook_sha256": "0ee68461176acaccf1473de2e5119765b1de9020a1327b675d9106d00df1ca5c",
+  "loss_variant": "balanced_category_class_sqrt_bce",
+  "memory_preflight": {
+    "accumulated_microbatches": 12,
+    "adamw_foreach": false,
+    "amp_dtype": "float16",
+    "amp_max_attempts": 17,
+    "attention_implementation": "sdpa",
+    "ddp_no_sync_microbatches": 11,
+    "ddp_sync_microbatches": 1,
+    "effective_batch": 192,
+    "eval_batch_per_gpu": 32,
+    "eval_probe_after_optimizer_state": true,
+    "gradient_accumulation": 12,
+    "gradient_checkpointing": true,
+    "gradient_clip_foreach": false,
+    "loss_divisor_per_microbatch": 12,
+    "max_length": 384,
+    "microbatch_per_gpu": 8,
+    "model": "/kaggle/temp/bge2_sft_loss_sqrt_s42_v1/initial_checkpoint",
+    "nonfinite_gradient_policy": "finite_loss_guard_grad_scaler_bounded_backoff_v1",
+    "optimizer_state": "adamw_exp_avg_and_exp_avg_sq_materialized",
+    "optimizer_state_parameters_per_rank": 393,
+    "optimizer_state_tensor_elements_per_rank": 1135511554,
+    "parameters": 567755777,
+    "ranks": [
+      {
+        "amp_attempts": [
+          {
+            "accumulated_loss": 0.7969440817832947,
+            "accumulated_microbatches": 12,
+            "attempt": 1,
+            "gradient_norm": 23.409317016601562,
+            "gradients_finite": true,
+            "loss_divisor_per_microbatch": 12,
+            "optimizer_state_parameters": 393,
+            "outcome": "optimizer_step",
+            "scale_after": 65536.0,
+            "scale_before": 65536.0
+          }
+        ],
+        "amp_final_scale": 65536.0,
+        "amp_overflow_skips": 0,
+        "gpu": "Tesla T4",
+        "gradient_norm": 23.409317016601562,
+        "loss": 0.7969440817832947,
+        "peak_allocated_gib": 10.383356094360352,
+        "peak_reserved_gib": 10.421875,
+        "rank": 0
+      },
+      {
+        "amp_attempts": [
+          {
+            "accumulated_loss": 0.7396383285522461,
+            "accumulated_microbatches": 12,
+            "attempt": 1,
+            "gradient_norm": 23.409317016601562,
+            "gradients_finite": true,
+            "loss_divisor_per_microbatch": 12,
+            "optimizer_state_parameters": 393,
+            "outcome": "optimizer_step",
+            "scale_after": 65536.0,
+            "scale_before": 65536.0
+          }
+        ],
+        "amp_final_scale": 65536.0,
+        "amp_overflow_skips": 0,
+        "gpu": "Tesla T4",
+        "gradient_norm": 23.409317016601562,
+        "loss": 0.7396383285522461,
+        "peak_allocated_gib": 10.383356094360352,
+        "peak_reserved_gib": 10.4140625,
+        "rank": 1
+      }
+    ],
+    "schema_version": 1,
+    "status": "passed",
+    "world_size": 2
+  },
+  "model": "alexproger23/product-matching-bge-pretrain-2ep",
+  "notes": "{\"baseline_dataset\":\"alexproger23/product-matching-bge-2ep-sft-baseline-v1\",\"baseline_dataset_version\":1,\"baseline_manifest_sha256\":\"00deacd9d0ea298607da929931e878a8531bb748116e7e2d6f406c5d4da4271a\",\"batch_size_per_gpu\":8,\"campaign\":\"bge_2ep_sft_oodtrain_v1\",\"checkpoint_resume\":false,\"effective_batch\":192,\"epochs\":2,\"fresh_start\":true,\"gradient_accumulation\":12,\"identity_sha256\":\"3edac8a44f54ebb444c9804c46b9b40249ac41de4f95d0efd0d8406f0a0dc4fd\",\"initial_checkpoint\":\"model/pretrain_bge_2ep\",\"learning_rate\":2e-05,\"loss_variant\":\"balanced_category_class_sqrt_bce\",\"max_length\":384,\"parent_experiment\":\"bge2_sft_oodtrain_e2_lr2e5_v1\",\"parent_recipe_sha256\":\"d46be9217a43396ecc8c594fc1864ee93761d288c30e5a40041adbb28bd7adfe\",\"parent_run_id\":\"a2e3e08c011c45a59599595a840600fe\",\"role\":\"candidate\",\"role_in_stage\":\"single_challenger\",\"seed\":42,\"stage\":\"loss_screen\",\"train_policy\":\"306669 human train + 41171 former OOD; exact concat\",\"validation_policy\":\"IID primary; hard diagnostic; OOD=-1/no parquet\",\"warmup_ratio\":0.05,\"weight_decay\":0.01,\"workflow\":\"bge_2ep_sft_loss_confirmation_v1\",\"workflow_ledger_sha256\":\"6f1337df397cfe8a913d4893ad9b6dc1997de8930dfaa9c9a680cf04fb4aa19d\"}",
+  "ood_evaluation_policy": "disabled_train_contaminated",
+  "role": "candidate",
+  "run_id": "c4763e56b3674c24950cfa3fbef400cb",
+  "runtime_versions": {
+    "packages": {
+      "numpy": "2.0.2",
+      "pandas": "2.3.3",
+      "pyarrow": "23.0.1",
+      "scikit-learn": "1.6.1",
+      "torch": "2.10.0+cu128",
+      "transformers": "4.57.6"
+    },
+    "python": "3.12.13",
+    "schema_version": 1
+  },
+  "stage_parent": {
+    "campaign_identity_sha256": "2560faab82483b5efaf1652207d9dff0c1a30aecfd358b4d5227570f0a073082",
+    "config": {
+      "attention_implementation": "sdpa",
+      "batch_size": 8,
+      "bucket_size_multiplier": 50,
+      "dataloader_workers": 2,
+      "epochs": 2,
+      "eval_batch_size": 32,
+      "gradient_accumulation": 12,
+      "gradient_checkpointing": true,
+      "label_smoothing": 0.0,
+      "learning_rate": 2e-05,
+      "lexical_hard_negative_strength": 0.0,
+      "log_every": 50,
+      "loss_weighting": "none",
+      "max_grad_norm": 0.5,
+      "max_length": 384,
+      "model": "model/pretrain_bge_2ep",
+      "model_backend": "sequence_classification",
+      "model_load_kwargs": {},
+      "prefetch_factor": 2,
+      "sampling": "none",
+      "seed": 42,
+      "symmetric_validation": true,
+      "tokenization_batch_size": 1024,
+      "tokenization_log_every": 20,
+      "train_subset": "all",
+      "trust_remote_code": false,
+      "warmup_ratio": 0.05,
+      "weight_decay": 0.01
+    },
+    "experiment": "bge2_sft_oodtrain_e2_lr2e5_v1",
+    "recipe_sha256": "d46be9217a43396ecc8c594fc1864ee93761d288c30e5a40041adbb28bd7adfe",
+    "run_id": "a2e3e08c011c45a59599595a840600fe",
+    "source_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96"
+  },
+  "started_at_utc": "2026-08-29T12:04:47Z",
+  "status": "complete",
+  "train_data": {
+    "former_ood_categories": [
+      "Бытовая техника",
+      "Одежда"
+    ],
+    "items": 711304,
+    "ood_evaluation": "disabled_train_contaminated",
+    "policy": "human_train_plus_former_ood_exact_concat_v1",
+    "schema_version": 1,
+    "source_counts": {
+      "human_former_ood": 41171,
+      "human_train": 306669
+    },
+    "train_pairs": 347840,
+    "train_positive_rate": 0.25670135694572216,
+    "train_positives": 89291,
+    "validation_item_overlap": {
+      "hard": 0,
+      "iid": 0
+    },
+    "validation_rows": {
+      "hard": 5814,
+      "iid": 12000
+    }
+  },
+  "training_report": {
+    "args": {
+      "attention_implementation": "sdpa",
+      "batch_size": 8,
+      "bucket_size_multiplier": 50,
+      "config": "/kaggle/working/cross_encoder_config.json",
+      "dataloader_workers": 2,
+      "epochs": 2,
+      "eval_batch_size": 32,
+      "gradient_accumulation": 12,
+      "gradient_checkpointing": true,
+      "label_smoothing": 0.0,
+      "learning_rate": 2e-05,
+      "lexical_hard_negative_strength": 0.0,
+      "log_every": 50,
+      "loss_hook": "/kaggle/working/product_matching/bge_sft_loss_hook.py",
+      "loss_weighting": "none",
+      "max_grad_norm": 0.5,
+      "max_length": 384,
+      "model": "/kaggle/temp/bge2_sft_loss_sqrt_s42_v1/initial_checkpoint",
+      "model_backend": "sequence_classification",
+      "model_load_kwarg": [],
+      "output_dir": "/kaggle/temp/bge2_sft_loss_sqrt_s42_v1/trainer_output",
+      "prefetch_factor": 2,
+      "prepared_dir": "/kaggle/temp/bge2_sft_loss_sqrt_s42_v1/prepared",
+      "sampling": "none",
+      "seed": 42,
+      "symmetric_validation": true,
+      "token_cache_dir": "/kaggle/temp/bge2_sft_loss_sqrt_s42_v1/token_cache",
+      "tokenization_batch_size": 1024,
+      "tokenization_log_every": 20,
+      "train_subset": "all",
+      "trust_remote_code": false,
+      "validation_split": [
+        "iid=iid_validation_pairs.parquet",
+        "hard=hard_validation_pairs.parquet"
+      ],
+      "warmup_ratio": 0.05,
+      "weight_decay": 0.01
+    },
+    "evaluated_validation_splits": [
+      "iid",
+      "hard"
+    ],
+    "examples_per_second": 32.12439526275908,
+    "experiment_group": "sft",
+    "loss_hook": {
+      "name": "bge_sft_loss_hook",
+      "path": "/kaggle/working/product_matching/bge_sft_loss_hook.py",
+      "sha256": "0ee68461176acaccf1473de2e5119765b1de9020a1327b675d9106d00df1ca5c"
+    },
+    "macro_average_precision": 0.8221499119778222,
+    "mean_score_order_gap": 0.025482797995209694,
+    "ood_evaluation_policy": "disabled_train_contaminated",
+    "original_training_examples": 347840,
+    "overall_average_precision": 0.8625497856638058,
+    "padding_efficiency": 0.989648413774212,
+    "peak_vram_gib_by_rank": [
+      11.623388290405273,
+      11.62507963180542
+    ],
+    "per_category_average_precision": {
+      "Автотовары": 0.7255705626158938,
+      "Аптека": 0.8608802005287808,
+      "Бытовая химия": 0.9130395885648791,
+      "Галантерея и аксессуары": 0.6820898074265679,
+      "Детские товары": 0.9501170340189259,
+      "Дом и сад": 0.8595689194729621,
+      "Канцелярские товары": 0.8207872946665685,
+      "Красота и гигиена": 0.8533799243647914,
+      "Мебель": 0.7532583979763754,
+      "Музыкальные инструменты": 0.9064875561798711,
+      "Обувь": 0.6365087191614138,
+      "Продукты питания": 0.9103845923609059,
+      "Спорт и отдых": 0.7274865128181756,
+      "Строительство и ремонт": 0.8225480180069706,
+      "Товары для животных": 0.897908163565908,
+      "Хобби и творчество": 0.9413686838190249,
+      "Электроника": 0.789794658717665,
+      "Ювелирные изделия": 0.7475197813351211
+    },
+    "primary_validation_split": "iid",
+    "total_pipeline_seconds": 22166.91040396,
+    "training_examples": 695680,
+    "training_loss_weight_max": 1.0,
+    "training_loss_weight_median": 1.0,
+    "training_loss_weight_min": 1.0,
+    "training_loss_weighting": "none",
+    "training_sampling": "none",
+    "training_seconds": 21655.816220343997,
+    "training_source_counts": {
+      "human_former_ood": 41171,
+      "human_train": 306669
+    },
+    "training_source_weight_mass": {
+      "human_former_ood": 41171.0,
+      "human_train": 306669.0
+    },
+    "training_subset": "all",
+    "training_unique_coverage_per_epoch": 1.0,
+    "validation_examples": 12000,
+    "validation_positive_examples": 3118,
+    "validation_positive_rate": 0.25983333587646484,
+    "validation_predictions_file": "iid_validation_predictions.parquet",
+    "validation_seconds": 212.58083043900115,
+    "validation_seconds_by_split": {
+      "hard": 67.93957953900099,
+      "iid": 144.64048684900263
+    },
+    "validation_splits": {
+      "hard": {
+        "examples": 5814,
+        "log_loss": 0.7150805313369107,
+        "macro_average_precision": 0.4317593884271952,
+        "mean_score_order_gap": 0.03394933044910431,
+        "overall_average_precision": 0.46242245770067236,
+        "per_category_average_precision": {
+          "Автотовары": 0.17286142119418976,
+          "Аптека": 0.3739196720882811,
+          "Бытовая химия": 0.6820651115042505,
+          "Галантерея и аксессуары": 0.2840110522120593,
+          "Детские товары": 0.6401107310497085,
+          "Дом и сад": 0.5053710436640424,
+          "Канцелярские товары": 0.520693248535687,
+          "Красота и гигиена": 0.4783356646962743,
+          "Мебель": 0.23121847033625761,
+          "Музыкальные инструменты": 0.4534225110522354,
+          "Обувь": 0.16647799930910723,
+          "Продукты питания": 0.5585767202349081,
+          "Спорт и отдых": 0.2594202268028497,
+          "Строительство и ремонт": 0.3103463148375713,
+          "Товары для животных": 0.6175132035821932,
+          "Хобби и творчество": 0.6428955782077388,
+          "Электроника": 0.5282921103553544,
+          "Ювелирные изделия": 0.34613791202680483
+        },
+        "positive_examples": 1481,
+        "positive_rate": 0.2547299563884735,
+        "predictions_file": "hard_validation_predictions.parquet",
+        "recall_at_precision_0_99": 0.0,
+        "roc_auc": 0.7439465945518376,
+        "threshold_at_precision_0_99": null
+      },
+      "iid": {
+        "examples": 12000,
+        "log_loss": 0.27680225991258667,
+        "macro_average_precision": 0.8221499119778222,
+        "mean_score_order_gap": 0.025482797995209694,
+        "overall_average_precision": 0.8625497856638058,
+        "per_category_average_precision": {
+          "Автотовары": 0.7255705626158938,
+          "Аптека": 0.8608802005287808,
+          "Бытовая химия": 0.9130395885648791,
+          "Галантерея и аксессуары": 0.6820898074265679,
+          "Детские товары": 0.9501170340189259,
+          "Дом и сад": 0.8595689194729621,
+          "Канцелярские товары": 0.8207872946665685,
+          "Красота и гигиена": 0.8533799243647914,
+          "Мебель": 0.7532583979763754,
+          "Музыкальные инструменты": 0.9064875561798711,
+          "Обувь": 0.6365087191614138,
+          "Продукты питания": 0.9103845923609059,
+          "Спорт и отдых": 0.7274865128181756,
+          "Строительство и ремонт": 0.8225480180069706,
+          "Товары для животных": 0.897908163565908,
+          "Хобби и творчество": 0.9413686838190249,
+          "Электроника": 0.789794658717665,
+          "Ювелирные изделия": 0.7475197813351211
+        },
+        "positive_examples": 3118,
+        "positive_rate": 0.25983333587646484,
+        "predictions_file": "iid_validation_predictions.parquet",
+        "recall_at_precision_0_99": 0.10038486209108403,
+        "roc_auc": 0.9385510641337158,
+        "threshold_at_precision_0_99": 0.9873361587524414
+      },
+      "ood": {
+        "evaluated": false,
+        "examples": 0,
+        "log_loss": -1.0,
+        "macro_average_precision": -1.0,
+        "overall_average_precision": -1.0,
+        "per_category_average_precision": {},
+        "predictions_file": null,
+        "reason": "former frozen OOD pairs are part of BGE supervised training",
+        "recall_at_precision_0_99": -1.0,
+        "roc_auc": -1.0,
+        "source_training_examples": 41171,
+        "status": "disabled_train_contaminated",
+        "threshold_at_precision_0_99": -1.0
+      }
+    }
+  },
+  "training_wall_seconds": 22183.270999457003,
+  "validation_manifest_sha256": "b64a1902d86c9ad896a626b2a17bf018341f1d9c5fefa124834b525c84808f3c"
+}

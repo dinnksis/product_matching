@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Create or version the private one-epoch LLM-pretrained MiniLM checkpoint."""
+"""Create or version a private LLM-pretrained MiniLM checkpoint Dataset."""
 
 from __future__ import annotations
 
@@ -25,13 +25,22 @@ import run_kaggle_notebook as kaggle
 DATASET_SLUG = "product-matching-minilm-llm-pretrain-1ep"
 SOURCE_DIR = ROOT / "model" / "pretrain_minilm_1ep"
 STAGE_DIR = ROOT / ".kaggle" / "datasets" / DATASET_SLUG
-DIRECT_CHECKPOINT_FILES = (
+REQUIRED_DIRECT_CHECKPOINT_FILES = (
     "config.json",
     "tokenizer.json",
     "tokenizer_config.json",
     "special_tokens_map.json",
+)
+OPTIONAL_TRAINING_METADATA_FILES = (
     "training_args.json",
     "training_state.json",
+)
+# Kept as the complete supported set for callers that inspect this module. The
+# payload only requires the inference/SFT files above; exact-resume metadata is
+# included when the supplied checkpoint actually has it.
+DIRECT_CHECKPOINT_FILES = (
+    *REQUIRED_DIRECT_CHECKPOINT_FILES,
+    *OPTIONAL_TRAINING_METADATA_FILES,
 )
 MODEL_FILENAME = "model.safetensors"
 MODEL_PART_BYTES = 64 * 1024 * 1024
@@ -40,7 +49,7 @@ MANIFEST_NAME = "checkpoint_manifest.json"
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(
-        description="Upload the LLM-pretrained MiniLM checkpoint as a private Kaggle Dataset"
+        description="Upload an LLM-pretrained MiniLM checkpoint as a private Kaggle Dataset"
     )
     parser.add_argument("--env-file", type=Path, default=ROOT / ".env")
     parser.add_argument("--source-dir", type=Path, default=SOURCE_DIR)
@@ -48,7 +57,7 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--dataset-slug", default=DATASET_SLUG)
     parser.add_argument(
         "--message",
-        default="One epoch LLM-pretrained MiniLM checkpoint for human fine-tuning",
+        default="LLM-pretrained MiniLM checkpoint for downstream fine-tuning",
     )
     parser.add_argument("--dry-run", action="store_true")
     return parser.parse_args()
@@ -120,7 +129,13 @@ def build_payload(
     dataset_slug = kaggle.validate_slug(dataset_slug, "dataset slug")
     stage_dir.mkdir(parents=True, exist_ok=True)
     files: dict[str, dict[str, object]] = {}
-    for filename in DIRECT_CHECKPOINT_FILES:
+    direct_filenames = list(REQUIRED_DIRECT_CHECKPOINT_FILES)
+    direct_filenames.extend(
+        filename
+        for filename in OPTIONAL_TRAINING_METADATA_FILES
+        if (source_dir / filename).is_file()
+    )
+    for filename in direct_filenames:
         source = source_dir / filename
         if not source.is_file():
             kaggle.fail(f"checkpoint file is missing: {source}")
@@ -164,10 +179,10 @@ def build_payload(
         "licenses": [{"name": "unknown"}],
         "isPrivate": True,
         "description": (
-            "Private MiniLM sequence-classification weights after one epoch on "
-            "non-OOD LLM-labelled pairs. Optimizer and ELR state are intentionally "
-            "excluded because downstream training starts a fresh human-only stage. "
-            "The safetensors file is losslessly sharded for reliable upload."
+            f"Private MiniLM sequence-classification checkpoint staged from "
+            f"{source_label}. Optimizer and ELR state are intentionally excluded "
+            "because downstream fine-tuning starts with fresh training state. The "
+            "safetensors file is losslessly sharded for reliable upload."
         ),
     }
     (stage_dir / "dataset-metadata.json").write_text(

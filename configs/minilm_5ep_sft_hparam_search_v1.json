@@ -1,0 +1,251 @@
+{
+  "schema_version": 1,
+  "campaign": "minilm_5ep_sft_hparam_search_v1",
+  "objective": "Tune the supervised human fine-tuning recipe starting from the frozen MiniLM checkpoint after five LLM-pretraining epochs.",
+  "baseline_run_id": "67f4fe76886b43d6b52ed5cb49068e1e",
+  "baseline_metrics": {
+    "iid_macro_ap": 0.789388132774931,
+    "hard_macro_ap": 0.3655009201486312,
+    "ood_macro_ap": 0.6426602624552971
+  },
+  "selection_protocol": {
+    "primary_metric": "iid_macro_ap",
+    "selection_uses_hard": false,
+    "selection_uses_ood": false,
+    "search_strategy": "staged_logarithmic_coordinate_search",
+    "paired_baseline_comparison": true,
+    "within_run_split_correction": "holm_3_splits",
+    "stage_iid_correction": "holm_all_planned_non_control_stage_variants",
+    "practical_tie_margin": 0.002,
+    "boundary_extension": true,
+    "maximum_boundary_extensions_per_axis": 1,
+    "adaptive_screening_is_exploratory": true,
+    "final_decision_requires_matched_seed_confirmation": true
+  },
+  "control_gate": {
+    "role": "current_protocol_control",
+    "max_abs_iid_delta": 0.001,
+    "max_abs_hard_delta": 0.002,
+    "max_abs_ood_delta": 0.002,
+    "baseline_total_pipeline_seconds": 1548.96508378,
+    "max_runtime_relative_drift": 0.2
+  },
+  "budget": {
+    "typical_total_kernels": 28,
+    "maximum_total_kernels": 37,
+    "typical_remaining_after_completed_control": 27,
+    "counting_rule": "Reused parent and seed-42 runs count once; conditional boundary, interaction, loss-LR and second-finalist runs count only when triggered."
+  },
+  "allowed_override_keys": [
+    "epochs",
+    "learning_rate",
+    "weight_decay",
+    "warmup_ratio",
+    "label_smoothing",
+    "max_grad_norm",
+    "batch_size",
+    "gradient_accumulation",
+    "model_load_kwargs",
+    "seed"
+  ],
+  "stages": [
+    {
+      "name": "lr_log_line",
+      "status": "ready",
+      "strategy": "one_dimensional_log2_line",
+      "fixed": {"epochs": 1},
+      "axis": {"learning_rate": [0.000005, 0.00001, 0.00002, 0.00004]},
+      "boundary_extension": {
+        "max_new_runs": 1,
+        "lower": 0.0000025,
+        "upper": 0.00008,
+        "trigger_gain_over_neighbor": 0.002
+      },
+      "family": {
+        "correction": "holm",
+        "planned_candidate_hypotheses": 3,
+        "reserved_conditional_extensions": 1,
+        "maximum_hypotheses": 4
+      },
+      "hypothesis": "Find the useful learning-rate scale first without crossing it with epochs; extend one log2 step only when an edge wins by more than the practical tie margin.",
+      "variants": [
+        {
+          "experiment": "minilm5_sft_e1_lr2e5_control_v1",
+          "kernel_slug": "minilm5-sft-grid-exact-control",
+          "title": "MiniLM5 SFT grid: exact control",
+          "overrides": {"epochs": 1, "learning_rate": 0.00002},
+          "role": "current_protocol_control",
+          "provenance_alias": {
+            "type": "control_submitted_before_search_strategy_revision",
+            "recorded_stage": "lr_epochs_grid",
+            "canonical_stage": "lr_log_line",
+            "accepted_completion_notes_sha256": "c9235a2597cdc0443561511ce0b3edca9466e48308cefb76992ee218c78cfb8b",
+            "reason": "The exact-control kernel completed before the user replaced the Cartesian grid with a log LR line; experiment, recipe, source, data and BCE hook hashes are unchanged."
+          }
+        },
+        {
+          "experiment": "minilm5_sft_e1_lr5e6_v1",
+          "kernel_slug": "pm-minilm5-sft-e1-lr5e6-v1",
+          "title": "pm-minilm5-sft-e1-lr5e6-v1",
+          "overrides": {"epochs": 1, "learning_rate": 0.000005}
+        },
+        {
+          "experiment": "minilm5_sft_e1_lr1e5_v1",
+          "kernel_slug": "pm-minilm5-sft-e1-lr1e5-v1",
+          "title": "pm-minilm5-sft-e1-lr1e5-v1",
+          "overrides": {"epochs": 1, "learning_rate": 0.00001}
+        },
+        {
+          "experiment": "minilm5_sft_e1_lr4e5_v1",
+          "kernel_slug": "pm-minilm5-sft-e1-lr4e5-v1",
+          "title": "pm-minilm5-sft-e1-lr4e5-v1",
+          "overrides": {"epochs": 1, "learning_rate": 0.00004}
+        }
+      ]
+    },
+    {
+      "name": "epoch_line",
+      "status": "planned_after_lr_log_line",
+      "strategy": "one_dimensional_integer_line",
+      "anchor": "selected_lr_from_lr_log_line",
+      "axis": {"epochs": [1, 2, 3]},
+      "conditional_extension": {"epochs": [4]},
+      "family": {
+        "correction": "holm",
+        "planned_candidate_hypotheses": 2,
+        "reserved_conditional_extensions": 1,
+        "maximum_hypotheses": 3
+      },
+      "note": "Every epoch count is a fresh full recipe because the cosine horizon changes with total updates."
+    },
+    {
+      "name": "regularization_coordinate_search",
+      "status": "planned_after_epoch_line",
+      "strategy": "sequential_one_axis_lines_with_anchor_update",
+      "anchor": "selected_lr_and_epochs",
+      "execution_order": [
+        "effective_batch",
+        "warmup_ratio",
+        "weight_decay",
+        "label_smoothing",
+        "classifier_dropout",
+        "max_grad_norm"
+      ],
+      "axes": {
+        "effective_batch": [96, 192, 384],
+        "warmup_ratio": [0.0, 0.05, 0.1],
+        "weight_decay": [0.0, 0.01, 0.05],
+        "label_smoothing": [0.0, 0.02, 0.05],
+        "classifier_dropout": [0.0, 0.1, 0.2],
+        "max_grad_norm": [0.5, 1.0, 2.0]
+      },
+      "conditional_extensions": {
+        "weight_decay": 0.1,
+        "label_smoothing": 0.1
+      },
+      "coordinate_maximum_hypotheses": {
+        "effective_batch": 2,
+        "warmup_ratio": 2,
+        "weight_decay": 3,
+        "label_smoothing": 3,
+        "classifier_dropout": 2,
+        "max_grad_norm": 2
+      },
+      "anchor_update_rule": "update_only_if_iid_gain_exceeds_practical_tie_margin",
+      "typical_new_runs": 12,
+      "maximum_new_runs": 14,
+      "effective_batch_recipes": {
+        "96": {"batch_size": 48, "gradient_accumulation": 1},
+        "192": {"batch_size": 96, "gradient_accumulation": 1},
+        "384": {"batch_size": 96, "gradient_accumulation": 2}
+      }
+    },
+    {
+      "name": "special_loss_screen",
+      "status": "planned_after_regularization_coordinate_search",
+      "strategy": "one_loss_family_at_the_selected_optimizer_recipe",
+      "anchor": "selected_regularized_bce_recipe",
+      "loss_variants": [
+        "bce",
+        "balanced_binary_bce",
+        "balanced_category_class_sqrt_bce",
+        "balanced_category_class_bce",
+        "focal_bce_gamma2_scale4"
+      ],
+      "conditional_combination": {
+        "run_if": "best_balance_delta_positive_and_focal_delta_positive",
+        "selection_metric": "iid_macro_ap",
+        "minimum_raw_delta_vs_tuned_bce": 0.0,
+        "delta_operator": "strictly_greater_than",
+        "balance_tie_break": "loss_variants_declaration_order",
+        "variants_by_balance": {
+          "balanced_binary_bce": "balanced_binary_focal_gamma2_scale4",
+          "balanced_category_class_sqrt_bce": "balanced_category_class_sqrt_focal_gamma2_scale4",
+          "balanced_category_class_bce": "balanced_category_class_focal_gamma2_scale4"
+        }
+      },
+      "winner_lr_refinement_multipliers": [0.5, 1.0, 2.0],
+      "winner_lr_refinement_trigger": {
+        "loss_must_be_non_bce": true,
+        "minimum_iid_delta_vs_tuned_bce": 0.002,
+        "delta_operator": "strictly_greater_than",
+        "boundary_extension": false
+      },
+      "confirmation_finalists": {
+        "first": "best_non_bce_after_optional_lr_refinement",
+        "include_first_even_if_seed42_is_below_tuned_bce": true,
+        "second": {
+          "must_have_distinct_loss_variant": true,
+          "minimum_raw_iid_delta_vs_tuned_bce": 0.0,
+          "delta_operator": "strictly_greater_than",
+          "maximum_iid_gap_from_first": 0.002,
+          "tie_break": "loss_variants_declaration_order"
+        }
+      },
+      "typical_new_runs": 4,
+      "maximum_new_runs": 7,
+      "families": {
+        "primary_loss_screen": {
+          "planned_candidate_hypotheses": 4,
+          "reserved_conditional_combinations": 1,
+          "maximum_hypotheses": 5
+        },
+        "winner_lr_refinement": {
+          "planned_candidate_hypotheses": 2,
+          "maximum_hypotheses": 2
+        }
+      },
+      "note": "If a non-BCE loss wins, refine its LR on a short log2 line because loss scale and optimum LR may interact."
+    },
+    {
+      "name": "confirmation",
+      "status": "planned_after_special_loss_screen",
+      "anchor": "baseline_tuned_bce_and_top_loss_finalists",
+      "seeds": [17, 42, 2026],
+      "recipes": {
+        "baseline_recipe": "current_protocol_baseline_recipe",
+        "tuned_bce_recipe": "selected_regularized_bce_recipe",
+        "top_k_loss_finalists": 2,
+        "second_loss_finalist_is_conditional": true
+      },
+      "typical_new_runs": 6,
+      "maximum_new_runs": 8,
+      "seed_42_runs_are_reused": true,
+      "recipe_family_identity": "config_without_seed_plus_loss_variant_and_loss_hook_sha256",
+      "comparison": "seed_matched_baseline_recipe_vs_each_finalist",
+      "final_tie_break_order": [
+        "current_protocol_baseline_recipe",
+        "selected_regularized_bce_recipe",
+        "loss_variants_declaration_order"
+      ],
+      "acceptance": {
+        "min_mean_iid_delta": 0.002,
+        "min_positive_seed_count": 2,
+        "min_worst_seed_iid_delta": -0.001,
+        "hard_is_diagnostic_only": true,
+        "ood_is_diagnostic_only": true
+      },
+      "require_inference_runtime_check": true
+    }
+  ]
+}

@@ -1,0 +1,36 @@
+{
+  "catalog_version": "soft_semantic_label1_ab_singleton2_multi1_scoped_v1",
+  "semantic_threshold": 0.8,
+  "singleton_vote_weight": 2,
+  "multi_atom_vote_weight": 1,
+  "relation_counts": {
+    "A:different_value": 315,
+    "A:incompatible": 5,
+    "A:more_specific": 5,
+    "B:different_value": 2607,
+    "B:incompatible": 124,
+    "B:more_specific": 62
+  },
+  "tier_a_rules": 325,
+  "tier_b_rules": 2793,
+  "tier_a_examples_per_rule": 20,
+  "tier_b_examples_per_rule": 10,
+  "planned_tier_a_pairs": 6500,
+  "planned_tier_b_pairs": 27930,
+  "planned_total_pairs": 34430,
+  "occurrences": "/Users/aekuleshevskii/product_matching/reports/atomic_rule_statistics_semantic_snapshot_20260826/atomic_occurrences.parquet",
+  "occurrences_sha256": "bb9f053a317e200eb2f77d83aee4eead4b03423b867dbcbce06100da262860d5",
+  "pair_inputs": "/Users/aekuleshevskii/product_matching/data/qwen_atomic_differences_v2_full_train/pilot_inputs.parquet",
+  "pair_inputs_sha256": "d1cfe9f879f782e572526d0d3363e847de8b754724c5d32832416008ae66bd40",
+  "semantic_report": "/Users/aekuleshevskii/product_matching/reports/semantic_atomic_rule_statistics_all_pairs_20260827",
+  "catalogs": {
+    "tier_a": {
+      "path": "/Users/aekuleshevskii/product_matching/configs/generation_rule_catalog_statistical_v1/soft_positive_ab_v1/tier_a.json",
+      "sha256": "44d2f623958cabc6c61fdf6c837faab8bbcffd77e0bfd5ed5a96f7eaa951fa7f"
+    },
+    "tier_b": {
+      "path": "/Users/aekuleshevskii/product_matching/configs/generation_rule_catalog_statistical_v1/soft_positive_ab_v1/tier_b.json",
+      "sha256": "11a086376261b7ab058544eb31073e0b33e175453841e2a2801104eef8df38d1"
+    }
+  }
+}

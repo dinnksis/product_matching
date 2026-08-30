@@ -1,0 +1,1710 @@
+{
+  "attempt_diversity": {
+    "anchor_nonce_hash_recomputed_rows": 0,
+    "anchor_nonce_hash_unique_count": 1100,
+    "anchor_nonce_hash_valid_rows": 1100,
+    "expected_version": "per_outer_attempt_nonce_bundle_rejections_normalized_card_v2",
+    "forbidden_card_key_count_distribution": {
+      "0": 125,
+      "10": 76,
+      "11": 13,
+      "12": 73,
+      "13": 10,
+      "14": 60,
+      "15": 12,
+      "16": 55,
+      "17": 10,
+      "18": 51,
+      "19": 9,
+      "2": 94,
+      "20": 47,
+      "21": 10,
+      "22": 25,
+      "23": 11,
+      "24": 38,
+      "25": 8,
+      "26": 18,
+      "27": 7,
+      "28": 13,
+      "29": 6,
+      "3": 13,
+      "30": 10,
+      "31": 4,
+      "32": 6,
+      "33": 4,
+      "34": 4,
+      "36": 1,
+      "38": 1,
+      "39": 1,
+      "4": 94,
+      "5": 6,
+      "6": 87,
+      "7": 12,
+      "8": 75,
+      "9": 11
+    },
+    "forbidden_semantic_signature_count_distribution": {
+      "0": 613,
+      "1": 197,
+      "2": 153,
+      "3": 88,
+      "4": 35,
+      "5": 13,
+      "6": 1
+    },
+    "global_rejection_feedback_count_distribution": {
+      "0": 475,
+      "1": 259,
+      "2": 171,
+      "3": 92,
+      "4": 55,
+      "5": 32,
+      "6": 10,
+      "7": 6
+    },
+    "metadata_rows": 1100,
+    "mutation_nonce_hash_recomputed_rows": 0,
+    "mutation_nonce_hash_unique_count": 1100,
+    "mutation_nonce_hash_valid_rows": 1100,
+    "observed_versions": [
+      "per_outer_attempt_nonce_bundle_rejections_normalized_card_v2"
+    ],
+    "protocol_consistent": false,
+    "reported_version": null,
+    "summary_consistent": false,
+    "version_match_rows": 1100
+  },
+  "complexity": {
+    "human_reference_all": {
+      "attribute_count": {
+        "count": 711304,
+        "max": 113.0,
+        "mean": 12.601976088985863,
+        "min": 0.0,
+        "p10": 4.0,
+        "p25": 6.0,
+        "p50": 11.0,
+        "p75": 17.0,
+        "p90": 23.0
+      },
+      "attribute_parse_error_rows": 0,
+      "name_word_count": {
+        "count": 711304,
+        "max": 395.0,
+        "mean": 8.661839382317547,
+        "min": 0.0,
+        "p10": 3.0,
+        "p25": 5.0,
+        "p50": 8.0,
+        "p75": 11.0,
+        "p90": 15.0
+      },
+      "rows": 711304
+    },
+    "human_reference_matching_synthetic_categories": {
+      "attribute_count": {
+        "count": 561312,
+        "max": 113.0,
+        "mean": 12.729524756285274,
+        "min": 0.0,
+        "p10": 4.0,
+        "p25": 7.0,
+        "p50": 11.0,
+        "p75": 17.0,
+        "p90": 23.0
+      },
+      "attribute_parse_error_rows": 0,
+      "name_word_count": {
+        "count": 561312,
+        "max": 395.0,
+        "mean": 9.151010489709822,
+        "min": 1.0,
+        "p10": 4.0,
+        "p25": 6.0,
+        "p50": 8.0,
+        "p75": 11.0,
+        "p90": 15.0
+      },
+      "rows": 561312
+    },
+    "synthetic": {
+      "base": {
+        "attribute_count": {
+          "count": 1100,
+          "max": 4.0,
+          "mean": 3.0672727272727274,
+          "min": 3.0,
+          "p10": 3.0,
+          "p25": 3.0,
+          "p50": 3.0,
+          "p75": 3.0,
+          "p90": 3.0
+        },
+        "attribute_parse_error_rows": 0,
+        "name_word_count": {
+          "count": 1100,
+          "max": 7.0,
+          "mean": 4.361818181818182,
+          "min": 3.0,
+          "p10": 3.0,
+          "p25": 4.0,
+          "p50": 4.0,
+          "p75": 5.0,
+          "p90": 6.0
+        },
+        "rows": 1100
+      },
+      "combined": {
+        "attribute_count": {
+          "count": 2200,
+          "max": 4.0,
+          "mean": 3.0672727272727274,
+          "min": 3.0,
+          "p10": 3.0,
+          "p25": 3.0,
+          "p50": 3.0,
+          "p75": 3.0,
+          "p90": 3.0
+        },
+        "attribute_parse_error_rows": 0,
+        "name_word_count": {
+          "count": 2200,
+          "max": 8.0,
+          "mean": 4.3554545454545455,
+          "min": 3.0,
+          "p10": 3.0,
+          "p25": 4.0,
+          "p50": 4.0,
+          "p75": 5.0,
+          "p90": 6.0
+        },
+        "rows": 2200
+      },
+      "mutated": {
+        "attribute_count": {
+          "count": 1100,
+          "max": 4.0,
+          "mean": 3.0672727272727274,
+          "min": 3.0,
+          "p10": 3.0,
+          "p25": 3.0,
+          "p50": 3.0,
+          "p75": 3.0,
+          "p90": 3.0
+        },
+        "attribute_parse_error_rows": 0,
+        "name_word_count": {
+          "count": 1100,
+          "max": 8.0,
+          "mean": 4.349090909090909,
+          "min": 3.0,
+          "p10": 3.0,
+          "p25": 4.0,
+          "p50": 4.0,
+          "p75": 5.0,
+          "p90": 6.0
+        },
+        "rows": 1100
+      }
+    },
+    "synthetic_vs_human_matching_categories": {
+      "attribute_mean_ratio": 0.24095736376632948,
+      "attribute_p50_delta": -8.0,
+      "name_word_mean_ratio": 0.475953398846192,
+      "name_word_p50_delta": -4.0
+    }
+  },
+  "duplicates": {
+    "card_rows": 2200,
+    "duplicate_full_card_affected_tasks": 0,
+    "duplicate_full_card_groups": 0,
+    "duplicate_order_insensitive_card_pair_affected_tasks": 0,
+    "duplicate_order_insensitive_card_pair_groups": 0,
+    "duplicate_unordered_id_pair_groups": 0,
+    "unique_full_cards": 2200,
+    "unique_order_insensitive_card_pairs": 1100
+  },
+  "heuristics": {
+    "material_synonym_groups": [
+      [
+        "pu кожа",
+        "винилискожа",
+        "искусственная кожа",
+        "кожзам",
+        "кожзаменитель",
+        "полиуретановая кожа",
+        "эко кожа",
+        "экокожа"
+      ],
+      [
+        "genuine leather",
+        "кожа натуральная",
+        "натуральная кожа"
+      ],
+      [
+        "100 % хлопок",
+        "100% хлопок",
+        "хлопок",
+        "чистый хлопок"
+      ],
+      [
+        "100 % шерсть",
+        "100% шерсть",
+        "натуральная шерсть",
+        "шерсть"
+      ],
+      [
+        "polyester",
+        "полиэстер",
+        "полиэфир"
+      ],
+      [
+        "искусственный мех",
+        "эко мех",
+        "экомех"
+      ],
+      [
+        "stainless steel",
+        "нержавеющая сталь",
+        "сталь нержавеющая"
+      ]
+    ],
+    "material_synonym_mutation_affected_tasks": 0,
+    "numeric_only_model_affected_tasks": 0,
+    "sku_or_article_affected_tasks": 0
+  },
+  "integrity": {
+    "base_item_rows": 1100,
+    "metadata_pair_contract_equal": true,
+    "metadata_rows": 1100,
+    "mutated_item_rows": 1100,
+    "pair_rows": 1100,
+    "target_counts": {
+      "0": 1100
+    },
+    "unique_task_indices": 1100
+  },
+  "issue_type_count": 2,
+  "issues": {
+    "attempt_diversity_seed_missing": {
+      "affected_task_count": 1100,
+      "sample_task_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ]
+    },
+    "attempt_diversity_summary_mismatch": {
+      "affected_task_count": 1100,
+      "sample_task_indices": [
+        0,
+        1,
+        2,
+        3,
+        4,
+        5,
+        6,
+        7,
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17,
+        18,
+        19
+      ]
+    }
+  },
+  "passed": false,
+  "reference_items": "/Users/aekuleshevskii/product_matching/data/items_human.parquet",
+  "rules": {
+    "actual": {
+      "coefficient_of_variation": 0.30940706532259127,
+      "counts": {
+        "gen_stat_02d08a2bf2c5c478": 9,
+        "gen_stat_05d067b8debb19d2": 15,
+        "gen_stat_0bf42866b169c3f2": 13,
+        "gen_stat_0cb1577b473cdf55": 11,
+        "gen_stat_0eae3999f36202a0": 7,
+        "gen_stat_1156d16314b406d8": 8,
+        "gen_stat_16489f45cfca37c9": 11,
+        "gen_stat_1859923e35e4f8be": 9,
+        "gen_stat_19810ba02ddf5cb4": 12,
+        "gen_stat_1a3dcb0b7448febc": 5,
+        "gen_stat_1a4a2510f4ac4cbc": 5,
+        "gen_stat_2006394e9f73a316": 20,
+        "gen_stat_20150c2279d6c39f": 9,
+        "gen_stat_206f34050e889dca": 12,
+        "gen_stat_226616ec5c5023fc": 14,
+        "gen_stat_22f8f3682a53d671": 15,
+        "gen_stat_27a4df2e379281e1": 17,
+        "gen_stat_28319d64284a9128": 9,
+        "gen_stat_28c84b25a5c29adb": 5,
+        "gen_stat_29c0577b6751e4b4": 7,
+        "gen_stat_2b8ca69c6cc83f90": 13,
+        "gen_stat_2ffa1bd928ec9dcb": 15,
+        "gen_stat_30e550d025d2c124": 10,
+        "gen_stat_312d73e0f22eab27": 20,
+        "gen_stat_32d64937471ce828": 14,
+        "gen_stat_35f6fb5502de62b9": 9,
+        "gen_stat_382f0293a0c9df9a": 19,
+        "gen_stat_3d12b697a2a316a3": 11,
+        "gen_stat_3da4dff0e3d599ef": 16,
+        "gen_stat_3f3abdbb0623b9bc": 16,
+        "gen_stat_43a7cd9ad984aacf": 18,
+        "gen_stat_453b05e4f170a1a0": 17,
+        "gen_stat_48bacd02def2374c": 10,
+        "gen_stat_4b19c32984e67278": 13,
+        "gen_stat_4ca244067234664c": 18,
+        "gen_stat_4e002802a99ac8b9": 12,
+        "gen_stat_530c8f3ec91602a0": 8,
+        "gen_stat_53131ef0cbe00e75": 16,
+        "gen_stat_55b5ffa6af53b701": 15,
+        "gen_stat_575f3a5a41bcaccd": 8,
+        "gen_stat_57d8d17f597c7e32": 5,
+        "gen_stat_5eaa15eda42deb52": 15,
+        "gen_stat_5f860edacf7b2e08": 10,
+        "gen_stat_609933830ff5d630": 15,
+        "gen_stat_6614bd81dca1dd32": 12,
+        "gen_stat_6885eaf0dfc63b4e": 17,
+        "gen_stat_6dd763165ae289f2": 7,
+        "gen_stat_6dee67e88e529f0c": 13,
+        "gen_stat_6e46cc751debab2a": 14,
+        "gen_stat_74f471278b893658": 4,
+        "gen_stat_7ae50b29fe156073": 10,
+        "gen_stat_7c2345ac2119a70c": 15,
+        "gen_stat_7d78f533a49679e8": 8,
+        "gen_stat_8224734c9acb4b65": 10,
+        "gen_stat_852f1c50bdba3e61": 15,
+        "gen_stat_85bd9892423be105": 12,
+        "gen_stat_86b4526f3831b8cf": 10,
+        "gen_stat_89fb313b996a5ad9": 13,
+        "gen_stat_91fbd4aeaee34966": 18,
+        "gen_stat_9372031afac0f492": 16,
+        "gen_stat_953cd6d64d8d9eb7": 10,
+        "gen_stat_9735ca627b05e1aa": 9,
+        "gen_stat_9c34ec5028e8e5bd": 12,
+        "gen_stat_9edca633cea98188": 12,
+        "gen_stat_9f89f32556c53254": 12,
+        "gen_stat_a2b34ae11a7dee8a": 6,
+        "gen_stat_a514c2dfa9336964": 16,
+        "gen_stat_a6c92e6bd56c2da1": 13,
+        "gen_stat_aa22c877f05f270e": 6,
+        "gen_stat_b1c6570f311858b8": 14,
+        "gen_stat_b435ac6c04156670": 11,
+        "gen_stat_b79e1e2d1849a70e": 13,
+        "gen_stat_b97435049f214aa4": 11,
+        "gen_stat_bb20c05cb4945feb": 18,
+        "gen_stat_c2323c34e927e530": 7,
+        "gen_stat_c6ae3bf27c979fe6": 15,
+        "gen_stat_c753baa2b5e9612c": 14,
+        "gen_stat_cc1f5b4f49f4b3e2": 10,
+        "gen_stat_d00c30b629402b1b": 15,
+        "gen_stat_d0996e6b5a9dadac": 17,
+        "gen_stat_d155dafd49247442": 15,
+        "gen_stat_d4edb50c03d0b2d1": 11,
+        "gen_stat_dbef08c8ee2d88f9": 13,
+        "gen_stat_e079b63e0a72fb45": 11,
+        "gen_stat_e0b71d92c2bf1126": 9,
+        "gen_stat_e175d7e7e298cec1": 16,
+        "gen_stat_e46ebd58cbd1ce7b": 7,
+        "gen_stat_e6214320570e4773": 12,
+        "gen_stat_e82ed04d3b709d38": 7,
+        "gen_stat_ea17ad29e4dba263": 12,
+        "gen_stat_eb16953dac65f235": 13,
+        "gen_stat_ec33196f6938ec07": 8,
+        "gen_stat_ec6df6fe4f381b24": 14,
+        "gen_stat_f4947e7f9d101051": 13,
+        "gen_stat_f6c3bfb1315306c6": 7,
+        "gen_stat_f714950d93e0e1c6": 13,
+        "gen_stat_f80394fef50bd8ff": 11,
+        "gen_stat_fa70490e70ccff44": 8,
+        "gen_stat_fb6e5efe009ae277": 11,
+        "gen_stat_fca373073847a0e6": 16
+      },
+      "max_count": 20,
+      "max_to_min_ratio": 5.0,
+      "mean_count": 11.98,
+      "min_count": 4,
+      "total_assignments": 1198,
+      "unique_ids": 100
+    },
+    "actual_primary": {
+      "coefficient_of_variation": 0.356984616655852,
+      "counts": {
+        "gen_stat_02d08a2bf2c5c478": 9,
+        "gen_stat_05d067b8debb19d2": 9,
+        "gen_stat_0bf42866b169c3f2": 13,
+        "gen_stat_0cb1577b473cdf55": 11,
+        "gen_stat_0eae3999f36202a0": 7,
+        "gen_stat_1156d16314b406d8": 8,
+        "gen_stat_16489f45cfca37c9": 4,
+        "gen_stat_1859923e35e4f8be": 9,
+        "gen_stat_19810ba02ddf5cb4": 12,
+        "gen_stat_1a3dcb0b7448febc": 5,
+        "gen_stat_1a4a2510f4ac4cbc": 5,
+        "gen_stat_2006394e9f73a316": 20,
+        "gen_stat_20150c2279d6c39f": 9,
+        "gen_stat_206f34050e889dca": 12,
+        "gen_stat_226616ec5c5023fc": 14,
+        "gen_stat_22f8f3682a53d671": 15,
+        "gen_stat_27a4df2e379281e1": 17,
+        "gen_stat_28319d64284a9128": 9,
+        "gen_stat_28c84b25a5c29adb": 5,
+        "gen_stat_29c0577b6751e4b4": 7,
+        "gen_stat_2b8ca69c6cc83f90": 13,
+        "gen_stat_2ffa1bd928ec9dcb": 9,
+        "gen_stat_30e550d025d2c124": 10,
+        "gen_stat_312d73e0f22eab27": 20,
+        "gen_stat_32d64937471ce828": 14,
+        "gen_stat_35f6fb5502de62b9": 9,
+        "gen_stat_382f0293a0c9df9a": 19,
+        "gen_stat_3d12b697a2a316a3": 11,
+        "gen_stat_3da4dff0e3d599ef": 16,
+        "gen_stat_3f3abdbb0623b9bc": 16,
+        "gen_stat_43a7cd9ad984aacf": 18,
+        "gen_stat_453b05e4f170a1a0": 17,
+        "gen_stat_48bacd02def2374c": 10,
+        "gen_stat_4b19c32984e67278": 13,
+        "gen_stat_4ca244067234664c": 14,
+        "gen_stat_4e002802a99ac8b9": 12,
+        "gen_stat_530c8f3ec91602a0": 8,
+        "gen_stat_53131ef0cbe00e75": 7,
+        "gen_stat_55b5ffa6af53b701": 15,
+        "gen_stat_575f3a5a41bcaccd": 8,
+        "gen_stat_57d8d17f597c7e32": 5,
+        "gen_stat_5eaa15eda42deb52": 11,
+        "gen_stat_5f860edacf7b2e08": 5,
+        "gen_stat_609933830ff5d630": 15,
+        "gen_stat_6614bd81dca1dd32": 12,
+        "gen_stat_6885eaf0dfc63b4e": 17,
+        "gen_stat_6dd763165ae289f2": 7,
+        "gen_stat_6dee67e88e529f0c": 13,
+        "gen_stat_6e46cc751debab2a": 3,
+        "gen_stat_74f471278b893658": 4,
+        "gen_stat_7ae50b29fe156073": 10,
+        "gen_stat_7c2345ac2119a70c": 15,
+        "gen_stat_7d78f533a49679e8": 8,
+        "gen_stat_8224734c9acb4b65": 10,
+        "gen_stat_852f1c50bdba3e61": 15,
+        "gen_stat_85bd9892423be105": 12,
+        "gen_stat_86b4526f3831b8cf": 10,
+        "gen_stat_89fb313b996a5ad9": 13,
+        "gen_stat_91fbd4aeaee34966": 18,
+        "gen_stat_9372031afac0f492": 16,
+        "gen_stat_953cd6d64d8d9eb7": 10,
+        "gen_stat_9735ca627b05e1aa": 9,
+        "gen_stat_9c34ec5028e8e5bd": 12,
+        "gen_stat_9edca633cea98188": 12,
+        "gen_stat_9f89f32556c53254": 12,
+        "gen_stat_a2b34ae11a7dee8a": 6,
+        "gen_stat_a514c2dfa9336964": 10,
+        "gen_stat_a6c92e6bd56c2da1": 13,
+        "gen_stat_aa22c877f05f270e": 6,
+        "gen_stat_b1c6570f311858b8": 14,
+        "gen_stat_b435ac6c04156670": 6,
+        "gen_stat_b79e1e2d1849a70e": 13,
+        "gen_stat_b97435049f214aa4": 11,
+        "gen_stat_bb20c05cb4945feb": 12,
+        "gen_stat_c2323c34e927e530": 7,
+        "gen_stat_c6ae3bf27c979fe6": 15,
+        "gen_stat_c753baa2b5e9612c": 14,
+        "gen_stat_cc1f5b4f49f4b3e2": 6,
+        "gen_stat_d00c30b629402b1b": 15,
+        "gen_stat_d0996e6b5a9dadac": 9,
+        "gen_stat_d155dafd49247442": 15,
+        "gen_stat_d4edb50c03d0b2d1": 11,
+        "gen_stat_dbef08c8ee2d88f9": 2,
+        "gen_stat_e079b63e0a72fb45": 11,
+        "gen_stat_e0b71d92c2bf1126": 9,
+        "gen_stat_e175d7e7e298cec1": 16,
+        "gen_stat_e46ebd58cbd1ce7b": 7,
+        "gen_stat_e6214320570e4773": 12,
+        "gen_stat_e82ed04d3b709d38": 7,
+        "gen_stat_ea17ad29e4dba263": 12,
+        "gen_stat_eb16953dac65f235": 13,
+        "gen_stat_ec33196f6938ec07": 8,
+        "gen_stat_ec6df6fe4f381b24": 8,
+        "gen_stat_f4947e7f9d101051": 13,
+        "gen_stat_f6c3bfb1315306c6": 7,
+        "gen_stat_f714950d93e0e1c6": 13,
+        "gen_stat_f80394fef50bd8ff": 11,
+        "gen_stat_fa70490e70ccff44": 8,
+        "gen_stat_fb6e5efe009ae277": 11,
+        "gen_stat_fca373073847a0e6": 16
+      },
+      "max_count": 20,
+      "max_to_min_ratio": 10.0,
+      "mean_count": 11.0,
+      "min_count": 2,
+      "total_assignments": 1100,
+      "unique_ids": 100
+    },
+    "alignment": {
+      "aligned_rows": 1100,
+      "application_aligned_rows": 1100,
+      "application_mismatch_rows": 0,
+      "mismatch_rows": 0
+    },
+    "categories": {
+      "counts": {
+        "Автотовары": 11,
+        "Аптека": 39,
+        "Бытовая химия": 50,
+        "Галантерея и аксессуары": 36,
+        "Дом и сад": 52,
+        "Красота и гигиена": 114,
+        "Мебель": 79,
+        "Музыкальные инструменты": 138,
+        "Обувь": 18,
+        "Продукты питания": 95,
+        "Спорт и отдых": 44,
+        "Строительство и ремонт": 124,
+        "Товары для животных": 81,
+        "Хобби и творчество": 70,
+        "Электроника": 80,
+        "Ювелирные изделия": 69
+      },
+      "unique_count": 16
+    },
+    "coverage": {
+      "actual_fraction_of_expected": null,
+      "actual_only_ids": [],
+      "actual_scheduled_jaccard": 1.0,
+      "actual_unique_rule_count": 100,
+      "expected_selectable_rule_count": null,
+      "scheduled_fraction_of_expected": null,
+      "scheduled_only_ids": [],
+      "scheduled_unique_rule_count": 100
+    },
+    "product_types": {
+      "category_product_type_counts": [
+        {
+          "category": "Автотовары",
+          "count": 11,
+          "product_type": "оплетка на руль"
+        },
+        {
+          "category": "Аптека",
+          "count": 19,
+          "product_type": "астигматические линзы"
+        },
+        {
+          "category": "Аптека",
+          "count": 20,
+          "product_type": "контактные линзы"
+        },
+        {
+          "category": "Бытовая химия",
+          "count": 13,
+          "product_type": "освежитель воздуха"
+        },
+        {
+          "category": "Бытовая химия",
+          "count": 8,
+          "product_type": "пятновыводитель"
+        },
+        {
+          "category": "Бытовая химия",
+          "count": 15,
+          "product_type": "стиральный порошок"
+        },
+        {
+          "category": "Бытовая химия",
+          "count": 14,
+          "product_type": "таблетки для посудомоечных машин"
+        },
+        {
+          "category": "Галантерея и аксессуары",
+          "count": 9,
+          "product_type": "браслет"
+        },
+        {
+          "category": "Галантерея и аксессуары",
+          "count": 10,
+          "product_type": "кольцо"
+        },
+        {
+          "category": "Галантерея и аксессуары",
+          "count": 17,
+          "product_type": "часы наручные"
+        },
+        {
+          "category": "Дом и сад",
+          "count": 17,
+          "product_type": "жалюзи"
+        },
+        {
+          "category": "Дом и сад",
+          "count": 12,
+          "product_type": "постер"
+        },
+        {
+          "category": "Дом и сад",
+          "count": 9,
+          "product_type": "семена"
+        },
+        {
+          "category": "Дом и сад",
+          "count": 14,
+          "product_type": "тюль"
+        },
+        {
+          "category": "Красота и гигиена",
+          "count": 14,
+          "product_type": "бальзам для волос"
+        },
+        {
+          "category": "Красота и гигиена",
+          "count": 15,
+          "product_type": "ватные диски"
+        },
+        {
+          "category": "Красота и гигиена",
+          "count": 12,
+          "product_type": "ватные палочки"
+        },
+        {
+          "category": "Красота и гигиена",
+          "count": 18,
+          "product_type": "вода парфюмерная"
+        },
+        {
+          "category": "Красота и гигиена",
+          "count": 20,
+          "product_type": "духи-масло"
+        },
+        {
+          "category": "Красота и гигиена",
+          "count": 13,
+          "product_type": "ресницы для наращивания"
+        },
+        {
+          "category": "Красота и гигиена",
+          "count": 9,
+          "product_type": "тампоны"
+        },
+        {
+          "category": "Красота и гигиена",
+          "count": 13,
+          "product_type": "эфирное масло"
+        },
+        {
+          "category": "Мебель",
+          "count": 12,
+          "product_type": "компьютерный стол"
+        },
+        {
+          "category": "Мебель",
+          "count": 12,
+          "product_type": "кухонный уголок"
+        },
+        {
+          "category": "Мебель",
+          "count": 12,
+          "product_type": "прямой диван"
+        },
+        {
+          "category": "Мебель",
+          "count": 12,
+          "product_type": "стол производственный"
+        },
+        {
+          "category": "Мебель",
+          "count": 16,
+          "product_type": "столешница"
+        },
+        {
+          "category": "Мебель",
+          "count": 15,
+          "product_type": "угловой диван"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 10,
+          "product_type": "акустическая гитара"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 13,
+          "product_type": "верхний порожек"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 16,
+          "product_type": "звукосниматель"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 11,
+          "product_type": "палочки"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 10,
+          "product_type": "пластик"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 13,
+          "product_type": "порожек"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 9,
+          "product_type": "ремень"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 6,
+          "product_type": "смычок"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 7,
+          "product_type": "стойка"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 11,
+          "product_type": "укулеле"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 9,
+          "product_type": "чехол"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 15,
+          "product_type": "электроакустическая гитара"
+        },
+        {
+          "category": "Музыкальные инструменты",
+          "count": 8,
+          "product_type": "электрогитара"
+        },
+        {
+          "category": "Обувь",
+          "count": 8,
+          "product_type": "ботинки"
+        },
+        {
+          "category": "Обувь",
+          "count": 10,
+          "product_type": "шлепанцы"
+        },
+        {
+          "category": "Продукты питания",
+          "count": 11,
+          "product_type": "жевательная резинка"
+        },
+        {
+          "category": "Продукты питания",
+          "count": 9,
+          "product_type": "конфеты"
+        },
+        {
+          "category": "Продукты питания",
+          "count": 9,
+          "product_type": "кофе в зернах"
+        },
+        {
+          "category": "Продукты питания",
+          "count": 13,
+          "product_type": "кофе растворимый"
+        },
+        {
+          "category": "Продукты питания",
+          "count": 6,
+          "product_type": "сироп"
+        },
+        {
+          "category": "Продукты питания",
+          "count": 15,
+          "product_type": "соус"
+        },
+        {
+          "category": "Продукты питания",
+          "count": 17,
+          "product_type": "чай в пакетиках"
+        },
+        {
+          "category": "Продукты питания",
+          "count": 15,
+          "product_type": "шоколад"
+        },
+        {
+          "category": "Спорт и отдых",
+          "count": 13,
+          "product_type": "блесна"
+        },
+        {
+          "category": "Спорт и отдых",
+          "count": 15,
+          "product_type": "велокамера"
+        },
+        {
+          "category": "Спорт и отдых",
+          "count": 16,
+          "product_type": "воблер"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 11,
+          "product_type": "анкер"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 7,
+          "product_type": "верстак"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 8,
+          "product_type": "выключатель"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 5,
+          "product_type": "ключ"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 11,
+          "product_type": "кран шаровой"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 8,
+          "product_type": "ламель для кровати"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 5,
+          "product_type": "лампочка"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 5,
+          "product_type": "муфта"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 7,
+          "product_type": "отвертка"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 10,
+          "product_type": "прожектор"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 13,
+          "product_type": "рамка"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 7,
+          "product_type": "рамка электроустановочная"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 8,
+          "product_type": "розетка"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 12,
+          "product_type": "сверло"
+        },
+        {
+          "category": "Строительство и ремонт",
+          "count": 7,
+          "product_type": "светильник"
+        },
+        {
+          "category": "Товары для животных",
+          "count": 10,
+          "product_type": "грунт для аквариума"
+        },
+        {
+          "category": "Товары для животных",
+          "count": 12,
+          "product_type": "комбинезон"
+        },
+        {
+          "category": "Товары для животных",
+          "count": 12,
+          "product_type": "ошейник"
+        },
+        {
+          "category": "Товары для животных",
+          "count": 15,
+          "product_type": "переноска"
+        },
+        {
+          "category": "Товары для животных",
+          "count": 19,
+          "product_type": "поводок"
+        },
+        {
+          "category": "Товары для животных",
+          "count": 13,
+          "product_type": "рулетка"
+        },
+        {
+          "category": "Хобби и творчество",
+          "count": 7,
+          "product_type": "алмазная мозаика"
+        },
+        {
+          "category": "Хобби и творчество",
+          "count": 11,
+          "product_type": "молния"
+        },
+        {
+          "category": "Хобби и творчество",
+          "count": 16,
+          "product_type": "нитки"
+        },
+        {
+          "category": "Хобби и творчество",
+          "count": 11,
+          "product_type": "отдушка"
+        },
+        {
+          "category": "Хобби и творчество",
+          "count": 7,
+          "product_type": "спицы"
+        },
+        {
+          "category": "Хобби и творчество",
+          "count": 14,
+          "product_type": "спицы для вязания"
+        },
+        {
+          "category": "Хобби и творчество",
+          "count": 4,
+          "product_type": "холст"
+        },
+        {
+          "category": "Электроника",
+          "count": 16,
+          "product_type": "батарейка"
+        },
+        {
+          "category": "Электроника",
+          "count": 16,
+          "product_type": "микросхема"
+        },
+        {
+          "category": "Электроника",
+          "count": 12,
+          "product_type": "настольный компьютер"
+        },
+        {
+          "category": "Электроника",
+          "count": 18,
+          "product_type": "ноутбук"
+        },
+        {
+          "category": "Электроника",
+          "count": 13,
+          "product_type": "пульт ду"
+        },
+        {
+          "category": "Электроника",
+          "count": 5,
+          "product_type": "смартфон"
+        },
+        {
+          "category": "Ювелирные изделия",
+          "count": 24,
+          "product_type": "браслет"
+        },
+        {
+          "category": "Ювелирные изделия",
+          "count": 20,
+          "product_type": "кольцо"
+        },
+        {
+          "category": "Ювелирные изделия",
+          "count": 25,
+          "product_type": "серьги ювелирные"
+        }
+      ],
+      "category_product_type_unique_count": 91,
+      "counts": {
+        "акустическая гитара": 10,
+        "алмазная мозаика": 7,
+        "анкер": 11,
+        "астигматические линзы": 19,
+        "бальзам для волос": 14,
+        "батарейка": 16,
+        "блесна": 13,
+        "ботинки": 8,
+        "браслет": 33,
+        "ватные диски": 15,
+        "ватные палочки": 12,
+        "велокамера": 15,
+        "верстак": 7,
+        "верхний порожек": 13,
+        "воблер": 16,
+        "вода парфюмерная": 18,
+        "выключатель": 8,
+        "грунт для аквариума": 10,
+        "духи-масло": 20,
+        "жалюзи": 17,
+        "жевательная резинка": 11,
+        "звукосниматель": 16,
+        "ключ": 5,
+        "кольцо": 30,
+        "комбинезон": 12,
+        "компьютерный стол": 12,
+        "контактные линзы": 20,
+        "конфеты": 9,
+        "кофе в зернах": 9,
+        "кофе растворимый": 13,
+        "кран шаровой": 11,
+        "кухонный уголок": 12,
+        "ламель для кровати": 8,
+        "лампочка": 5,
+        "микросхема": 16,
+        "молния": 11,
+        "муфта": 5,
+        "настольный компьютер": 12,
+        "нитки": 16,
+        "ноутбук": 18,
+        "оплетка на руль": 11,
+        "освежитель воздуха": 13,
+        "отвертка": 7,
+        "отдушка": 11,
+        "ошейник": 12,
+        "палочки": 11,
+        "переноска": 15,
+        "пластик": 10,
+        "поводок": 19,
+        "порожек": 13,
+        "постер": 12,
+        "прожектор": 10,
+        "прямой диван": 12,
+        "пульт ду": 13,
+        "пятновыводитель": 8,
+        "рамка": 13,
+        "рамка электроустановочная": 7,
+        "ремень": 9,
+        "ресницы для наращивания": 13,
+        "розетка": 8,
+        "рулетка": 13,
+        "сверло": 12,
+        "светильник": 7,
+        "семена": 9,
+        "серьги ювелирные": 25,
+        "сироп": 6,
+        "смартфон": 5,
+        "смычок": 6,
+        "соус": 15,
+        "спицы": 7,
+        "спицы для вязания": 14,
+        "стиральный порошок": 15,
+        "стойка": 7,
+        "стол производственный": 12,
+        "столешница": 16,
+        "таблетки для посудомоечных машин": 14,
+        "тампоны": 9,
+        "тюль": 14,
+        "угловой диван": 15,
+        "укулеле": 11,
+        "холст": 4,
+        "чай в пакетиках": 17,
+        "часы наручные": 17,
+        "чехол": 9,
+        "шлепанцы": 10,
+        "шоколад": 15,
+        "электроакустическая гитара": 15,
+        "электрогитара": 8,
+        "эфирное масло": 13
+      },
+      "unique_count": 89
+    },
+    "scheduled": {
+      "coefficient_of_variation": 0.30940706532259127,
+      "counts": {
+        "gen_stat_02d08a2bf2c5c478": 9,
+        "gen_stat_05d067b8debb19d2": 15,
+        "gen_stat_0bf42866b169c3f2": 13,
+        "gen_stat_0cb1577b473cdf55": 11,
+        "gen_stat_0eae3999f36202a0": 7,
+        "gen_stat_1156d16314b406d8": 8,
+        "gen_stat_16489f45cfca37c9": 11,
+        "gen_stat_1859923e35e4f8be": 9,
+        "gen_stat_19810ba02ddf5cb4": 12,
+        "gen_stat_1a3dcb0b7448febc": 5,
+        "gen_stat_1a4a2510f4ac4cbc": 5,
+        "gen_stat_2006394e9f73a316": 20,
+        "gen_stat_20150c2279d6c39f": 9,
+        "gen_stat_206f34050e889dca": 12,
+        "gen_stat_226616ec5c5023fc": 14,
+        "gen_stat_22f8f3682a53d671": 15,
+        "gen_stat_27a4df2e379281e1": 17,
+        "gen_stat_28319d64284a9128": 9,
+        "gen_stat_28c84b25a5c29adb": 5,
+        "gen_stat_29c0577b6751e4b4": 7,
+        "gen_stat_2b8ca69c6cc83f90": 13,
+        "gen_stat_2ffa1bd928ec9dcb": 15,
+        "gen_stat_30e550d025d2c124": 10,
+        "gen_stat_312d73e0f22eab27": 20,
+        "gen_stat_32d64937471ce828": 14,
+        "gen_stat_35f6fb5502de62b9": 9,
+        "gen_stat_382f0293a0c9df9a": 19,
+        "gen_stat_3d12b697a2a316a3": 11,
+        "gen_stat_3da4dff0e3d599ef": 16,
+        "gen_stat_3f3abdbb0623b9bc": 16,
+        "gen_stat_43a7cd9ad984aacf": 18,
+        "gen_stat_453b05e4f170a1a0": 17,
+        "gen_stat_48bacd02def2374c": 10,
+        "gen_stat_4b19c32984e67278": 13,
+        "gen_stat_4ca244067234664c": 18,
+        "gen_stat_4e002802a99ac8b9": 12,
+        "gen_stat_530c8f3ec91602a0": 8,
+        "gen_stat_53131ef0cbe00e75": 16,
+        "gen_stat_55b5ffa6af53b701": 15,
+        "gen_stat_575f3a5a41bcaccd": 8,
+        "gen_stat_57d8d17f597c7e32": 5,
+        "gen_stat_5eaa15eda42deb52": 15,
+        "gen_stat_5f860edacf7b2e08": 10,
+        "gen_stat_609933830ff5d630": 15,
+        "gen_stat_6614bd81dca1dd32": 12,
+        "gen_stat_6885eaf0dfc63b4e": 17,
+        "gen_stat_6dd763165ae289f2": 7,
+        "gen_stat_6dee67e88e529f0c": 13,
+        "gen_stat_6e46cc751debab2a": 14,
+        "gen_stat_74f471278b893658": 4,
+        "gen_stat_7ae50b29fe156073": 10,
+        "gen_stat_7c2345ac2119a70c": 15,
+        "gen_stat_7d78f533a49679e8": 8,
+        "gen_stat_8224734c9acb4b65": 10,
+        "gen_stat_852f1c50bdba3e61": 15,
+        "gen_stat_85bd9892423be105": 12,
+        "gen_stat_86b4526f3831b8cf": 10,
+        "gen_stat_89fb313b996a5ad9": 13,
+        "gen_stat_91fbd4aeaee34966": 18,
+        "gen_stat_9372031afac0f492": 16,
+        "gen_stat_953cd6d64d8d9eb7": 10,
+        "gen_stat_9735ca627b05e1aa": 9,
+        "gen_stat_9c34ec5028e8e5bd": 12,
+        "gen_stat_9edca633cea98188": 12,
+        "gen_stat_9f89f32556c53254": 12,
+        "gen_stat_a2b34ae11a7dee8a": 6,
+        "gen_stat_a514c2dfa9336964": 16,
+        "gen_stat_a6c92e6bd56c2da1": 13,
+        "gen_stat_aa22c877f05f270e": 6,
+        "gen_stat_b1c6570f311858b8": 14,
+        "gen_stat_b435ac6c04156670": 11,
+        "gen_stat_b79e1e2d1849a70e": 13,
+        "gen_stat_b97435049f214aa4": 11,
+        "gen_stat_bb20c05cb4945feb": 18,
+        "gen_stat_c2323c34e927e530": 7,
+        "gen_stat_c6ae3bf27c979fe6": 15,
+        "gen_stat_c753baa2b5e9612c": 14,
+        "gen_stat_cc1f5b4f49f4b3e2": 10,
+        "gen_stat_d00c30b629402b1b": 15,
+        "gen_stat_d0996e6b5a9dadac": 17,
+        "gen_stat_d155dafd49247442": 15,
+        "gen_stat_d4edb50c03d0b2d1": 11,
+        "gen_stat_dbef08c8ee2d88f9": 13,
+        "gen_stat_e079b63e0a72fb45": 11,
+        "gen_stat_e0b71d92c2bf1126": 9,
+        "gen_stat_e175d7e7e298cec1": 16,
+        "gen_stat_e46ebd58cbd1ce7b": 7,
+        "gen_stat_e6214320570e4773": 12,
+        "gen_stat_e82ed04d3b709d38": 7,
+        "gen_stat_ea17ad29e4dba263": 12,
+        "gen_stat_eb16953dac65f235": 13,
+        "gen_stat_ec33196f6938ec07": 8,
+        "gen_stat_ec6df6fe4f381b24": 14,
+        "gen_stat_f4947e7f9d101051": 13,
+        "gen_stat_f6c3bfb1315306c6": 7,
+        "gen_stat_f714950d93e0e1c6": 13,
+        "gen_stat_f80394fef50bd8ff": 11,
+        "gen_stat_fa70490e70ccff44": 8,
+        "gen_stat_fb6e5efe009ae277": 11,
+        "gen_stat_fca373073847a0e6": 16
+      },
+      "max_count": 20,
+      "max_to_min_ratio": 5.0,
+      "mean_count": 11.98,
+      "min_count": 4,
+      "total_assignments": 1198,
+      "unique_ids": 100
+    },
+    "scheduled_primary": {
+      "coefficient_of_variation": 0.356984616655852,
+      "counts": {
+        "gen_stat_02d08a2bf2c5c478": 9,
+        "gen_stat_05d067b8debb19d2": 9,
+        "gen_stat_0bf42866b169c3f2": 13,
+        "gen_stat_0cb1577b473cdf55": 11,
+        "gen_stat_0eae3999f36202a0": 7,
+        "gen_stat_1156d16314b406d8": 8,
+        "gen_stat_16489f45cfca37c9": 4,
+        "gen_stat_1859923e35e4f8be": 9,
+        "gen_stat_19810ba02ddf5cb4": 12,
+        "gen_stat_1a3dcb0b7448febc": 5,
+        "gen_stat_1a4a2510f4ac4cbc": 5,
+        "gen_stat_2006394e9f73a316": 20,
+        "gen_stat_20150c2279d6c39f": 9,
+        "gen_stat_206f34050e889dca": 12,
+        "gen_stat_226616ec5c5023fc": 14,
+        "gen_stat_22f8f3682a53d671": 15,
+        "gen_stat_27a4df2e379281e1": 17,
+        "gen_stat_28319d64284a9128": 9,
+        "gen_stat_28c84b25a5c29adb": 5,
+        "gen_stat_29c0577b6751e4b4": 7,
+        "gen_stat_2b8ca69c6cc83f90": 13,
+        "gen_stat_2ffa1bd928ec9dcb": 9,
+        "gen_stat_30e550d025d2c124": 10,
+        "gen_stat_312d73e0f22eab27": 20,
+        "gen_stat_32d64937471ce828": 14,
+        "gen_stat_35f6fb5502de62b9": 9,
+        "gen_stat_382f0293a0c9df9a": 19,
+        "gen_stat_3d12b697a2a316a3": 11,
+        "gen_stat_3da4dff0e3d599ef": 16,
+        "gen_stat_3f3abdbb0623b9bc": 16,
+        "gen_stat_43a7cd9ad984aacf": 18,
+        "gen_stat_453b05e4f170a1a0": 17,
+        "gen_stat_48bacd02def2374c": 10,
+        "gen_stat_4b19c32984e67278": 13,
+        "gen_stat_4ca244067234664c": 14,
+        "gen_stat_4e002802a99ac8b9": 12,
+        "gen_stat_530c8f3ec91602a0": 8,
+        "gen_stat_53131ef0cbe00e75": 7,
+        "gen_stat_55b5ffa6af53b701": 15,
+        "gen_stat_575f3a5a41bcaccd": 8,
+        "gen_stat_57d8d17f597c7e32": 5,
+        "gen_stat_5eaa15eda42deb52": 11,
+        "gen_stat_5f860edacf7b2e08": 5,
+        "gen_stat_609933830ff5d630": 15,
+        "gen_stat_6614bd81dca1dd32": 12,
+        "gen_stat_6885eaf0dfc63b4e": 17,
+        "gen_stat_6dd763165ae289f2": 7,
+        "gen_stat_6dee67e88e529f0c": 13,
+        "gen_stat_6e46cc751debab2a": 3,
+        "gen_stat_74f471278b893658": 4,
+        "gen_stat_7ae50b29fe156073": 10,
+        "gen_stat_7c2345ac2119a70c": 15,
+        "gen_stat_7d78f533a49679e8": 8,
+        "gen_stat_8224734c9acb4b65": 10,
+        "gen_stat_852f1c50bdba3e61": 15,
+        "gen_stat_85bd9892423be105": 12,
+        "gen_stat_86b4526f3831b8cf": 10,
+        "gen_stat_89fb313b996a5ad9": 13,
+        "gen_stat_91fbd4aeaee34966": 18,
+        "gen_stat_9372031afac0f492": 16,
+        "gen_stat_953cd6d64d8d9eb7": 10,
+        "gen_stat_9735ca627b05e1aa": 9,
+        "gen_stat_9c34ec5028e8e5bd": 12,
+        "gen_stat_9edca633cea98188": 12,
+        "gen_stat_9f89f32556c53254": 12,
+        "gen_stat_a2b34ae11a7dee8a": 6,
+        "gen_stat_a514c2dfa9336964": 10,
+        "gen_stat_a6c92e6bd56c2da1": 13,
+        "gen_stat_aa22c877f05f270e": 6,
+        "gen_stat_b1c6570f311858b8": 14,
+        "gen_stat_b435ac6c04156670": 6,
+        "gen_stat_b79e1e2d1849a70e": 13,
+        "gen_stat_b97435049f214aa4": 11,
+        "gen_stat_bb20c05cb4945feb": 12,
+        "gen_stat_c2323c34e927e530": 7,
+        "gen_stat_c6ae3bf27c979fe6": 15,
+        "gen_stat_c753baa2b5e9612c": 14,
+        "gen_stat_cc1f5b4f49f4b3e2": 6,
+        "gen_stat_d00c30b629402b1b": 15,
+        "gen_stat_d0996e6b5a9dadac": 9,
+        "gen_stat_d155dafd49247442": 15,
+        "gen_stat_d4edb50c03d0b2d1": 11,
+        "gen_stat_dbef08c8ee2d88f9": 2,
+        "gen_stat_e079b63e0a72fb45": 11,
+        "gen_stat_e0b71d92c2bf1126": 9,
+        "gen_stat_e175d7e7e298cec1": 16,
+        "gen_stat_e46ebd58cbd1ce7b": 7,
+        "gen_stat_e6214320570e4773": 12,
+        "gen_stat_e82ed04d3b709d38": 7,
+        "gen_stat_ea17ad29e4dba263": 12,
+        "gen_stat_eb16953dac65f235": 13,
+        "gen_stat_ec33196f6938ec07": 8,
+        "gen_stat_ec6df6fe4f381b24": 8,
+        "gen_stat_f4947e7f9d101051": 13,
+        "gen_stat_f6c3bfb1315306c6": 7,
+        "gen_stat_f714950d93e0e1c6": 13,
+        "gen_stat_f80394fef50bd8ff": 11,
+        "gen_stat_fa70490e70ccff44": 8,
+        "gen_stat_fb6e5efe009ae277": 11,
+        "gen_stat_fca373073847a0e6": 16
+      },
+      "max_count": 20,
+      "max_to_min_ratio": 10.0,
+      "mean_count": 11.0,
+      "min_count": 2,
+      "total_assignments": 1100,
+      "unique_ids": 100
+    },
+    "scheduled_profiles": {
+      "coefficient_of_variation": 0.30940706532259127,
+      "counts": {
+        "[\"gen_stat_02d08a2bf2c5c478\",\"продукты питания\",\"кофе в зернах\"]": 9,
+        "[\"gen_stat_05d067b8debb19d2\",\"мебель\",\"столешница\"]": 15,
+        "[\"gen_stat_0bf42866b169c3f2\",\"товары для животных\",\"рулетка\"]": 13,
+        "[\"gen_stat_0cb1577b473cdf55\",\"строительство и ремонт\",\"анкер\"]": 11,
+        "[\"gen_stat_0eae3999f36202a0\",\"хобби и творчество\",\"спицы\"]": 7,
+        "[\"gen_stat_1156d16314b406d8\",\"бытовая химия\",\"пятновыводитель\"]": 8,
+        "[\"gen_stat_16489f45cfca37c9\",\"ювелирные изделия\",\"браслет\"]": 11,
+        "[\"gen_stat_1859923e35e4f8be\",\"музыкальные инструменты\",\"чехол\"]": 9,
+        "[\"gen_stat_19810ba02ddf5cb4\",\"мебель\",\"кухонный уголок\"]": 12,
+        "[\"gen_stat_1a3dcb0b7448febc\",\"строительство и ремонт\",\"лампочка\"]": 5,
+        "[\"gen_stat_1a4a2510f4ac4cbc\",\"строительство и ремонт\",\"муфта\"]": 5,
+        "[\"gen_stat_2006394e9f73a316\",\"аптека\",\"контактные линзы\"]": 20,
+        "[\"gen_stat_20150c2279d6c39f\",\"красота и гигиена\",\"тампоны\"]": 9,
+        "[\"gen_stat_206f34050e889dca\",\"дом и сад\",\"постер\"]": 12,
+        "[\"gen_stat_226616ec5c5023fc\",\"бытовая химия\",\"таблетки для посудомоечных машин\"]": 14,
+        "[\"gen_stat_22f8f3682a53d671\",\"мебель\",\"угловой диван\"]": 15,
+        "[\"gen_stat_27a4df2e379281e1\",\"галантерея и аксессуары\",\"часы наручные\"]": 17,
+        "[\"gen_stat_28319d64284a9128\",\"галантерея и аксессуары\",\"браслет\"]": 9,
+        "[\"gen_stat_28c84b25a5c29adb\",\"электроника\",\"смартфон\"]": 5,
+        "[\"gen_stat_29c0577b6751e4b4\",\"строительство и ремонт\",\"светильник\"]": 7,
+        "[\"gen_stat_2b8ca69c6cc83f90\",\"музыкальные инструменты\",\"верхний порожек\"]": 13,
+        "[\"gen_stat_2ffa1bd928ec9dcb\",\"ювелирные изделия\",\"серьги ювелирные\"]": 15,
+        "[\"gen_stat_30e550d025d2c124\",\"обувь\",\"шлепанцы\"]": 10,
+        "[\"gen_stat_312d73e0f22eab27\",\"красота и гигиена\",\"духи-масло\"]": 20,
+        "[\"gen_stat_32d64937471ce828\",\"дом и сад\",\"тюль\"]": 14,
+        "[\"gen_stat_35f6fb5502de62b9\",\"музыкальные инструменты\",\"ремень\"]": 9,
+        "[\"gen_stat_382f0293a0c9df9a\",\"аптека\",\"астигматические линзы\"]": 19,
+        "[\"gen_stat_3d12b697a2a316a3\",\"музыкальные инструменты\",\"укулеле\"]": 11,
+        "[\"gen_stat_3da4dff0e3d599ef\",\"спорт и отдых\",\"воблер\"]": 16,
+        "[\"gen_stat_3f3abdbb0623b9bc\",\"электроника\",\"микросхема\"]": 16,
+        "[\"gen_stat_43a7cd9ad984aacf\",\"красота и гигиена\",\"вода парфюмерная\"]": 18,
+        "[\"gen_stat_453b05e4f170a1a0\",\"дом и сад\",\"жалюзи\"]": 17,
+        "[\"gen_stat_48bacd02def2374c\",\"музыкальные инструменты\",\"акустическая гитара\"]": 10,
+        "[\"gen_stat_4b19c32984e67278\",\"строительство и ремонт\",\"рамка\"]": 13,
+        "[\"gen_stat_4ca244067234664c\",\"ювелирные изделия\",\"серьги ювелирные\"]": 18,
+        "[\"gen_stat_4e002802a99ac8b9\",\"мебель\",\"компьютерный стол\"]": 12,
+        "[\"gen_stat_530c8f3ec91602a0\",\"строительство и ремонт\",\"розетка\"]": 8,
+        "[\"gen_stat_53131ef0cbe00e75\",\"мебель\",\"столешница\"]": 16,
+        "[\"gen_stat_55b5ffa6af53b701\",\"спорт и отдых\",\"велокамера\"]": 15,
+        "[\"gen_stat_575f3a5a41bcaccd\",\"обувь\",\"ботинки\"]": 8,
+        "[\"gen_stat_57d8d17f597c7e32\",\"строительство и ремонт\",\"ключ\"]": 5,
+        "[\"gen_stat_5eaa15eda42deb52\",\"ювелирные изделия\",\"кольцо\"]": 15,
+        "[\"gen_stat_5f860edacf7b2e08\",\"автотовары\",\"оплетка на руль\"]": 10,
+        "[\"gen_stat_609933830ff5d630\",\"музыкальные инструменты\",\"электроакустическая гитара\"]": 15,
+        "[\"gen_stat_6614bd81dca1dd32\",\"товары для животных\",\"комбинезон\"]": 12,
+        "[\"gen_stat_6885eaf0dfc63b4e\",\"продукты питания\",\"чай в пакетиках\"]": 17,
+        "[\"gen_stat_6dd763165ae289f2\",\"хобби и творчество\",\"алмазная мозаика\"]": 7,
+        "[\"gen_stat_6dee67e88e529f0c\",\"бытовая химия\",\"освежитель воздуха\"]": 13,
+        "[\"gen_stat_6e46cc751debab2a\",\"ювелирные изделия\",\"кольцо\"]": 14,
+        "[\"gen_stat_74f471278b893658\",\"хобби и творчество\",\"холст\"]": 4,
+        "[\"gen_stat_7ae50b29fe156073\",\"товары для животных\",\"грунт для аквариума\"]": 10,
+        "[\"gen_stat_7c2345ac2119a70c\",\"бытовая химия\",\"стиральный порошок\"]": 15,
+        "[\"gen_stat_7d78f533a49679e8\",\"строительство и ремонт\",\"выключатель\"]": 8,
+        "[\"gen_stat_8224734c9acb4b65\",\"музыкальные инструменты\",\"пластик\"]": 10,
+        "[\"gen_stat_852f1c50bdba3e61\",\"продукты питания\",\"соус\"]": 15,
+        "[\"gen_stat_85bd9892423be105\",\"мебель\",\"стол производственный\"]": 12,
+        "[\"gen_stat_86b4526f3831b8cf\",\"галантерея и аксессуары\",\"кольцо\"]": 10,
+        "[\"gen_stat_89fb313b996a5ad9\",\"продукты питания\",\"кофе растворимый\"]": 13,
+        "[\"gen_stat_91fbd4aeaee34966\",\"электроника\",\"ноутбук\"]": 18,
+        "[\"gen_stat_9372031afac0f492\",\"электроника\",\"батарейка\"]": 16,
+        "[\"gen_stat_953cd6d64d8d9eb7\",\"строительство и ремонт\",\"прожектор\"]": 10,
+        "[\"gen_stat_9735ca627b05e1aa\",\"продукты питания\",\"конфеты\"]": 9,
+        "[\"gen_stat_9c34ec5028e8e5bd\",\"электроника\",\"настольный компьютер\"]": 12,
+        "[\"gen_stat_9edca633cea98188\",\"мебель\",\"прямой диван\"]": 12,
+        "[\"gen_stat_9f89f32556c53254\",\"строительство и ремонт\",\"сверло\"]": 12,
+        "[\"gen_stat_a2b34ae11a7dee8a\",\"продукты питания\",\"сироп\"]": 6,
+        "[\"gen_stat_a514c2dfa9336964\",\"товары для животных\",\"поводок\"]": 16,
+        "[\"gen_stat_a6c92e6bd56c2da1\",\"красота и гигиена\",\"эфирное масло\"]": 13,
+        "[\"gen_stat_aa22c877f05f270e\",\"музыкальные инструменты\",\"смычок\"]": 6,
+        "[\"gen_stat_b1c6570f311858b8\",\"хобби и творчество\",\"спицы для вязания\"]": 14,
+        "[\"gen_stat_b435ac6c04156670\",\"ювелирные изделия\",\"кольцо\"]": 11,
+        "[\"gen_stat_b79e1e2d1849a70e\",\"красота и гигиена\",\"ресницы для наращивания\"]": 13,
+        "[\"gen_stat_b97435049f214aa4\",\"хобби и творчество\",\"молния\"]": 11,
+        "[\"gen_stat_bb20c05cb4945feb\",\"ювелирные изделия\",\"браслет\"]": 18,
+        "[\"gen_stat_c2323c34e927e530\",\"строительство и ремонт\",\"верстак\"]": 7,
+        "[\"gen_stat_c6ae3bf27c979fe6\",\"красота и гигиена\",\"ватные диски\"]": 15,
+        "[\"gen_stat_c753baa2b5e9612c\",\"красота и гигиена\",\"бальзам для волос\"]": 14,
+        "[\"gen_stat_cc1f5b4f49f4b3e2\",\"автотовары\",\"оплетка на руль\"]": 10,
+        "[\"gen_stat_d00c30b629402b1b\",\"товары для животных\",\"переноска\"]": 15,
+        "[\"gen_stat_d0996e6b5a9dadac\",\"товары для животных\",\"поводок\"]": 17,
+        "[\"gen_stat_d155dafd49247442\",\"продукты питания\",\"шоколад\"]": 15,
+        "[\"gen_stat_d4edb50c03d0b2d1\",\"строительство и ремонт\",\"кран шаровой\"]": 11,
+        "[\"gen_stat_dbef08c8ee2d88f9\",\"ювелирные изделия\",\"серьги ювелирные\"]": 13,
+        "[\"gen_stat_e079b63e0a72fb45\",\"продукты питания\",\"жевательная резинка\"]": 11,
+        "[\"gen_stat_e0b71d92c2bf1126\",\"дом и сад\",\"семена\"]": 9,
+        "[\"gen_stat_e175d7e7e298cec1\",\"музыкальные инструменты\",\"звукосниматель\"]": 16,
+        "[\"gen_stat_e46ebd58cbd1ce7b\",\"строительство и ремонт\",\"рамка электроустановочная\"]": 7,
+        "[\"gen_stat_e6214320570e4773\",\"красота и гигиена\",\"ватные палочки\"]": 12,
+        "[\"gen_stat_e82ed04d3b709d38\",\"музыкальные инструменты\",\"стойка\"]": 7,
+        "[\"gen_stat_ea17ad29e4dba263\",\"товары для животных\",\"ошейник\"]": 12,
+        "[\"gen_stat_eb16953dac65f235\",\"электроника\",\"пульт ду\"]": 13,
+        "[\"gen_stat_ec33196f6938ec07\",\"музыкальные инструменты\",\"электрогитара\"]": 8,
+        "[\"gen_stat_ec6df6fe4f381b24\",\"ювелирные изделия\",\"браслет\"]": 14,
+        "[\"gen_stat_f4947e7f9d101051\",\"музыкальные инструменты\",\"порожек\"]": 13,
+        "[\"gen_stat_f6c3bfb1315306c6\",\"строительство и ремонт\",\"отвертка\"]": 7,
+        "[\"gen_stat_f714950d93e0e1c6\",\"спорт и отдых\",\"блесна\"]": 13,
+        "[\"gen_stat_f80394fef50bd8ff\",\"хобби и творчество\",\"отдушка\"]": 11,
+        "[\"gen_stat_fa70490e70ccff44\",\"строительство и ремонт\",\"ламель для кровати\"]": 8,
+        "[\"gen_stat_fb6e5efe009ae277\",\"музыкальные инструменты\",\"палочки\"]": 11,
+        "[\"gen_stat_fca373073847a0e6\",\"хобби и творчество\",\"нитки\"]": 16
+      },
+      "max_count": 20,
+      "max_to_min_ratio": 5.0,
+      "mean_count": 11.98,
+      "min_count": 4,
+      "total_assignments": 1198,
+      "unique_ids": 100
+    },
+    "two_rule": {
+      "actual_fraction": 0.0890909090909091,
+      "actual_tasks": 98,
+      "scheduled_fraction": 0.0890909090909091,
+      "scheduled_tasks": 98
+    }
+  },
+  "sample_affected_task_indices": [
+    0,
+    1,
+    2,
+    3,
+    4,
+    5,
+    6,
+    7,
+    8,
+    9,
+    10,
+    11,
+    12,
+    13,
+    14,
+    15,
+    16,
+    17,
+    18,
+    19
+  ],
+  "semantic_signatures": {
+    "cap": 2,
+    "cap_source": "default",
+    "derived_rows": 1100,
+    "expected_version": "category_product_type_canonical_applications_v2",
+    "max_count": 2,
+    "observed_versions": [
+      "category_product_type_canonical_applications_v2"
+    ],
+    "over_cap_signature_count": 0,
+    "over_cap_task_count": 0,
+    "reported_max_count": null,
+    "reported_unique_count": null,
+    "stored_match_rows": 1100,
+    "stored_rows": 1100,
+    "summary_consistent": null,
+    "top_repeated_signatures": [
+      {
+        "count": 2,
+        "sample_task_indices": [
+          257,
+          532
+        ],
+        "signature": "003bd2f2387361f87badcc00c2eca74f2d017d24118117a196c2d90c7f5a421b"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          36,
+          202
+        ],
+        "signature": "01989b0f3f0d3b74cd14b0c42e5d90cdd75ac10b6458a4b0dadf92f5801f307e"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          288,
+          742
+        ],
+        "signature": "0438c626cb5ef066eb3c04e6b2b942bc16287c7f7d3ac47d13d607037e244256"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          40,
+          176
+        ],
+        "signature": "051dcc88c013f2baf4b7c017dc11d7635a0ba76905027253622a7c14fb9a6519"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          404,
+          1112
+        ],
+        "signature": "06ed7d6b44aa8ff9f8f928a9f6d65398f9bb6da5edd0c25fe1408a1bf24acb62"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          690,
+          701
+        ],
+        "signature": "07a0e94bdbaed217c3e67d03e2cf0004d5b5c1a196961bd5971014058f6733a4"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          223,
+          327
+        ],
+        "signature": "0a34ec87ab81ab52efc921c830353d41c6deeba81102c0987a45f422d4c85a75"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          10,
+          700
+        ],
+        "signature": "0bf2ca4649934aed134bebf9b1b2d3b4933e33b0e9b4f2e37a82974d0e795be0"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          454,
+          507
+        ],
+        "signature": "0cb31abd4d772bd7494f736c3be36a9aed557925df0ff11cd437a192b05dc882"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          911,
+          928
+        ],
+        "signature": "0d1623a57931b8a39c4f3e3eb0f8804f913ee210f486add5ba07aab624ee3900"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          702,
+          1135
+        ],
+        "signature": "0d9b827f1fcbf88e53137f47ccada6b18bc30d51fa78b5d89c54decd379d2082"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          4,
+          241
+        ],
+        "signature": "0e2fbb18a6f14a61b721e563c56da8b51626626be44e0ec25554ee4e1f3afa39"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          816,
+          1002
+        ],
+        "signature": "0e7b08abfb3d1ee8c96b84bad97114a37340711640f877c18d0d4851d5d0aacf"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          750,
+          935
+        ],
+        "signature": "0fdb373a90358c2470c09ccf0d5de80a92635f093858aec4866b6bc426b98f11"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          322,
+          773
+        ],
+        "signature": "10244d6e20a8b532d3e6b338a65e98479dfd0f0b374c744b33a361d3999d8c10"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          328,
+          571
+        ],
+        "signature": "116958d55d0ee5a32e33403cc5cb4ac59f4faf75239eeafd41562a44781b3338"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          97,
+          230
+        ],
+        "signature": "12291af8d8fe002ee6693076c09f956b48f4967c9b9eae4712a3f6b658aacc39"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          567,
+          586
+        ],
+        "signature": "1499246e329cd638d5a47c719d0bca0634899ba801294d93cf04a0e30455d80e"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          647,
+          921
+        ],
+        "signature": "16251c3c2f51cc2589405a45982a788917ac6f8a3abe657dcc9ba849bc0b6508"
+      },
+      {
+        "count": 2,
+        "sample_task_indices": [
+          664,
+          696
+        ],
+        "signature": "162fae1745d46a49c8f32e153dadb9ab4bf03f984f05cc65eea20d6398564636"
+      }
+    ],
+    "unique_count": 901,
+    "value_count_histogram": {
+      "1": 702,
+      "2": 199
+    },
+    "value_counts_summary": {
+      "cap": 2,
+      "max_count": 2,
+      "unique_count": 901,
+      "within_cap": true
+    },
+    "within_cap": true
+  },
+  "source_dir": "/Users/aekuleshevskii/product_matching/item_pipeline/artifacts/rule_first_pairs_stat_p80_scoped_v3_diversity_normalized_v2_raw5200",
+  "summary_present": false,
+  "version": "generated_statistical_pairs_audit_v2"
+}

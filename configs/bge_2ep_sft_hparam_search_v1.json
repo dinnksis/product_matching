@@ -1,0 +1,426 @@
+{
+  "schema_version": 1,
+  "campaign": "bge_2ep_sft_oodtrain_v1",
+  "objective": "Tune supervised human fine-tuning for the frozen BGE checkpoint after two pretraining epochs while training on all former OOD human pairs.",
+  "execution_support": {
+    "status": "design_only",
+    "runnable": false,
+    "reason": "A BGE-specific notebook generator, validator, launcher, summarizer and controller are not part of this plan-only change. MiniLM execution code must not consume this plan."
+  },
+  "initial_checkpoint": {
+    "path": "model/pretrain_bge_2ep",
+    "architecture": "XLMRobertaForSequenceClassification",
+    "parameter_count": 567755777,
+    "dtype_on_disk": "float32",
+    "config": {
+      "hidden_size": 1024,
+      "num_hidden_layers": 24,
+      "num_attention_heads": 16,
+      "intermediate_size": 4096,
+      "vocab_size": 250002,
+      "max_position_embeddings": 8194,
+      "hidden_dropout_prob": 0.1,
+      "attention_probs_dropout_prob": 0.1,
+      "classifier_dropout": null
+    },
+    "files_sha256": {
+      "config.json": "3f143138299caf72270c79814d1f0e3c38fc168e2d30f1e6cc4c70f6cdb481f5",
+      "model.safetensors": "c21ccfcd5de310ca0328620bf8ba09e838dbe3f6394be656bd7fec16ad8377d1",
+      "special_tokens_map.json": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835",
+      "tokenizer.json": "8bf8afbfd11306bd872018c53bfdf2e160a56f8edbcf49933324404791c148d3",
+      "tokenizer_config.json": "b87c8703482b0300d3da30e201519aa641f6a450f5eb5bf1e624afbf70c74d80"
+    }
+  },
+  "data_policy": {
+    "dataset_ref": "alexproger23/product-matching-validation-splits-v1",
+    "items": {
+      "path": "prepared/validation_splits_v1/human/items.parquet",
+      "rows": 711304,
+      "sha256": "a787b58485632bad9039ad04f5b6210080e8d91e0c03e3a5c79d678962a14b1d"
+    },
+    "train_sources_in_exact_concat_order": [
+      {
+        "role": "original_human_train",
+        "path": "prepared/validation_splits_v1/human/train_pairs.parquet",
+        "rows": 306669,
+        "positives": 80136,
+        "sha256": "ffc8ac7283ca0fe1ac8a39e8ca31cb4fa069465576eeb636005c72636935e616"
+      },
+      {
+        "role": "former_ood_promoted_to_human_train",
+        "path": "prepared/validation_splits_v1/human/ood_validation_pairs.parquet",
+        "rows": 41171,
+        "positives": 9155,
+        "categories": [
+          "Бытовая техника",
+          "Одежда"
+        ],
+        "sha256": "e12eebba6afd6c307bd70475eea29d80df513280b262328cf819bac65e8b22a4"
+      }
+    ],
+    "augmented_train": {
+      "construction": "Concatenate the two declared sources in order, preserve every source row, reset the row index and perform no sampling or weighting.",
+      "rows": 347840,
+      "positives": 89291,
+      "positive_rate": 0.25670135694572216,
+      "categories": 20,
+      "required_columns": [
+        "id1",
+        "id2",
+        "target"
+      ],
+      "label_source_values": {
+        "original_human_train": 306669,
+        "former_ood_human": 41171
+      },
+      "integrity_checks": [
+        "all item IDs resolve in the declared items catalogue",
+        "no self-pairs",
+        "no duplicate unordered pairs within or across sources",
+        "no cross-category pairs",
+        "binary targets only",
+        "no item ID overlap with IID or hard validation"
+      ]
+    },
+    "validation": {
+      "iid": {
+        "path": "prepared/validation_splits_v1/human/iid_validation_pairs.parquet",
+        "rows": 12000,
+        "positives": 3118,
+        "categories": 18,
+        "sha256": "8964422e8c3b254a355d35b5fb60568fed4b6532abb1e8918aba1050f7ecb798",
+        "role": "primary_selection"
+      },
+      "hard": {
+        "path": "prepared/validation_splits_v1/human/hard_validation_pairs.parquet",
+        "rows": 5814,
+        "positives": 1481,
+        "categories": 18,
+        "sha256": "6731ff9c41100b0ea21d6868cd91cbfab1038832d500753cbab8d4e6962fb064",
+        "role": "diagnostic_only"
+      },
+      "ood": {
+        "role": "disabled_because_promoted_to_train",
+        "evaluate": false,
+        "source_path_promoted_to_train": "prepared/validation_splits_v1/human/ood_validation_pairs.parquet",
+        "sheet_metric_value": -1,
+        "sheet_delta_value": -1,
+        "statistical_fields": null,
+        "warning": "There is no independent held-out estimate for the two promoted categories in this campaign."
+      }
+    },
+    "manifest": {
+      "path": "prepared/validation_splits_v1/manifest.json",
+      "sha256": "b64a1902d86c9ad896a626b2a17bf018341f1d9c5fefa124834b525c84808f3c"
+    }
+  },
+  "reporting": {
+    "primary_sheet": "sft_exps",
+    "baseline_policy": "Create a new BGE baseline run ID and compare every candidate only with that BGE baseline or a stage-selected BGE anchor.",
+    "cross_campaign_comparison": "BGE metrics are not paired or differenced against the MiniLM campaign because both the checkpoint and train data changed.",
+    "required_ood_fields": {
+      "ood_macro_ap": -1,
+      "ood_delta": -1
+    },
+    "required_ood_significance_fields": null,
+    "notes_must_include": [
+      "campaign",
+      "stage",
+      "initial_checkpoint_sha256",
+      "augmented_train_rows",
+      "former_ood_rows_promoted_to_train",
+      "iid_macro_ap",
+      "hard_macro_ap",
+      "ood_disabled_reason"
+    ]
+  },
+  "baseline_recipe": {
+    "model": "model/pretrain_bge_2ep",
+    "epochs": 1,
+    "batch_size": 8,
+    "eval_batch_size": 32,
+    "gradient_accumulation": 12,
+    "world_size": 2,
+    "effective_batch": 192,
+    "learning_rate": 0.00002,
+    "weight_decay": 0.01,
+    "warmup_ratio": 0.05,
+    "scheduler": "cosine_to_zero",
+    "max_length": 384,
+    "attention_implementation": "sdpa",
+    "train_subset": "all",
+    "sampling": "none",
+    "loss_weighting": "none",
+    "loss_variant": "bce",
+    "label_smoothing": 0.0,
+    "classifier_dropout": 0.1,
+    "max_grad_norm": 0.5,
+    "gradient_checkpointing": true,
+    "symmetric_validation": true,
+    "seed": 42,
+    "full_fine_tuning": true,
+    "amp_dtype_on_t4": "float16"
+  },
+  "physical_batch_preflight": {
+    "runs_inside_first_baseline_kernel_before_training": true,
+    "default": {
+      "batch_size": 8,
+      "gradient_accumulation": 12,
+      "gradient_checkpointing": true,
+      "effective_batch": 192
+    },
+    "optional_promotion": {
+      "batch_size": 16,
+      "gradient_accumulation": 6,
+      "gradient_checkpointing": true,
+      "effective_batch": 192,
+      "minimum_free_vram_headroom_gib": 1.0
+    },
+    "fallback_after_oom": {
+      "batch_size": 4,
+      "gradient_accumulation": 24,
+      "gradient_checkpointing": true,
+      "effective_batch": 192
+    },
+    "freeze_rule": "Resolve the physical geometry before the first optimizer update, record it in the baseline identity and reuse it unchanged for every quality run. A geometry change after baseline requires a new baseline."
+  },
+  "selection_protocol": {
+    "primary_metric": "iid_macro_ap",
+    "hard_is_diagnostic_only": true,
+    "ood_is_unavailable": true,
+    "search_strategy": "staged_logarithmic_coordinate_search",
+    "practical_tie_margin": 0.002,
+    "delta_operator": "strictly_greater_than",
+    "stage_iid_correction": "holm_all_planned_non_anchor_stage_variants",
+    "paired_comparison": "component_level_permutation_and_bootstrap_on_matching_IID_pairs",
+    "tie_breaks": {
+      "learning_rate": "retain_2e-5_when_within_margin_then_prefer_lower_lr",
+      "epochs": "fewer_epochs",
+      "regularization": "baseline_weight_decay_0.01",
+      "loss": "plain_bce"
+    },
+    "fresh_start_each_run": true,
+    "optimizer_and_scheduler_reset_each_run": true,
+    "continuation_from_candidate_checkpoint_forbidden": true
+  },
+  "runtime_policy": {
+    "accelerator": "2x Tesla T4",
+    "execution": "sequential_only",
+    "parallel_kernels_forbidden": true,
+    "internal_soft_kernel_limit_hours": 9.0,
+    "one_epoch_planning_hours": {
+      "low": 2.0,
+      "high": 4.0
+    },
+    "prune_optional_stages_if_baseline_hours_strictly_greater_than": 4.0,
+    "stages_pruned_by_slow_baseline": [
+      "regularization_sanity",
+      "special_loss_transfer"
+    ],
+    "stages_retained_by_slow_baseline": [
+      "lr_log_line",
+      "epoch_line_through_epoch_2",
+      "confirmation_seed_17"
+    ],
+    "ods_or_submission_runtime_work": false
+  },
+  "budget": {
+    "typical_total_kernels_low": 6,
+    "typical_total_kernels_high": 7,
+    "maximum_total_kernels": 10,
+    "maximum_by_stage_including_reused_anchors": {
+      "lr_log_line": 4,
+      "epoch_line_new": 2,
+      "regularization_sanity_new": 1,
+      "special_loss_transfer_new": 1,
+      "confirmation_seed_17_new": 2
+    },
+    "typical_wall_hours_low": 20,
+    "typical_wall_hours_high": 35,
+    "maximum_wall_hours_low": 45,
+    "maximum_wall_hours_high": 60,
+    "counting_rule": "Every unique Kaggle kernel counts once; reused seed-42 anchors do not create another kernel."
+  },
+  "stages": [
+    {
+      "name": "lr_log_line",
+      "status": "planned_first",
+      "strategy": "one_dimensional_log2_line",
+      "fixed": {
+        "epochs": 1,
+        "loss_variant": "bce",
+        "weight_decay": 0.01
+      },
+      "axis": {
+        "learning_rate": [
+          0.00001,
+          0.00002,
+          0.00004
+        ]
+      },
+      "variants": [
+        {
+          "experiment": "bge2_ood_sft_e1_lr2e5_baseline_v1",
+          "kernel_slug": "pm-bge2-ood-e1-lr2e5-base-v1",
+          "role": "new_campaign_baseline",
+          "overrides": {
+            "epochs": 1,
+            "learning_rate": 0.00002
+          }
+        },
+        {
+          "experiment": "bge2_ood_sft_e1_lr1e5_v1",
+          "kernel_slug": "pm-bge2-ood-e1-lr1e5-v1",
+          "role": "candidate",
+          "overrides": {
+            "epochs": 1,
+            "learning_rate": 0.00001
+          }
+        },
+        {
+          "experiment": "bge2_ood_sft_e1_lr4e5_v1",
+          "kernel_slug": "pm-bge2-ood-e1-lr4e5-v1",
+          "role": "candidate",
+          "overrides": {
+            "epochs": 1,
+            "learning_rate": 0.00004
+          }
+        }
+      ],
+      "boundary_extension": {
+        "max_new_runs": 1,
+        "trigger_gain_over_adjacent_point": 0.002,
+        "delta_operator": "strictly_greater_than",
+        "lower": {
+          "edge": 0.00001,
+          "adjacent": 0.00002,
+          "extension": 0.000005,
+          "experiment": "bge2_ood_sft_e1_lr5e6_boundary_v1",
+          "kernel_slug": "pm-bge2-ood-e1-lr5e6-bnd-v1"
+        },
+        "upper": {
+          "edge": 0.00004,
+          "adjacent": 0.00002,
+          "extension": 0.00008,
+          "experiment": "bge2_ood_sft_e1_lr8e5_boundary_v1",
+          "kernel_slug": "pm-bge2-ood-e1-lr8e5-bnd-v1"
+        },
+        "when_both_edges_are_eligible": "extend_the_edge_with_higher_iid_macro_ap_then_lower_learning_rate_on_exact_tie"
+      },
+      "selection": "Select the best IID point only when its gain exceeds the practical tie margin; otherwise retain 2e-5, then prefer the lower LR within a remaining tie."
+    },
+    {
+      "name": "epoch_line",
+      "status": "planned_after_lr_log_line",
+      "strategy": "fresh_integer_line_with_cosine_horizon_reset",
+      "anchor": "selected_lr_at_epoch_1",
+      "reuse_epochs": [
+        1
+      ],
+      "always_run_epochs": [
+        2
+      ],
+      "conditional_epoch_3": {
+        "run_if_epoch_2_gain_over_epoch_1": 0.002,
+        "delta_operator": "strictly_greater_than",
+        "and_projected_pipeline_hours_strictly_less_than": 9.0
+      },
+      "maximum_new_runs": 2,
+      "epoch_4_allowed": false,
+      "selection": "Use the fewest epochs within 0.002 IID macro AP of the numeric maximum."
+    },
+    {
+      "name": "regularization_sanity",
+      "status": "conditional_after_epoch_line",
+      "anchor": "selected_lr_epochs_bce_recipe_with_weight_decay_0.01",
+      "run_if_selected_epochs_at_least": 2,
+      "skip_if_runtime_policy_prunes_optional_stages": true,
+      "axis": {
+        "weight_decay": [
+          0.01,
+          0.05
+        ]
+      },
+      "reused_anchor": 0.01,
+      "single_candidate": 0.05,
+      "maximum_new_runs": 1,
+      "accept_candidate_minimum_iid_gain": 0.002,
+      "delta_operator": "strictly_greater_than",
+      "explicitly_skipped_axes": [
+        "effective_batch",
+        "warmup_ratio",
+        "label_smoothing",
+        "classifier_dropout",
+        "max_grad_norm"
+      ],
+      "reason": "MiniLM showed a broad plateau on these coordinates; only stronger weight decay receives one capacity-specific BGE sanity check."
+    },
+    {
+      "name": "special_loss_transfer",
+      "status": "planned_after_regularization_sanity_or_epoch_line",
+      "anchor": "selected_regularized_plain_bce_recipe",
+      "skip_if_runtime_policy_prunes_optional_stages": true,
+      "loss_variants": [
+        "bce",
+        "balanced_category_class_sqrt_bce"
+      ],
+      "reused_anchor": "bce",
+      "single_candidate": "balanced_category_class_sqrt_bce",
+      "maximum_new_runs": 1,
+      "balance_contract": {
+        "strata": "20 category x 2 hard classes",
+        "raw_weight": "1/sqrt(n_category_class)",
+        "global_normalization": "mean pair weight equals 1",
+        "expected_augmented_train_weight_min": 0.6814300041898296,
+        "expected_augmented_train_weight_max": 2.753521186636443
+      },
+      "accept_candidate_minimum_iid_gain": 0.002,
+      "delta_operator": "strictly_greater_than",
+      "excluded_losses": {
+        "balanced_binary_bce": "Hurt MiniLM IID and hard metrics.",
+        "balanced_category_class_bce": "Full augmented-train weights would span approximately 0.422 to 6.891 and are intentionally considered too aggressive.",
+        "focal_bce_gamma2_scale4": "Outside the cost-capped core BGE campaign."
+      },
+      "loss_lr_refinement_allowed": false
+    },
+    {
+      "name": "confirmation_seed_17",
+      "status": "planned_final",
+      "seeds": [
+        17,
+        42
+      ],
+      "seed_42_runs_are_reused": true,
+      "always_run": [
+        "selected_tuned_bce_recipe_at_seed_17"
+      ],
+      "conditional_challenger": {
+        "eligible_sources_in_tie_break_order": [
+          "weight_decay_0.05",
+          "balanced_category_class_sqrt_bce"
+        ],
+        "seed_42_minimum_iid_gain_over_matched_tuned_bce": 0.002,
+        "delta_operator": "strictly_greater_than",
+        "if_multiple_are_eligible": "largest_seed_42_iid_gain_then_declared_order",
+        "new_runs": [
+          "matched_tuned_bce_recipe_at_seed_17",
+          "selected_challenger_recipe_at_seed_17"
+        ]
+      },
+      "maximum_new_runs": 2,
+      "acceptance": {
+        "positive_delta_required_on_every_seed": [
+          17,
+          42
+        ],
+        "minimum_mean_iid_delta": 0.002,
+        "delta_operator": "greater_than_or_equal",
+        "otherwise": "retain_tuned_plain_bce"
+      },
+      "hard_is_diagnostic_only": true,
+      "ood_metric_value": -1,
+      "seed_2026_allowed": false,
+      "seed_ensemble_allowed": false
+    }
+  ]
+}

@@ -1,0 +1,87 @@
+{
+  "created_at": "2026-08-26T19:39:49.844147+00:00",
+  "checkpoint": {
+    "checkpoint_rows": 251554,
+    "unique_pairs": 244189,
+    "duplicate_or_retried_rows": 7365,
+    "malformed_checkpoint_lines": 0,
+    "latest_status_counts": {
+      "ok": 243824,
+      "invalid": 364,
+      "error": 1
+    },
+    "prompt_hash_counts": {
+      "d8e91254d295c18bfba890e9e7945c1243c8af005b36fafc68626dd3531cbcb0": 251554
+    }
+  },
+  "processed_ok_pairs": 243824,
+  "pairs_with_no_accepted_differences": 22372,
+  "pairs_with_one_accepted_difference": 43131,
+  "pairs_with_multiple_accepted_differences": 178321,
+  "accepted_atomic_occurrences": 790789,
+  "unique_canonical_concepts": 12257,
+  "provisional_concept_rules_lcb80": 36,
+  "strict_validated_rule_rows": 3,
+  "strict_validated_unique_concept_relations": 2,
+  "atomic_fact_count_distribution": {
+    "0": 22372,
+    "1": 43131,
+    "2": 41821,
+    "3": 43450,
+    "4": 33559,
+    "5": 22014,
+    "6": 13223,
+    "7": 8256,
+    "8": 5670,
+    "9": 3950,
+    "10": 2851,
+    "11": 1685,
+    "12": 892,
+    "13": 456,
+    "14": 207,
+    "15": 129,
+    "16": 63,
+    "17": 32,
+    "18": 19,
+    "19": 14,
+    "20": 5,
+    "21": 9,
+    "22": 10,
+    "23": 3,
+    "24": 3
+  },
+  "rule_level_counts": {
+    "category_concept": {
+      "statistical_candidates": 21794,
+      "with_singleton_evidence": 3222,
+      "with_at_least_5_singletons": 682,
+      "discovery_high_confidence": 2,
+      "validated_high_confidence": 2
+    },
+    "category_exact": {
+      "statistical_candidates": 457043,
+      "with_singleton_evidence": 35697,
+      "with_at_least_5_singletons": 457,
+      "discovery_high_confidence": 0,
+      "validated_high_confidence": 0
+    },
+    "global_concept": {
+      "statistical_candidates": 14345,
+      "with_singleton_evidence": 2006,
+      "with_at_least_5_singletons": 386,
+      "discovery_high_confidence": 1,
+      "validated_high_confidence": 1
+    }
+  },
+  "human_labels_joined_only_in_statistical_analysis": true,
+  "qwen_api_calls": 0,
+  "selection": {
+    "split": "80% discovery / 20% validation by SHA-256(pair_id)",
+    "discovery_min_singletons": 10,
+    "discovery_min_wilson_lcb95": 0.9,
+    "discovery_min_absolute_lift": 0.1,
+    "discovery_max_bh_q_value": 0.05,
+    "validation_min_singletons": 3,
+    "validation_min_observed_probability": 0.8
+  }
+}

@@ -1,0 +1,60 @@
+{
+  "schema_version": 1,
+  "policy_version": "profile_capacity_policy_v1",
+  "product_type_aliases": [
+    {
+      "category": "Ювелирные изделия",
+      "alias": "серьги",
+      "canonical": "серьги ювелирные"
+    }
+  ],
+  "profile_policies": [
+    {
+      "category": "Ювелирные изделия",
+      "concept": "gold_color",
+      "product_type": "*",
+      "target_value_domain": [
+        "белое",
+        "желтое",
+        "красное",
+        "комбинированное"
+      ],
+      "primary_task_safety_cap": 12,
+      "rationale": "Gold color has a small physical domain; aliases and multicolor wording must not create artificial signatures."
+    },
+    {
+      "category": "Электроника",
+      "concept": "storage_capacity",
+      "product_type": "смартфон",
+      "target_value_domain": [
+        "8 ГБ",
+        "16 ГБ",
+        "32 ГБ",
+        "64 ГБ",
+        "128 ГБ",
+        "256 ГБ",
+        "512 ГБ",
+        "1024 ГБ"
+      ],
+      "primary_task_safety_cap": 28,
+      "rationale": "Smartphone storage uses a discrete standard capacity ladder; unit spelling must not multiply signatures."
+    },
+    {
+      "category": "Музыкальные инструменты",
+      "concept": "size",
+      "product_type": "смычок",
+      "target_value_domain": [
+        "1/32",
+        "1/16",
+        "1/10",
+        "1/8",
+        "1/4",
+        "1/2",
+        "3/4",
+        "4/4"
+      ],
+      "primary_task_safety_cap": 28,
+      "rationale": "Bow sizes use a finite standard fractional scale; equivalent fraction typography is one value."
+    }
+  ]
+}

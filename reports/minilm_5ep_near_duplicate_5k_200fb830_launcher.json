@@ -1,0 +1,100 @@
+{
+  "baseline_comparison": {
+    "baseline_run_id": "67f4fe76886b43d6b52ed5cb49068e1e",
+    "candidate_run_id": "00ebbf6e51114786b142a1413951e693",
+    "confidence_interval_method": "paired_component_bootstrap_percentile",
+    "method": "paired_component_permutation",
+    "multiple_testing_correction": "holm_3_splits",
+    "schema_version": 1,
+    "splits": {
+      "hard": {
+        "baseline_macro_average_precision": 0.3655009201486312,
+        "bootstrap_resamples": 2000,
+        "candidate_macro_average_precision": 0.367626016475323,
+        "categories": 18,
+        "ci95_high": 0.006678647036030448,
+        "ci95_low": -0.0017505714910857882,
+        "components": 5200,
+        "delta_macro_average_precision": 0.0021250963266917777,
+        "examples": 5814,
+        "p_value": 0.2563718140929535,
+        "p_value_holm": 0.512743628185907,
+        "permutations": 2000,
+        "seed": 43
+      },
+      "iid": {
+        "baseline_macro_average_precision": 0.789388132774931,
+        "bootstrap_resamples": 2000,
+        "candidate_macro_average_precision": 0.7890056376323122,
+        "categories": 18,
+        "ci95_high": 0.0026486778343925393,
+        "ci95_low": -0.003343062764561014,
+        "components": 11263,
+        "delta_macro_average_precision": -0.00038249514261878836,
+        "examples": 12000,
+        "p_value": 0.7981009495252374,
+        "p_value_holm": 0.7981009495252374,
+        "permutations": 2000,
+        "seed": 42
+      },
+      "ood": {
+        "baseline_macro_average_precision": 0.6426602624552971,
+        "bootstrap_resamples": 2000,
+        "candidate_macro_average_precision": 0.6360414337634032,
+        "categories": 2,
+        "ci95_high": -0.0043967887662691215,
+        "ci95_low": -0.008796251531659688,
+        "components": 39594,
+        "delta_macro_average_precision": -0.0066188286918938966,
+        "examples": 41171,
+        "p_value": 0.0004997501249375312,
+        "p_value_holm": 0.0014992503748125937,
+        "permutations": 2000,
+        "seed": 44
+      }
+    },
+    "status": "ready",
+    "wall_seconds": 500.1524116300002
+  },
+  "created_at": "2026-08-28T19:43:49.064395+00:00",
+  "dataset_kind": "near_duplicate",
+  "dataset_ref": "alexproger23/pm-near-dup-5k-200fb830",
+  "experiment": "minilm_5ep_near_duplicate_5k_200fb830",
+  "google_sheets_sync": {
+    "comparison_action": "appended",
+    "comparison_sheet": "data_exps",
+    "experiment_action": "appended",
+    "experiment_group": "data",
+    "run_id": "00ebbf6e51114786b142a1413951e693",
+    "spreadsheet_id": "1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA",
+    "spreadsheet_url": "https://docs.google.com/spreadsheets/d/1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA/edit",
+    "status": "synced",
+    "synced_at_utc": "2026-08-28T19:39:57Z"
+  },
+  "kernel_slug": "pm-m5-near-dup-5k-200fb830",
+  "label_source": "deterministic_surface_only_positive_v1",
+  "notebook": "/Users/aekuleshevskii/product_matching/notebooks/minilm_5ep_team_ablation/minilm_5ep_near_duplicate_5k_200fb830_2xt4.ipynb",
+  "pair_count": 5000,
+  "run_id": "00ebbf6e51114786b142a1413951e693",
+  "schema_version": 1,
+  "source_contract": {
+    "builder_version": "surface_positive_augmentation_v1",
+    "label_source": "deterministic_surface_only_positive_v1",
+    "run_signature": "200fb83092ff23663c49ed73b8d5b895035e6bbcfffb8ff30652b4309be04430",
+    "source_provenance": {
+      "eligible_pairs_contract": "Only ids occurring in target=1 rows of the caller-supplied train-pair file may be used as donors.",
+      "eligible_pairs_path": "/Users/aekuleshevskii/product_matching/prepared/validation_splits_v1/human/train_pairs.parquet",
+      "eligible_pairs_sha256": "ffc8ac7283ca0fe1ac8a39e8ca31cb4fa069465576eeb636005c72636935e616",
+      "items_path": "/Users/aekuleshevskii/product_matching/data/items_human.parquet",
+      "items_sha256": "07d4f09ac8cfa90a2dfc2a7802dec09fc1e188576e1281e781aa1340b3336f4a"
+    },
+    "validation_version": "surface_positive_no_atomic_change_validator_v1"
+  },
+  "source_fingerprint": "da416daceabbe8633457511a5e7fc89ebb1ca22fbcac264539edb303db1c85ed",
+  "status": "complete",
+  "target_counts": {
+    "0": 0,
+    "1": 5000
+  },
+  "upload_manifest_sha256": "86f64457590067f70d2ff697ce21538d490d7c66eb8e159a1dfaa82d3a0347a0"
+}

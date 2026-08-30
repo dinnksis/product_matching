@@ -53,5 +53,10 @@ reports/**/*.parquet
 reports/**/*.cbm
 predicted/
 
+# Reproducible derived artifacts above GitHub's 100 MiB per-file limit.
+reports/atomic_rule_statistics_semantic_snapshot_20260826/rule_statistics.csv
+reports/semantic_atomic_rule_statistics_all_pairs_20260827/prototype_embeddings.npy
+reports/atomic_rule_statistics_current/rule_statistics.csv
+
 /model/
 model

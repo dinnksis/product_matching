@@ -1,0 +1,66 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-08-26T21:21:07.130037+00:00",
+  "occurrences": "/Users/aekuleshevskii/product_matching/reports/atomic_rule_statistics_semantic_snapshot_20260826/atomic_occurrences.parquet",
+  "occurrences_sha256": "bb9f053a317e200eb2f77d83aee4eead4b03423b867dbcbce06100da262860d5",
+  "occurrence_rows": 790789,
+  "different_value_rows": 770794,
+  "all_prototype_rows": 72573,
+  "selected_evidence_prototype_rows": 72573,
+  "singleton_evidence_prototype_rows": 7869,
+  "evidence_scope": "all",
+  "cannot_link_concept_pairs": 170803,
+  "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "embedding_dimension": 384,
+  "model_max_sequence_length": 128,
+  "top_k": 24,
+  "thresholds": [
+    0.8
+  ],
+  "minimum_support": 2.0,
+  "minimum_probability": 0.8,
+  "selected_threshold": 0.8,
+  "recommended_rule_counts": {
+    "total": 8598,
+    "label0": 8413,
+    "label1": 185,
+    "cross_split_total": 6212,
+    "cross_split_label0": 6132,
+    "cross_split_label1": 80,
+    "zero_singleton_evidence_total": 5154,
+    "zero_singleton_evidence_label0": 5041,
+    "zero_singleton_evidence_label1": 113,
+    "strong_singleton_agreement": 833,
+    "strong_singleton_conflict": 45,
+    "cross_split_support5_total": 5336,
+    "cross_split_support5_label0": 5298,
+    "cross_split_support5_label1": 38
+  },
+  "human_labels_in_embedding_text": false,
+  "hard_blocks": [
+    "category",
+    "relation",
+    "value_family"
+  ],
+  "selection": "weighted_semantic_neighbourhood_then_greedy_non_max_suppression",
+  "threshold_sweep": [
+    {
+      "threshold": 0.8,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 38917,
+      "representative_rules": 8413,
+      "cross_split_rules": 6132,
+      "median_weighted_support": 16.411139011383057,
+      "median_target_probability": 0.9278063820416391
+    },
+    {
+      "threshold": 0.8,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 395,
+      "representative_rules": 185,
+      "cross_split_rules": 80,
+      "median_weighted_support": 4.5596118569374084,
+      "median_target_probability": 1.0
+    }
+  ]
+}

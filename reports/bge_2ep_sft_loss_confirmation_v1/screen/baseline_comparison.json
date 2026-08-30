@@ -1,0 +1,70 @@
+{
+  "baseline_experiment": "bge2_sft_oodtrain_e2_lr2e5_v1",
+  "baseline_manifest_sha256": "00deacd9d0ea298607da929931e878a8531bb748116e7e2d6f406c5d4da4271a",
+  "baseline_run_id": "a2e3e08c011c45a59599595a840600fe",
+  "candidate_experiment": "bge2_sft_loss_sqrt_s42_v1",
+  "candidate_run_id": "c4763e56b3674c24950cfa3fbef400cb",
+  "confidence_interval_method": "paired_component_bootstrap_percentile",
+  "diagnostic_splits": [
+    "hard"
+  ],
+  "holm_family": "bge2_sft_selected_recipe_loss_transfer_v1",
+  "holm_family_members": [
+    "bge2_sft_loss_sqrt_s42_v1"
+  ],
+  "iid_practical_relation": "practical_tie",
+  "method": "paired_component_permutation",
+  "multiple_testing_correction": "holm_within_planned_candidate_family_per_split",
+  "ood_policy": "disabled_train_contaminated_no_paired_comparison",
+  "practical_tie_margin": 0.002,
+  "primary_split": "iid",
+  "schema_version": 1,
+  "splits": {
+    "hard": {
+      "baseline_macro_average_precision": 0.4377746475442678,
+      "bootstrap_resamples": 2000,
+      "candidate_macro_average_precision": 0.4317593884271952,
+      "categories": 18,
+      "ci95_high": 0.0011256325434193814,
+      "ci95_low": -0.013083279675177185,
+      "components": 5200,
+      "delta_macro_average_precision": -0.006015259117072624,
+      "examples": 5814,
+      "holm_family": "bge2_sft_selected_recipe_loss_transfer_v1",
+      "holm_family_size": 1,
+      "p_value": 0.4052973513243378,
+      "p_value_holm": 0.4052973513243378,
+      "permutations": 2000,
+      "seed": 43
+    },
+    "iid": {
+      "baseline_macro_average_precision": 0.8234607352184464,
+      "bootstrap_resamples": 2000,
+      "candidate_macro_average_precision": 0.8221499119778222,
+      "categories": 18,
+      "ci95_high": 0.002628060873711104,
+      "ci95_low": -0.005334258122470489,
+      "components": 11263,
+      "delta_macro_average_precision": -0.0013108232406242593,
+      "examples": 12000,
+      "holm_family": "bge2_sft_selected_recipe_loss_transfer_v1",
+      "holm_family_size": 1,
+      "p_value": 0.7551224387806097,
+      "p_value_holm": 0.7551224387806097,
+      "permutations": 2000,
+      "seed": 42
+    },
+    "ood": {
+      "ci95_high": null,
+      "ci95_low": null,
+      "delta_macro_average_precision": null,
+      "evaluated": false,
+      "examples": 0,
+      "p_value": null,
+      "p_value_holm": null,
+      "reason": "former frozen OOD pairs are part of BGE supervised training",
+      "status": "disabled_train_contaminated"
+    }
+  },
+  "status": "ready_ood_disabled"
+}

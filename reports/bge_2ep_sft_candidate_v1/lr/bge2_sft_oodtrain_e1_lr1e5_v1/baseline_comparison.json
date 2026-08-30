@@ -1,0 +1,95 @@
+{
+  "baseline_binding": {
+    "baseline_experiment": "bge2_sft_oodtrain_e1_lr2e5_baseline_v1",
+    "baseline_run_id": "e8b39f13d236484091ea65dd91112931",
+    "campaign": "bge_2ep_sft_oodtrain_v1",
+    "campaign_identity_sha256": "de25c35eabf487178244d5ca32108435081a5118822bc8a18e09478a3b13f7ed",
+    "checkpoint_manifest_sha256": "9ce70e52e5981470b30126f34c0b6eacaf3b38d27da93c8d8c3aca3328850cf5",
+    "checkpoint_model_sha256": "c21ccfcd5de310ca0328620bf8ba09e838dbe3f6394be656bd7fec16ad8377d1",
+    "executable_cells_sha256": "e9c03e130b663f3b7f8015be74ad701fcb0605798c0f23a276c90d9f3d52009d",
+    "loss_hook_sha256": "37a7173f708420128b8ca24aa0be073698dcad3e0e2bbc3a39c6d958be9c7e30",
+    "recipe_sha256": "2071b5596695033a2f122a68e4e059bc144cbcace2f569340ad4378e77e813d9",
+    "source_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96",
+    "validation_manifest_sha256": "b64a1902d86c9ad896a626b2a17bf018341f1d9c5fefa124834b525c84808f3c"
+  },
+  "baseline_experiment": "bge2_sft_oodtrain_e1_lr2e5_baseline_v1",
+  "baseline_manifest_sha256": "00deacd9d0ea298607da929931e878a8531bb748116e7e2d6f406c5d4da4271a",
+  "baseline_run_id": "e8b39f13d236484091ea65dd91112931",
+  "candidate_binding": {
+    "campaign": "bge_2ep_sft_oodtrain_v1",
+    "campaign_identity_sha256": "3f75483fffd69a76a423eac1edaf1981654ebb7a70de2d8b8b675660930ee9c9",
+    "checkpoint_manifest_sha256": "9ce70e52e5981470b30126f34c0b6eacaf3b38d27da93c8d8c3aca3328850cf5",
+    "checkpoint_model_sha256": "c21ccfcd5de310ca0328620bf8ba09e838dbe3f6394be656bd7fec16ad8377d1",
+    "loss_hook_sha256": "37a7173f708420128b8ca24aa0be073698dcad3e0e2bbc3a39c6d958be9c7e30",
+    "recipe_sha256": "05932080291e3ec80d24b368dd2a457c0a40790953f3b16dad81c89fd1e6d6da",
+    "source_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96",
+    "validation_manifest_sha256": "b64a1902d86c9ad896a626b2a17bf018341f1d9c5fefa124834b525c84808f3c"
+  },
+  "candidate_experiment": "bge2_sft_oodtrain_e1_lr1e5_v1",
+  "candidate_run_id": "b332fb55f2e446ba833cc0de3f3b7ffd",
+  "confidence_interval_method": "paired_component_bootstrap_percentile",
+  "diagnostic_splits": [
+    "hard"
+  ],
+  "holm_family": "bge2_sft_lr_log_line_core_v1",
+  "holm_family_members": [
+    "bge2_sft_oodtrain_e1_lr1e5_v1",
+    "bge2_sft_oodtrain_e1_lr4e5_v1"
+  ],
+  "iid_practical_relation": "degrades_beyond_margin",
+  "iid_statistically_significant_after_holm": true,
+  "method": "paired_component_permutation",
+  "multiple_testing_correction": "holm_within_planned_candidate_family_per_split",
+  "ood_policy": "disabled_train_contaminated_no_paired_comparison",
+  "practical_tie_margin": 0.002,
+  "primary_split": "iid",
+  "schema_version": 1,
+  "splits": {
+    "hard": {
+      "baseline_macro_average_precision": 0.4147173717878038,
+      "bootstrap_resamples": 2000,
+      "candidate_macro_average_precision": 0.4111624655216411,
+      "categories": 18,
+      "ci95_high": 0.002103362143299685,
+      "ci95_low": -0.010221692257824636,
+      "components": 5200,
+      "delta_macro_average_precision": -0.0035549062661627273,
+      "examples": 5814,
+      "holm_family": "bge2_sft_lr_log_line_core_v1",
+      "holm_family_size": 2,
+      "p_value": 0.24387806096951525,
+      "p_value_holm": 0.32083958020989506,
+      "permutations": 2000,
+      "seed": 43
+    },
+    "iid": {
+      "baseline_macro_average_precision": 0.8182905487436897,
+      "bootstrap_resamples": 2000,
+      "candidate_macro_average_precision": 0.8136375654610996,
+      "categories": 18,
+      "ci95_high": -0.0008400646535247027,
+      "ci95_low": -0.008317736063014327,
+      "components": 11263,
+      "delta_macro_average_precision": -0.004652983282590117,
+      "examples": 12000,
+      "holm_family": "bge2_sft_lr_log_line_core_v1",
+      "holm_family_size": 2,
+      "p_value": 0.010994502748625687,
+      "p_value_holm": 0.021989005497251374,
+      "permutations": 2000,
+      "seed": 42
+    },
+    "ood": {
+      "ci95_high": null,
+      "ci95_low": null,
+      "delta_macro_average_precision": null,
+      "evaluated": false,
+      "examples": 0,
+      "p_value": null,
+      "p_value_holm": null,
+      "reason": "former frozen OOD pairs are part of BGE supervised training",
+      "status": "disabled_train_contaminated"
+    }
+  },
+  "status": "ready_ood_disabled"
+}

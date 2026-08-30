@@ -44,7 +44,8 @@ MATCH_JUDGEMENT_RE = re.compile(
 )
 GENERIC_CONCEPTS = {
     "attribute", "attributes", "feature", "features", "other", "specification",
-    "specifications", "product", "unknown", "value",
+    "specifications", "product", "unknown", "value", "internal_consistency",
+    "internal_contradiction", "conflicting_sources",
 }
 ANCHOR_STRENGTH = {
     "exact_sku": "strong",
@@ -70,6 +71,10 @@ ABSENCE_MARKERS = {
     "no brand", "unbranded", "none", "n a", "не указано", "не указан",
     "не указана", "неизвестно", "нет данных", "нет бренда", "без бренда",
     "не определен", "не определён", "уточнить у продавца",
+}
+COMPACT_UNINFORMATIVE_VALUES = {
+    "attribute", "brand", "color", "model", "size", "type", "value",
+    "атрибут", "бренд", "значение", "модель", "размер", "тип", "цвет",
 }
 HARD_COUNTRY_AS_BRAND_VALUES = {
     "кнр", "prc", "cn", "китайская народная республика",
@@ -152,9 +157,22 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--review-size", type=int, default=80)
     parser.add_argument(
         "--validation-profile",
-        choices=("legacy", "v1_4"),
+        choices=("legacy", "v1_4", "atomic_v2"),
         default=None,
-        help="Semantic checks; auto-selects v1_4 for a v1_4 prompt version.",
+        help="Semantic checks; auto-selects a profile from the prompt version.",
+    )
+    parser.add_argument(
+        "--omit-response-format",
+        action="store_true",
+        help=(
+            "Do not send response_format to the OpenAI-compatible endpoint; "
+            "the prompt still requests one plain JSON object."
+        ),
+    )
+    parser.add_argument(
+        "--retry-invalid",
+        action="store_true",
+        help="On resume, retry checkpoint rows whose last status is invalid.",
     )
     parser.add_argument(
         "--dry-run",
@@ -225,12 +243,22 @@ def qwen_input(row: Any) -> dict[str, Any]:
 
 def extract_json(raw: str) -> dict[str, Any]:
     text = str(raw).strip()
-    if text.startswith("```"):
-        text = text.split("\n", 1)[-1].rsplit("```", 1)[0].strip()
-    start, end = text.find("{"), text.rfind("}")
-    if start < 0 or end < start:
+    start = text.find("{")
+    if start < 0:
         raise ValueError("response does not contain a JSON object")
-    result = json.loads(text[start : end + 1])
+    candidate = text[start:]
+    decoder = json.JSONDecoder()
+    try:
+        result, _ = decoder.raw_decode(candidate)
+    except json.JSONDecodeError as first_error:
+        # Qwen occasionally emits `},{"b":` instead of `,"b":` in compact
+        # facts. This local repair only removes the impossible object opener
+        # immediately before a required side key; it never invents values.
+        repaired = re.sub(r"\},\s*\{\s*\"([ab])\"\s*:", r'},"\1":', candidate)
+        try:
+            result, _ = decoder.raw_decode(repaired)
+        except json.JSONDecodeError:
+            raise first_error
     if not isinstance(result, dict):
         raise ValueError("response JSON root is not an object")
     return result
@@ -317,9 +345,12 @@ def quantity_value_errors(value: Any, concept: str, side: str) -> list[str]:
         return []
     errors: list[str] = []
     raw_value = normalize_surface(value.get("value", {}).get("raw_value"))
+    unit = normalize_surface(value.get("value", {}).get("unit"))
     evidence = value.get("evidence", [])
     if not re.search(r"\d", raw_value):
         errors.append(f"{concept}.{side} quantity has no explicit numeric count")
+    if unit in UNIT_TO_BASE:
+        errors.append(f"{concept}.{side} quantity uses a measurement unit")
     for source in evidence:
         if source.get("source") != "attribute":
             continue
@@ -447,6 +478,61 @@ def semantic_values_equivalent(value_a: Any, value_b: Any) -> bool:
 
 def normalize_extraction(extraction: dict[str, Any]) -> dict[str, Any]:
     """Convert version-specific Qwen JSON to the stable pair representation."""
+    if "differences" in extraction and all(
+        isinstance(fact, dict) and isinstance(fact.get("a"), dict)
+        and isinstance(fact.get("a", {}).get("value"), str)
+        for fact in extraction.get("differences", [])
+    ):
+        differences = []
+        for fact in extraction.get("differences", []):
+            relation = str(fact["relation"])
+            if relation == "a_more_specific":
+                stable_relation, direction = "more_specific", "a_to_b"
+            elif relation == "b_more_specific":
+                stable_relation, direction = "more_specific", "b_to_a"
+            else:
+                stable_relation, direction = relation, "symmetric"
+
+            def stable_side(side: dict[str, Any]) -> tuple[dict[str, Any], list[dict[str, Any]]]:
+                evidence = {
+                    "source": side["source"],
+                    "raw_attribute_name": side["attribute"],
+                    "raw_fragment": side["fragment"],
+                }
+                value = {
+                    "raw_value": side["value"],
+                    "normalized_value": None,
+                    "unit": None,
+                }
+                return value, [evidence]
+
+            value_a, evidence_a = stable_side(fact["a"])
+            value_b, evidence_b = stable_side(fact["b"])
+            differences.append(
+                {
+                    "concept": fact["concept"],
+                    "value_a": value_a,
+                    "value_b": value_b,
+                    "relation": stable_relation,
+                    "relation_direction": direction,
+                    "evidence_a": evidence_a,
+                    "evidence_b": evidence_b,
+                    "confidence": "high",
+                }
+            )
+        return {
+            "identity_anchors": [],
+            "differences": differences,
+            "missing_information": [],
+            "pair_summary": {
+                "salient_concepts": list(
+                    dict.fromkeys(fact["concept"] for fact in differences)
+                ),
+                "uncertainties": [],
+            },
+            "extraction_warnings": [],
+        }
+
     if "semantic_facts" in extraction:
         anchors: list[dict[str, Any]] = []
         differences: list[dict[str, Any]] = []
@@ -639,8 +725,12 @@ def unified_semantic_validation_errors(
     missing_count = sum(
         fact.get("relation") in {"missing_a", "missing_b"} for fact in facts
     )
-    if missing_count > 2:
-        errors.append(f"semantic_facts contains {missing_count} missing facts; max=2")
+    max_missing_facts = 16 if validation_profile == "atomic_v2" else 2
+    if missing_count > max_missing_facts:
+        errors.append(
+            f"semantic_facts contains {missing_count} missing facts; "
+            f"max={max_missing_facts}"
+        )
     for index, fact in enumerate(facts):
         for side in ("a", "b"):
             side_value = fact.get(side)
@@ -661,7 +751,7 @@ def unified_semantic_validation_errors(
             key_a = conservative_identity_key(value_a)
             key_b = conservative_identity_key(value_b)
             normalized_equivalent = (
-                validation_profile == "v1_4"
+                validation_profile in {"v1_4", "atomic_v2"}
                 and fact.get("anchor_type") in {"brand", "product_line", "model_family"}
                 and normalized_identity_values_equal(value_a, value_b)
             )
@@ -680,8 +770,15 @@ def unified_semantic_validation_errors(
             errors.append(
                 f"semantic_facts[{index}] relation={relation} but values are equivalent"
             )
-        if validation_profile == "v1_4":
-            errors.extend(v14_fact_validation_errors(fact, payload, index))
+        if validation_profile in {"v1_4", "atomic_v2"}:
+            fact_errors = v14_fact_validation_errors(fact, payload, index)
+            if validation_profile == "atomic_v2":
+                fact_errors = [
+                    error
+                    for error in fact_errors
+                    if "possible title/attribute source conflict" not in error
+                ]
+            errors.extend(fact_errors)
     return errors
 
 
@@ -698,6 +795,13 @@ def semantic_validation_errors(
         errors.extend(
             unified_semantic_validation_errors(extraction, payload, validation_profile)
         )
+        return errors
+    if "differences" in extraction and all(
+        isinstance(fact, dict) and isinstance(fact.get("a"), dict)
+        and isinstance(fact.get("a", {}).get("value"), str)
+        for fact in extraction.get("differences", [])
+    ):
+        errors.extend(compact_semantic_validation_errors(extraction, payload))
         return errors
     for section in ("identity_anchors", "differences"):
         for index, fact in enumerate(extraction.get(section, [])):
@@ -798,6 +902,154 @@ def semantic_validation_errors(
     return errors
 
 
+def compact_evidence(side: dict[str, Any]) -> dict[str, Any]:
+    return {
+        "source": side.get("source"),
+        "raw_attribute_name": side.get("attribute"),
+        "raw_fragment": side.get("fragment"),
+    }
+
+
+def compact_measurement(side: dict[str, Any]) -> tuple[str, float] | None:
+    raw_value = str(side.get("value") or "").strip().casefold()
+    matched = re.fullmatch(
+        r"([+-]?\d+(?:[.,]\d+)?)\s*(ml|мл|l|л|g|г|kg|кг|mm|мм|cm|см|m|м)?",
+        raw_value,
+    )
+    if not matched:
+        return None
+    number = float(matched.group(1).replace(",", "."))
+    unit = matched.group(2)
+    if unit is None and side.get("source") == "attribute":
+        attribute = str(side.get("attribute") or "").casefold()
+        unit_match = re.search(
+            r"(?:^|[^0-9a-zа-яё])(ml|мл|l|л|g|г|kg|кг|mm|мм|cm|см|m|м)(?:$|[^0-9a-zа-яё])",
+            attribute,
+        )
+        unit = unit_match.group(1) if unit_match else None
+    converted = UNIT_TO_BASE.get(unit or "")
+    if converted is None:
+        return None
+    return converted[0], number * converted[1]
+
+
+def compact_values_equivalent(side_a: dict[str, Any], side_b: dict[str, Any]) -> bool:
+    value_a, value_b = str(side_a.get("value")), str(side_b.get("value"))
+    semantic_a = {"raw_value": value_a, "normalized_value": None, "unit": None}
+    semantic_b = {"raw_value": value_b, "normalized_value": None, "unit": None}
+    if semantic_values_equivalent(semantic_a, semantic_b):
+        return True
+    measurement_a, measurement_b = compact_measurement(side_a), compact_measurement(side_b)
+    if measurement_a and measurement_b and measurement_a[0] == measurement_b[0]:
+        return abs(measurement_a[1] - measurement_b[1]) < 1e-9
+    normalized_a, normalized_b = normalize_surface(value_a), normalize_surface(value_b)
+    color_equivalents = {"микс", "микс цветов", "разноцветный", "цвета микс"}
+    if normalized_a in color_equivalents and normalized_b in color_equivalents:
+        return True
+
+    def integer_sum(value: str) -> int | None:
+        parts = re.fullmatch(r"\s*(\d+)\s*\+\s*(\d+)\s*", value)
+        if parts:
+            return int(parts.group(1)) + int(parts.group(2))
+        plain = re.fullmatch(r"\s*(\d+)\s*(?:шт\.?)?\s*", value, re.I)
+        return int(plain.group(1)) if plain else None
+
+    count_a, count_b = integer_sum(value_a), integer_sum(value_b)
+    return count_a is not None and count_a == count_b
+
+
+def compact_semantic_validation_errors(
+    extraction: dict[str, Any], payload: dict[str, Any]
+) -> list[str]:
+    errors: list[str] = []
+    facts = extraction.get("differences", [])
+    concepts = [str(fact.get("concept")) for fact in facts]
+    duplicates = sorted(
+        concept for concept, count in Counter(concepts).items() if count > 1
+    )
+    if duplicates:
+        errors.append(f"differences contains duplicate concepts: {duplicates}")
+    generic = sorted(set(concepts) & GENERIC_CONCEPTS)
+    if generic:
+        errors.append(f"differences contains generic concepts: {generic}")
+    for index, fact in enumerate(facts):
+        for side in ("a", "b"):
+            compact_side = fact.get(side)
+            if not isinstance(compact_side, dict):
+                continue
+            value = compact_side.get("value")
+            normalized_value = normalize_surface(value)
+            if normalized_value in ABSENCE_MARKERS:
+                errors.append(f"differences[{index}].{side} contains an absence marker")
+            if normalized_value in COMPACT_UNINFORMATIVE_VALUES:
+                errors.append(f"differences[{index}].{side} contains an uninformative value")
+            evidence = compact_evidence(compact_side)
+            if not evidence_supported(
+                evidence,
+                str(payload[f"item_{side}"]["title"]),
+                payload[f"item_{side}"]["attributes"],
+            ):
+                errors.append(f"differences[{index}].{side} evidence is not supported")
+            if quantity_concept(str(fact.get("concept"))):
+                old_side = {
+                    "value": {"raw_value": value, "unit": None},
+                    "evidence": [evidence],
+                }
+                errors.extend(
+                    f"differences[{index}] {error}"
+                    for error in quantity_value_errors(old_side, str(fact.get("concept")), side)
+                )
+        if compact_values_equivalent(fact.get("a", {}), fact.get("b", {})):
+            errors.append(f"differences[{index}] values are equivalent")
+    return errors
+
+
+def sanitize_compact_extraction(
+    extraction: Any,
+    payload: dict[str, Any],
+    root_schema: dict[str, Any],
+) -> tuple[dict[str, Any] | None, dict[str, Any]]:
+    """Validate compact candidates independently so one bad fact cannot lose a pair."""
+    if not isinstance(extraction, dict) or not isinstance(extraction.get("differences"), list):
+        return None, {"candidate_facts": 0, "accepted_facts": 0, "dropped_facts": 0}
+    fact_schema = {
+        "$schema": root_schema["$schema"],
+        "$defs": root_schema["$defs"],
+        "$ref": "#/$defs/atomic_difference",
+    }
+    validator = jsonschema.Draft202012Validator(fact_schema)
+    accepted: list[dict[str, Any]] = []
+    dropped: list[dict[str, Any]] = []
+    seen_concepts: set[str] = set()
+    for index, fact in enumerate(extraction["differences"]):
+        schema_errors = sorted(error.message for error in validator.iter_errors(fact))
+        semantic_errors = (
+            compact_semantic_validation_errors({"differences": [fact]}, payload)
+            if not schema_errors
+            else []
+        )
+        concept = str(fact.get("concept")) if isinstance(fact, dict) else ""
+        if not schema_errors and not semantic_errors and concept in seen_concepts:
+            semantic_errors = [f"duplicate concept: {concept}"]
+        if schema_errors or semantic_errors:
+            dropped.append(
+                {
+                    "fact_index": index,
+                    "schema_errors": schema_errors[:4],
+                    "semantic_errors": semantic_errors[:4],
+                }
+            )
+            continue
+        seen_concepts.add(concept)
+        accepted.append(fact)
+    return {"differences": accepted}, {
+        "candidate_facts": len(extraction["differences"]),
+        "accepted_facts": len(accepted),
+        "dropped_facts": len(dropped),
+        "dropped": dropped,
+    }
+
+
 class QwenClient:
     def __init__(
         self,
@@ -809,6 +1061,7 @@ class QwenClient:
         system_prompt: str,
         validator: jsonschema.protocols.Validator,
         validation_profile: str = "legacy",
+        use_response_format: bool = True,
     ) -> None:
         self.base = api_base.rstrip("/")
         self.url = self.base + "/chat/completions"
@@ -819,6 +1072,7 @@ class QwenClient:
         self.system_prompt = system_prompt
         self.validator = validator
         self.validation_profile = validation_profile
+        self.use_response_format = use_response_format
 
     def preflight(self) -> None:
         request = urllib.request.Request(self.base + "/models", method="GET")
@@ -841,9 +1095,10 @@ class QwenClient:
             ],
             "temperature": 0,
             "max_tokens": self.max_tokens,
-            "response_format": {"type": "json_object"},
             "chat_template_kwargs": {"enable_thinking": False},
         }
+        if self.use_response_format:
+            request_body["response_format"] = {"type": "json_object"}
         encoded = json.dumps(request_body, ensure_ascii=False).encode("utf-8")
         request_hash = sha256_bytes(encoded)
         last_error: Exception | None = None
@@ -906,6 +1161,20 @@ class QwenClient:
                 "error_type": type(error).__name__,
                 "error": str(error),
             }
+        compact_sanitization: dict[str, Any] | None = None
+        if "atomic_difference" in self.validator.schema.get("$defs", {}):
+            extraction, compact_sanitization = sanitize_compact_extraction(
+                extraction, payload, self.validator.schema
+            )
+            response_metadata["compact_fact_validation"] = compact_sanitization
+            if extraction is None:
+                return {
+                    **response_metadata,
+                    "status": "invalid",
+                    "validation_stage": "schema",
+                    "error_type": "SchemaValidationError",
+                    "error": "schema: compact response must contain a differences array",
+                }
         schema_errors = sorted(
             error.message for error in self.validator.iter_errors(extraction)
         )
@@ -962,6 +1231,7 @@ def read_completed_checkpoint(
     schema_sha: str,
     model: str,
     validation_profile: str,
+    retry_invalid: bool = False,
 ) -> dict[str, str]:
     """Read only resumable IDs/statuses, never retain multi-GB raw responses."""
     completed: dict[str, str] = {}
@@ -978,7 +1248,7 @@ def read_completed_checkpoint(
             requested_model = row.get("requested_model", row.get("response_model", ""))
             if (
                 pair_id
-                and status in {"ok", "invalid"}
+                and status in ({"ok"} if retry_invalid else {"ok", "invalid"})
                 and row.get("prompt_sha256") == prompt_sha
                 and row.get("schema_sha256") == schema_sha
                 and str(requested_model).casefold() == model.casefold()
@@ -1459,9 +1729,14 @@ def main() -> None:
     prompt_version = args.prompt_version or prompt_path.stem
     if not re.fullmatch(r"[A-Za-z0-9][A-Za-z0-9._-]*", prompt_version):
         raise ValueError("prompt-version must contain only letters, digits, '.', '_' or '-'")
-    validation_profile = args.validation_profile or (
-        "v1_4" if "v1_4" in prompt_version.casefold() else "legacy"
-    )
+    if args.validation_profile:
+        validation_profile = args.validation_profile
+    elif "atomic" in prompt_version.casefold() and "v2" in prompt_version.casefold():
+        validation_profile = "atomic_v2"
+    elif "v1_4" in prompt_version.casefold():
+        validation_profile = "v1_4"
+    else:
+        validation_profile = "legacy"
     inputs = pd.read_parquet(dataset_path)
     required = {
         "pair_id", "item_id_a", "item_id_b", "category", "title_a",
@@ -1504,6 +1779,7 @@ def main() -> None:
                     "human_label_in_qwen_input": False,
                     "prompt_version": prompt_version,
                     "validation_profile": validation_profile,
+                    "response_format_sent": not args.omit_response_format,
                     "request_preview": (
                         str(request_preview_path)
                         if not args.skip_request_previews
@@ -1525,11 +1801,17 @@ def main() -> None:
         system_prompt,
         validator,
         validation_profile,
+        not args.omit_response_format,
     )
     client.preflight()
     raw_path = output_dir / "raw_responses.jsonl"
     completed_status = read_completed_checkpoint(
-        raw_path, prompt_sha, schema_sha, args.model, validation_profile
+        raw_path,
+        prompt_sha,
+        schema_sha,
+        args.model,
+        validation_profile,
+        args.retry_invalid,
     )
     requested_ids = set(requested["pair_id"].astype(str))
     completed = requested_ids & set(completed_status)
@@ -1601,7 +1883,12 @@ def main() -> None:
 
     if args.skip_post_analysis:
         checkpoint = read_completed_checkpoint(
-            raw_path, prompt_sha, schema_sha, args.model, validation_profile
+            raw_path,
+            prompt_sha,
+            schema_sha,
+            args.model,
+            validation_profile,
+            False,
         )
         checkpoint = {
             pair_id: status
@@ -1633,6 +1920,7 @@ def main() -> None:
             "max_pairs": args.max_pairs,
             "prompt_version": prompt_version,
             "validation_profile": validation_profile,
+            "response_format_sent": not args.omit_response_format,
             "prompt": str(prompt_path),
             "prompt_sha256": prompt_sha,
             "schema": str(schema_path),
@@ -1672,6 +1960,7 @@ def main() -> None:
         "max_pairs": args.max_pairs,
         "prompt_version": prompt_version,
         "validation_profile": validation_profile,
+        "response_format_sent": not args.omit_response_format,
         "prompt": str(prompt_path),
         "prompt_sha256": prompt_sha,
         "schema": str(schema_path),

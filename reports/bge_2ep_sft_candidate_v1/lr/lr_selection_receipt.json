@@ -1,0 +1,91 @@
+{
+  "boundary_expansion": "deferred",
+  "campaign": "bge_2ep_sft_oodtrain_v1",
+  "comparison_sheets_synced": true,
+  "comparison_sync_markers": {
+    "bge2_sft_oodtrain_e1_lr1e5_v1": {
+      "completion_canonical_sha256": "7f6e425437fb183c0b59ed89736a311fb4a817c42efec6e01b155baafba0b6d6",
+      "path": "/Users/aekuleshevskii/product_matching/reports/bge_2ep_sft_candidate_v1/lr/bge2_sft_oodtrain_e1_lr1e5_v1/google_sheets_comparison_sync.json",
+      "sha256": "a724e0e7d290bc6c0f8cc66047fa0f65c2848135e7ca9fcf4672bc56de7c6bdc"
+    },
+    "bge2_sft_oodtrain_e1_lr4e5_v1": {
+      "completion_canonical_sha256": "f3d2dc172c5a2f90043b6621fbd0d9496e0596ef62530e0cccb4b80f3ebc0d97",
+      "path": "/Users/aekuleshevskii/product_matching/reports/bge_2ep_sft_candidate_v1/lr/bge2_sft_oodtrain_e1_lr4e5_v1/google_sheets_comparison_sync.json",
+      "sha256": "e69bf4d55e6df99d4dbcba8dd3bde3b33893282a9a21c8b1ac1e68c4756afaaf"
+    }
+  },
+  "diagnostic_splits": [
+    "hard"
+  ],
+  "execution_order": [
+    "bge2_sft_oodtrain_e1_lr1e5_v1",
+    "bge2_sft_oodtrain_e1_lr4e5_v1"
+  ],
+  "family_name": "bge2_sft_lr_log_line_core_v1",
+  "family_summary_path": "/Users/aekuleshevskii/product_matching/reports/bge_2ep_sft_candidate_v1/lr/family_summary.json",
+  "family_summary_sha256": "5b8f35db9d36385066bb88abf69a8ffe349baea019cb4c2a36bf8962bcbc905d",
+  "frozen_baseline_dataset": {
+    "baseline_run_id": "e8b39f13d236484091ea65dd91112931",
+    "campaign_identity_sha256": "de25c35eabf487178244d5ca32108435081a5118822bc8a18e09478a3b13f7ed",
+    "dataset_ref": "alexproger23/product-matching-bge-2ep-sft-baseline-v1",
+    "dataset_version": 1,
+    "manifest_sha256": "00deacd9d0ea298607da929931e878a8531bb748116e7e2d6f406c5d4da4271a",
+    "source_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96"
+  },
+  "ood": {
+    "comparison": null,
+    "macro_average_precision": -1.0
+  },
+  "planned_experiments": [
+    "bge2_sft_oodtrain_e1_lr1e5_v1",
+    "bge2_sft_oodtrain_e1_lr4e5_v1"
+  ],
+  "practical_tie_margin": 0.002,
+  "primary_split": "iid",
+  "schema_version": 1,
+  "selected_directory": "/Users/aekuleshevskii/product_matching/artifacts/kaggle/pm-b2-base-de25c35eabf4-s42-v1",
+  "selected_parent": {
+    "campaign_identity_sha256": "de25c35eabf487178244d5ca32108435081a5118822bc8a18e09478a3b13f7ed",
+    "checkpoint_manifest_sha256": "9ce70e52e5981470b30126f34c0b6eacaf3b38d27da93c8d8c3aca3328850cf5",
+    "checkpoint_model_sha256": "c21ccfcd5de310ca0328620bf8ba09e838dbe3f6394be656bd7fec16ad8377d1",
+    "config": {
+      "attention_implementation": "sdpa",
+      "batch_size": 8,
+      "bucket_size_multiplier": 50,
+      "dataloader_workers": 2,
+      "epochs": 1,
+      "eval_batch_size": 32,
+      "gradient_accumulation": 12,
+      "gradient_checkpointing": true,
+      "label_smoothing": 0.0,
+      "learning_rate": 2e-05,
+      "lexical_hard_negative_strength": 0.0,
+      "log_every": 50,
+      "loss_weighting": "none",
+      "max_grad_norm": 0.5,
+      "max_length": 384,
+      "model": "model/pretrain_bge_2ep",
+      "model_backend": "sequence_classification",
+      "model_load_kwargs": {},
+      "prefetch_factor": 2,
+      "sampling": "none",
+      "seed": 42,
+      "symmetric_validation": true,
+      "tokenization_batch_size": 1024,
+      "tokenization_log_every": 20,
+      "train_subset": "all",
+      "trust_remote_code": false,
+      "warmup_ratio": 0.05,
+      "weight_decay": 0.01
+    },
+    "experiment": "bge2_sft_oodtrain_e1_lr2e5_baseline_v1",
+    "loss_hook_sha256": "37a7173f708420128b8ca24aa0be073698dcad3e0e2bbc3a39c6d958be9c7e30",
+    "recipe_sha256": "2071b5596695033a2f122a68e4e059bc144cbcace2f569340ad4378e77e813d9",
+    "run_id": "e8b39f13d236484091ea65dd91112931",
+    "source_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96",
+    "validation_manifest_sha256": "b64a1902d86c9ad896a626b2a17bf018341f1d9c5fefa124834b525c84808f3c"
+  },
+  "selected_source": "baseline",
+  "stage": "lr_log_line",
+  "status": "complete"
+}

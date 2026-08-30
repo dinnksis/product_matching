@@ -1,0 +1,80 @@
+{
+  "alpha": 0.05,
+  "baseline": {
+    "campaign_identity_sha256": "de25c35eabf487178244d5ca32108435081a5118822bc8a18e09478a3b13f7ed",
+    "checkpoint_manifest_sha256": "9ce70e52e5981470b30126f34c0b6eacaf3b38d27da93c8d8c3aca3328850cf5",
+    "experiment": "bge2_sft_oodtrain_e1_lr2e5_baseline_v1",
+    "hard_macro_ap": 0.4147173717878038,
+    "iid_macro_ap": 0.8182905487436897,
+    "manifest_sha256": "00deacd9d0ea298607da929931e878a8531bb748116e7e2d6f406c5d4da4271a",
+    "ood_macro_ap": -1.0,
+    "recipe_sha256": "2071b5596695033a2f122a68e4e059bc144cbcace2f569340ad4378e77e813d9",
+    "run_id": "e8b39f13d236484091ea65dd91112931",
+    "source_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96"
+  },
+  "campaign": "bge_2ep_sft_oodtrain_v1",
+  "candidates": {
+    "bge2_sft_oodtrain_e1_lr1e5_v1": {
+      "campaign_identity_sha256": "3f75483fffd69a76a423eac1edaf1981654ebb7a70de2d8b8b675660930ee9c9",
+      "hard_delta": -0.0035549062661627273,
+      "hard_macro_ap": 0.4111624655216411,
+      "hard_p_value": 0.24387806096951525,
+      "hard_p_value_holm": 0.32083958020989506,
+      "iid_delta": -0.004652983282590117,
+      "iid_macro_ap": 0.8136375654610996,
+      "iid_p_value": 0.010994502748625687,
+      "iid_p_value_holm": 0.021989005497251374,
+      "iid_practical_relation": "degrades_beyond_margin",
+      "ood_compared": false,
+      "ood_macro_ap": -1.0,
+      "recipe_sha256": "05932080291e3ec80d24b368dd2a457c0a40790953f3b16dad81c89fd1e6d6da",
+      "run_id": "b332fb55f2e446ba833cc0de3f3b7ffd",
+      "source_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96"
+    },
+    "bge2_sft_oodtrain_e1_lr4e5_v1": {
+      "campaign_identity_sha256": "cbe924517dab24eed6c29198db8ad95499bf26d91d22d49a6040bf4944f928f8",
+      "hard_delta": -0.0051708006286042,
+      "hard_macro_ap": 0.4095465711591996,
+      "hard_p_value": 0.16041979010494753,
+      "hard_p_value_holm": 0.32083958020989506,
+      "iid_delta": -0.0031429926857553525,
+      "iid_macro_ap": 0.8151475560579343,
+      "iid_p_value": 0.15242378810594703,
+      "iid_p_value_holm": 0.15242378810594703,
+      "iid_practical_relation": "degrades_beyond_margin",
+      "ood_compared": false,
+      "ood_macro_ap": -1.0,
+      "recipe_sha256": "0ac75635c091f316884f1ec4bed46d2493580077e54adcb9e2c4b39275f6720f",
+      "run_id": "51ac103254b54295a3f5c1b9290cf24e",
+      "source_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96"
+    }
+  },
+  "diagnostic_splits": [
+    "hard"
+  ],
+  "family_name": "bge2_sft_lr_log_line_core_v1",
+  "multiple_testing_correction": "holm_within_planned_candidate_family_per_split",
+  "planned_experiments": [
+    "bge2_sft_oodtrain_e1_lr1e5_v1",
+    "bge2_sft_oodtrain_e1_lr4e5_v1"
+  ],
+  "planned_family_complete": true,
+  "practical_tie_margin": 0.002,
+  "primary_split": "iid",
+  "schema_version": 1,
+  "selection": {
+    "hard_used_for_selection": false,
+    "numeric_iid_max": 0.8182905487436897,
+    "numeric_iid_winner": "bge2_sft_oodtrain_e1_lr2e5_baseline_v1",
+    "ood_used_for_selection": false,
+    "selected_iid_delta_vs_baseline": 0.0,
+    "selected_iid_macro_ap": 0.8182905487436897,
+    "selected_with_practical_tie_break": "bge2_sft_oodtrain_e1_lr2e5_baseline_v1"
+  },
+  "status": "complete",
+  "tie_break_order": [
+    "bge2_sft_oodtrain_e1_lr2e5_baseline_v1",
+    "bge2_sft_oodtrain_e1_lr1e5_v1",
+    "bge2_sft_oodtrain_e1_lr4e5_v1"
+  ]
+}

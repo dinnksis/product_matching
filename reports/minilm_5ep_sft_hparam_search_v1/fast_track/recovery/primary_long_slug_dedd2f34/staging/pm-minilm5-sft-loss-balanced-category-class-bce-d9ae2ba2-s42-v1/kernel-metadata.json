@@ -1,0 +1,21 @@
+{
+  "id": "alexproger23/pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+  "title": "pm-minilm5-sft-loss-balanced-category-class-bce-d9ae2ba2-s42-v1",
+  "code_file": "notebook.ipynb",
+  "language": "python",
+  "kernel_type": "notebook",
+  "is_private": true,
+  "enable_gpu": true,
+  "enable_tpu": false,
+  "enable_internet": true,
+  "dataset_sources": [
+    "alexproger23/product-matching-validation-splits-v1",
+    "alexproger23/product-matching-minilm-llm-pretrain-5ep",
+    "alexproger23/product-matching-minilm-5ep-significance-v1",
+    "alexproger23/ecom-matching-google-sheets-credentials"
+  ],
+  "competition_sources": [],
+  "kernel_sources": [],
+  "model_sources": [],
+  "machine_shape": "NvidiaTeslaT4"
+}

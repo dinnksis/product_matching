@@ -95,9 +95,9 @@ def parse_args() -> argparse.Namespace:
     )
     parser.add_argument(
         "--validation-profile",
-        choices=("legacy", "v1_4"),
+        choices=("legacy", "v1_4", "atomic_v2"),
         default=None,
-        help="Defaults to v1_4 when the prompt filename contains v1_4.",
+        help="Defaults from the prompt filename.",
     )
     return parser.parse_args()
 
@@ -434,9 +434,14 @@ def main() -> None:
     labels_path = args.labels.resolve()
     schema_path = args.schema.resolve()
     prompt_path = args.prompt.resolve()
-    validation_profile = args.validation_profile or (
-        "v1_4" if "v1_4" in prompt_path.stem.casefold() else "legacy"
-    )
+    if args.validation_profile:
+        validation_profile = args.validation_profile
+    elif "atomic" in prompt_path.stem.casefold() and "v2" in prompt_path.stem.casefold():
+        validation_profile = "atomic_v2"
+    elif "v1_4" in prompt_path.stem.casefold():
+        validation_profile = "v1_4"
+    else:
+        validation_profile = "legacy"
     output_dir = args.output_dir.resolve()
     output_dir.mkdir(parents=True, exist_ok=True)
 

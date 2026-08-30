@@ -5,6 +5,7 @@ import json
 import os
 import threading
 import time
+from collections import deque
 from concurrent.futures import FIRST_COMPLETED, Future, ThreadPoolExecutor, wait
 from dataclasses import dataclass
 from datetime import UTC, datetime
@@ -136,6 +137,8 @@ def generate_task(
     source_names: set[str],
     registry: NameRegistry,
     generation_attempts: int,
+    task_retry_round: int,
+    task_seed_offset: int,
     run_signature: str,
     prompt_sha256: str,
 ) -> tuple[dict[str, Any], dict[str, Any]]:
@@ -153,7 +156,13 @@ def generate_task(
                 prompt,
                 category=str(task.anchor["category"]),
                 attribute_keys=keys,
-                seed=task.seed + generation_attempt - 1,
+                seed=(
+                    task.seed
+                    + task_seed_offset
+                    + task_retry_round * generation_attempts
+                    + generation_attempt
+                    - 1
+                ),
             )
         except Exception as error:
             last_error = error
@@ -192,6 +201,8 @@ def generate_task(
             "run_signature": run_signature,
             "prompt_sha256": prompt_sha256,
             "model": client.model,
+            "task_retry_round": task_retry_round,
+            "task_seed_offset": task_seed_offset,
             "generation_attempts": generation_attempt,
             "request_attempts": total_request_attempts,
             "latency_seconds": total_latency,
@@ -271,7 +282,13 @@ def run_generation(
     workers: int,
     generation_attempts: int,
     checkpoint_every: int,
+    task_retries: int = 3,
+    task_seed_offset: int = 0,
 ) -> dict[str, Any]:
+    if workers < 1 or generation_attempts < 1 or checkpoint_every < 1:
+        raise ValueError("workers, generation_attempts and checkpoint_every must be positive")
+    if task_retries < 0:
+        raise ValueError("task_retries must be non-negative")
     retriever = HybridRetriever.from_index_dir(index_dir)
     profile_path = index_dir / "profile.json"
     profile = json.loads(profile_path.read_text(encoding="utf-8"))
@@ -280,6 +297,7 @@ def run_generation(
         "version": "item_generation_v1",
         "index_profile": profile,
         "model": client.model,
+        "structured_output": bool(getattr(client, "structured_output", True)),
         "prompt_sha256": prompt_sha256,
         "count": count,
         "seed": seed,
@@ -306,22 +324,28 @@ def run_generation(
         | {normalize_text(row["name"]) for row in items_by_task.values()}
     )
     pending = [task for task in tasks if task.task_index not in items_by_task]
+    resumed_count = len(items_by_task)
     print(
         f"generate requested={count} resumed={len(items_by_task)} pending={len(pending)} "
-        f"workers={workers} model={client.model}",
+        f"workers={workers} task_retries={task_retries} model={client.model}",
         flush=True,
     )
     errors: list[dict[str, Any]] = []
+    task_retry_events = 0
     started = time.perf_counter()
     completed_since_checkpoint = 0
     iterator = iter(pending)
-    inflight: dict[Future[tuple[dict[str, Any], dict[str, Any]]], GenerationTask] = {}
+    retry_queue: deque[tuple[GenerationTask, int]] = deque()
+    inflight: dict[
+        Future[tuple[dict[str, Any], dict[str, Any]]],
+        tuple[GenerationTask, int],
+    ] = {}
 
-    def submit(executor: ThreadPoolExecutor) -> bool:
-        try:
-            task = next(iterator)
-        except StopIteration:
-            return False
+    def submit_task(
+        executor: ThreadPoolExecutor,
+        task: GenerationTask,
+        task_retry_round: int,
+    ) -> None:
         future = executor.submit(
             generate_task,
             task,
@@ -329,40 +353,63 @@ def run_generation(
             source_names=source_names,
             registry=registry,
             generation_attempts=generation_attempts,
+            task_retry_round=task_retry_round,
+            task_seed_offset=task_seed_offset,
             run_signature=run_signature,
             prompt_sha256=prompt_sha256,
         )
-        inflight[future] = task
+        inflight[future] = (task, task_retry_round)
+
+    def submit_next(executor: ThreadPoolExecutor) -> bool:
+        try:
+            task = next(iterator)
+        except StopIteration:
+            if not retry_queue:
+                return False
+            task, task_retry_round = retry_queue.popleft()
+        else:
+            task_retry_round = 0
+        submit_task(executor, task, task_retry_round)
         return True
 
     with ThreadPoolExecutor(max_workers=workers) as executor:
         for _ in range(min(len(pending), workers * 2)):
-            submit(executor)
+            submit_next(executor)
         while inflight:
             done, _ = wait(inflight, return_when=FIRST_COMPLETED)
             for future in done:
-                task = inflight.pop(future)
+                task, task_retry_round = inflight.pop(future)
                 try:
                     item_row, metadata_row = future.result()
                     items_by_task[task.task_index] = item_row
                     metadata_by_task[task.task_index] = metadata_row
                     completed_since_checkpoint += 1
                 except Exception as error:
-                    errors.append(
-                        {
-                            "task_index": task.task_index,
-                            "source_id": int(task.anchor["id"]),
-                            "error": repr(error),
-                        }
-                    )
-                submit(executor)
+                    if task_retry_round < task_retries:
+                        task_retry_events += 1
+                        retry_queue.append((task, task_retry_round + 1))
+                        submit_next(executor)
+                    else:
+                        errors.append(
+                            {
+                                "task_index": task.task_index,
+                                "source_id": int(task.anchor["id"]),
+                                "task_retry_rounds": task_retry_round,
+                                "error": repr(error),
+                            }
+                        )
+                        submit_next(executor)
+                else:
+                    submit_next(executor)
                 if completed_since_checkpoint >= checkpoint_every:
                     _write_checkpoint(output_dir, items_by_task, metadata_by_task)
                     completed_since_checkpoint = 0
                     elapsed = max(time.perf_counter() - started, 1e-9)
+                    generated_this_run = len(items_by_task) - resumed_count
                     print(
                         f"generate saved={len(items_by_task)}/{count} errors={len(errors)} "
-                        f"rate={(len(items_by_task) / elapsed):.2f}/s",
+                        f"retried={task_retry_events} retry_queue={len(retry_queue)} "
+                        f"rate={(generated_this_run / elapsed):.2f}/s",
                         flush=True,
                     )
 
@@ -374,6 +421,9 @@ def run_generation(
         "generated": len(items_by_task),
         "pending": count - len(items_by_task),
         "errors": len(errors),
+        "task_retries": task_retries,
+        "task_seed_offset": task_seed_offset,
+        "task_retry_events": task_retry_events,
         "elapsed_seconds_this_run": elapsed,
         "items_path": str((output_dir / "items.parquet").resolve()),
         "metadata_path": str((output_dir / "generation_metadata.parquet").resolve()),

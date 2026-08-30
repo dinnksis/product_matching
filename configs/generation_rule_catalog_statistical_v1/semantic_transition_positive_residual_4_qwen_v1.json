@@ -1,0 +1,119 @@
+[
+  {
+    "generation_rule_id": "gen_sem_all_fc1bf7245474d5979bbc_residual_nastolnaya_obuchayushchaya_v1",
+    "source_rule_id": "semantic_082001f5a5276acbde39",
+    "generation_tier": "SEMANTIC_LABEL1_RESIDUAL_ALLOWED_TRANSITION_V1",
+    "label": 1,
+    "target_label": 1,
+    "concept": "game_type",
+    "relation": "different_value",
+    "semantic_family": "semantic_atomic_difference_all_pairs_correlational",
+    "attribute_key": "тип",
+    "anchor_hint": "Создай конкретную настольную игру и обязательно укажи характеристики «Бренд» и «Название игры». Значение целевой характеристики «тип» выбери только из разрешённого перехода. Не добавляй факты, которые будут противоречить замене.",
+    "allowed_categories": [
+      "Детские товары"
+    ],
+    "allowed_product_types": [
+      "настольная игра"
+    ],
+    "allowed_anchor_context_keys": [
+      "Бренд",
+      "Название игры"
+    ],
+    "required_anchor_context_keys": [
+      "Бренд",
+      "Название игры"
+    ],
+    "target_value_domain": [
+      "настольная игра",
+      "обучающая игра"
+    ],
+    "allowed_value_transitions": [
+      [
+        "настольная игра",
+        "обучающая игра"
+      ]
+    ],
+    "primary_task_safety_cap": 2,
+    "generation_action": "Choose the only unordered pair from allowed_value_transitions. Set the anchor target attribute to one endpoint and replace it with the other; never invent a value outside that pair.",
+    "required_postcondition": "The target attribute must change between the two endpoints of the selected allowed transition. Preserve Brand, Game title, concrete product identity, and every unrelated fact; update every title and attribute mention consistently."
+  },
+  {
+    "generation_rule_id": "gen_sem_all_a29a2640f81133199b22_residual_detskaya_3_v1",
+    "source_rule_id": "semantic_46ff240c5c044c783755",
+    "generation_tier": "SEMANTIC_LABEL1_RESIDUAL_ALLOWED_TRANSITION_V1",
+    "label": 1,
+    "target_label": 1,
+    "concept": "target_audience",
+    "relation": "different_value",
+    "semantic_family": "semantic_atomic_difference_all_pairs_correlational",
+    "attribute_key": "Целевая аудитория",
+    "anchor_hint": "Создай конкретную настольную игру и обязательно укажи характеристики «Бренд» и «Название игры». Значение целевой характеристики «Целевая аудитория» выбери только из разрешённого перехода. Не добавляй факты, которые будут противоречить замене.",
+    "allowed_categories": [
+      "Хобби и творчество"
+    ],
+    "allowed_product_types": [
+      "настольная игра"
+    ],
+    "allowed_anchor_context_keys": [
+      "Бренд",
+      "Название игры"
+    ],
+    "required_anchor_context_keys": [
+      "Бренд",
+      "Название игры"
+    ],
+    "target_value_domain": [
+      "детская",
+      "3 лет"
+    ],
+    "allowed_value_transitions": [
+      [
+        "детская",
+        "3 лет"
+      ]
+    ],
+    "primary_task_safety_cap": 1,
+    "generation_action": "Choose the only unordered pair from allowed_value_transitions. Set the anchor target attribute to one endpoint and replace it with the other; never invent a value outside that pair.",
+    "required_postcondition": "The target attribute must change between the two endpoints of the selected allowed transition. Preserve Brand, Game title, concrete product identity, and every unrelated fact; update every title and attribute mention consistently."
+  },
+  {
+    "generation_rule_id": "gen_sem_all_a29a2640f81133199b22_residual_detskaya_4_v1",
+    "source_rule_id": "semantic_46ff240c5c044c783755",
+    "generation_tier": "SEMANTIC_LABEL1_RESIDUAL_ALLOWED_TRANSITION_V1",
+    "label": 1,
+    "target_label": 1,
+    "concept": "target_audience",
+    "relation": "different_value",
+    "semantic_family": "semantic_atomic_difference_all_pairs_correlational",
+    "attribute_key": "Целевая аудитория",
+    "anchor_hint": "Создай конкретную настольную игру и обязательно укажи характеристики «Бренд» и «Название игры». Значение целевой характеристики «Целевая аудитория» выбери только из разрешённого перехода. Не добавляй факты, которые будут противоречить замене.",
+    "allowed_categories": [
+      "Хобби и творчество"
+    ],
+    "allowed_product_types": [
+      "настольная игра"
+    ],
+    "allowed_anchor_context_keys": [
+      "Бренд",
+      "Название игры"
+    ],
+    "required_anchor_context_keys": [
+      "Бренд",
+      "Название игры"
+    ],
+    "target_value_domain": [
+      "детская",
+      "4 лет"
+    ],
+    "allowed_value_transitions": [
+      [
+        "детская",
+        "4 лет"
+      ]
+    ],
+    "primary_task_safety_cap": 1,
+    "generation_action": "Choose the only unordered pair from allowed_value_transitions. Set the anchor target attribute to one endpoint and replace it with the other; never invent a value outside that pair.",
+    "required_postcondition": "The target attribute must change between the two endpoints of the selected allowed transition. Preserve Brand, Game title, concrete product identity, and every unrelated fact; update every title and attribute mention consistently."
+  }
+]

@@ -1,0 +1,62 @@
+{
+  "base_model_revision": "953dc6f6f85a1b2dbfca4c34a2796e7dde08d41e",
+  "checkpoint_source": "artifacts/server_bge_3ep_h100/run",
+  "docker_image": "dinakepech/ecup26-minilm-s2:1.0",
+  "experiment": "server_bge_3ep_h100",
+  "files": {
+    "README.md": {
+      "sha256": "bdbf431a8e7103384f5dbfd73cd57617674fb316e1327bd6fafeb72454da6437",
+      "size": 2109
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "sha256": "a2f7aa5c544648465e8d37aedc62db54a021932397b7a6baab81e0517390d13c",
+      "size": 357
+    },
+    "metadata.json": {
+      "sha256": "e744f862b3aef7d37d9369547cc731da22e4b33afc2a6fb944beb94e21da488d",
+      "size": 86
+    },
+    "models/bge-reranker-v2-m3-3ep-h100/config.json": {
+      "sha256": "3f143138299caf72270c79814d1f0e3c38fc168e2d30f1e6cc4c70f6cdb481f5",
+      "size": 764
+    },
+    "models/bge-reranker-v2-m3-3ep-h100/model.safetensors": {
+      "sha256": "d7e899ea3cd305db970aa6f3466eb71a138ad418c74b8b6ac730d1828c4a4ab8",
+      "size": 2271071852
+    },
+    "models/bge-reranker-v2-m3-3ep-h100/special_tokens_map.json": {
+      "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835",
+      "size": 964
+    },
+    "models/bge-reranker-v2-m3-3ep-h100/tokenizer.json": {
+      "sha256": "efcbc2e883c0ef3f67ce522db4e6e4e114532aeb827b5e2cbfa89bac7da8252f",
+      "size": 17082998
+    },
+    "models/bge-reranker-v2-m3-3ep-h100/tokenizer_config.json": {
+      "sha256": "272dabf15417f68de99532ca6a2f7c402afdf654d4dc4134f35db97af1edc8b0",
+      "size": 1207
+    },
+    "run.py": {
+      "sha256": "ccf25593778d6ff59424a033587269311876fc39dd9efd151353a62f5eb6c31b",
+      "size": 18736
+    }
+  },
+  "inference": {
+    "attention": "transformers SDPA with native PyTorch Flash-SDPA enabled",
+    "dtype_on_h100": "bfloat16",
+    "initial_pair_batch_size": 512,
+    "length_sorted": true,
+    "max_length": 384,
+    "orientation_rule": "longer serialized product first",
+    "orientations": 1,
+    "tokenization_gpu_overlap": true
+  },
+  "model_family": "BAAI/bge-reranker-v2-m3",
+  "training": "3 supervised epochs on 347840 human-labelled pairs",
+  "validation": {
+    "saved_symmetric_hard_macro_ap": 0.46114816821596377,
+    "saved_symmetric_iid_macro_ap": 0.8249745146613486,
+    "single_pass_longer_first_hard_macro_ap": 0.46263071720675114,
+    "single_pass_longer_first_iid_macro_ap": 0.8236290179077869
+  }
+}

@@ -1,0 +1,3 @@
+threshold,target_label,candidate_centers_before_dedup,representative_rules,cross_split_rules,median_weighted_support,median_target_probability
+0.8,0,38917,8413,6132,16.411139011383057,0.9278063820416391
+0.8,1,395,185,80,4.5596118569374084,1.0

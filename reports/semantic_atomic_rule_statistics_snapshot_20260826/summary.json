@@ -1,0 +1,123 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-08-26T19:51:21.743357+00:00",
+  "occurrences": "/Users/aekuleshevskii/product_matching/reports/atomic_rule_statistics_semantic_snapshot_20260826/atomic_occurrences.parquet",
+  "occurrences_sha256": "bb9f053a317e200eb2f77d83aee4eead4b03423b867dbcbce06100da262860d5",
+  "occurrence_rows": 790789,
+  "different_value_rows": 770794,
+  "all_prototype_rows": 75866,
+  "singleton_evidence_prototype_rows": 8130,
+  "cannot_link_concept_pairs": 170803,
+  "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "embedding_dimension": 384,
+  "model_max_sequence_length": 128,
+  "top_k": 24,
+  "thresholds": [
+    0.65,
+    0.7,
+    0.75,
+    0.8,
+    0.85
+  ],
+  "minimum_support": 2.0,
+  "minimum_probability": 0.8,
+  "human_labels_in_embedding_text": false,
+  "hard_blocks": [
+    "category",
+    "relation",
+    "value_family"
+  ],
+  "selection": "weighted_semantic_neighbourhood_then_greedy_non_max_suppression",
+  "threshold_sweep": [
+    {
+      "threshold": 0.65,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 1833,
+      "representative_rules": 340,
+      "cross_split_rules": 232,
+      "median_weighted_support": 40.11439570784569,
+      "median_target_probability": 0.8641470565655293
+    },
+    {
+      "threshold": 0.65,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 220,
+      "representative_rules": 78,
+      "cross_split_rules": 49,
+      "median_weighted_support": 14.230910807847977,
+      "median_target_probability": 0.8533028981009916
+    },
+    {
+      "threshold": 0.7,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 1833,
+      "representative_rules": 341,
+      "cross_split_rules": 233,
+      "median_weighted_support": 40.05581170320511,
+      "median_target_probability": 0.8644961117280398
+    },
+    {
+      "threshold": 0.7,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 222,
+      "representative_rules": 80,
+      "cross_split_rules": 51,
+      "median_weighted_support": 14.230910807847977,
+      "median_target_probability": 0.8545057379976362
+    },
+    {
+      "threshold": 0.75,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 1823,
+      "representative_rules": 342,
+      "cross_split_rules": 237,
+      "median_weighted_support": 40.11439570784569,
+      "median_target_probability": 0.8641470565655293
+    },
+    {
+      "threshold": 0.75,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 226,
+      "representative_rules": 84,
+      "cross_split_rules": 53,
+      "median_weighted_support": 13.68247640132904,
+      "median_target_probability": 0.8545057379976362
+    },
+    {
+      "threshold": 0.8,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 1812,
+      "representative_rules": 346,
+      "cross_split_rules": 239,
+      "median_weighted_support": 37.3837816119194,
+      "median_target_probability": 0.8669687774853312
+    },
+    {
+      "threshold": 0.8,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 246,
+      "representative_rules": 85,
+      "cross_split_rules": 54,
+      "median_weighted_support": 14.51128739118576,
+      "median_target_probability": 0.8523586670225708
+    },
+    {
+      "threshold": 0.85,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 1793,
+      "representative_rules": 354,
+      "cross_split_rules": 239,
+      "median_weighted_support": 33.39501640200615,
+      "median_target_probability": 0.8661152219231241
+    },
+    {
+      "threshold": 0.85,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 286,
+      "representative_rules": 101,
+      "cross_split_rules": 63,
+      "median_weighted_support": 9.96377146244049,
+      "median_target_probability": 0.8547643468158598
+    }
+  ]
+}

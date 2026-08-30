@@ -1,0 +1,135 @@
+{
+  "schema_version": 1,
+  "created_at": "2026-08-26T20:00:09.829847+00:00",
+  "occurrences": "/Users/aekuleshevskii/product_matching/reports/atomic_rule_statistics_semantic_snapshot_20260826/atomic_occurrences.parquet",
+  "occurrences_sha256": "bb9f053a317e200eb2f77d83aee4eead4b03423b867dbcbce06100da262860d5",
+  "occurrence_rows": 790789,
+  "different_value_rows": 770794,
+  "all_prototype_rows": 72573,
+  "singleton_evidence_prototype_rows": 7869,
+  "cannot_link_concept_pairs": 170803,
+  "model": "sentence-transformers/paraphrase-multilingual-MiniLM-L12-v2",
+  "embedding_dimension": 384,
+  "model_max_sequence_length": 128,
+  "top_k": 24,
+  "thresholds": [
+    0.65,
+    0.7,
+    0.75,
+    0.8,
+    0.85
+  ],
+  "minimum_support": 2.0,
+  "minimum_probability": 0.8,
+  "selected_threshold": 0.8,
+  "recommended_rule_counts": {
+    "total": 638,
+    "label0": 457,
+    "label1": 181,
+    "cross_split_total": 381,
+    "cross_split_label0": 287,
+    "cross_split_label1": 94,
+    "cross_split_support5_total": 258,
+    "cross_split_support5_label0": 197,
+    "cross_split_support5_label1": 61
+  },
+  "human_labels_in_embedding_text": false,
+  "hard_blocks": [
+    "category",
+    "relation",
+    "value_family"
+  ],
+  "selection": "weighted_semantic_neighbourhood_then_greedy_non_max_suppression",
+  "threshold_sweep": [
+    {
+      "threshold": 0.65,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 1592,
+      "representative_rules": 423,
+      "cross_split_rules": 263,
+      "median_weighted_support": 9.235316634178162,
+      "median_target_probability": 0.9033851750117983
+    },
+    {
+      "threshold": 0.65,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 419,
+      "representative_rules": 166,
+      "cross_split_rules": 93,
+      "median_weighted_support": 5.74739670753479,
+      "median_target_probability": 0.8795587408617367
+    },
+    {
+      "threshold": 0.7,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 1570,
+      "representative_rules": 435,
+      "cross_split_rules": 274,
+      "median_weighted_support": 7.568365037441254,
+      "median_target_probability": 0.9178042222987733
+    },
+    {
+      "threshold": 0.7,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 428,
+      "representative_rules": 169,
+      "cross_split_rules": 98,
+      "median_weighted_support": 5.522917449474335,
+      "median_target_probability": 0.8955103009834441
+    },
+    {
+      "threshold": 0.75,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 1539,
+      "representative_rules": 449,
+      "cross_split_rules": 272,
+      "median_weighted_support": 6.981368005275726,
+      "median_target_probability": 0.932258233065199
+    },
+    {
+      "threshold": 0.75,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 417,
+      "representative_rules": 166,
+      "cross_split_rules": 86,
+      "median_weighted_support": 5.578160285949707,
+      "median_target_probability": 0.8950886617301808
+    },
+    {
+      "threshold": 0.8,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 1476,
+      "representative_rules": 457,
+      "cross_split_rules": 287,
+      "median_weighted_support": 6.6249343156814575,
+      "median_target_probability": 0.9570841732335299
+    },
+    {
+      "threshold": 0.8,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 441,
+      "representative_rules": 181,
+      "cross_split_rules": 94,
+      "median_weighted_support": 5.522917449474335,
+      "median_target_probability": 0.902358247229379
+    },
+    {
+      "threshold": 0.85,
+      "target_label": 0,
+      "candidate_centers_before_dedup": 1411,
+      "representative_rules": 471,
+      "cross_split_rules": 291,
+      "median_weighted_support": 6.285672426223755,
+      "median_target_probability": 1.0
+    },
+    {
+      "threshold": 0.85,
+      "target_label": 1,
+      "candidate_centers_before_dedup": 456,
+      "representative_rules": 193,
+      "cross_split_rules": 99,
+      "median_weighted_support": 5.461974203586578,
+      "median_target_probability": 0.936693831215508
+    }
+  ]
+}

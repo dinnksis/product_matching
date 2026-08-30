@@ -1,0 +1,161 @@
+{
+  "schema_version": 1,
+  "catalog_version": "semantic_all_pairs_cross_split_p80_support5_scoped_compact_safe_positive_v3",
+  "created_at": "2026-08-26T23:09:28.510521+00:00",
+  "source_catalog": "/Users/aekuleshevskii/product_matching/configs/generation_rule_catalog_statistical_v1/semantic_all_pairs_cross_split_p80_support5_scoped_compact_v2.json",
+  "source_catalog_sha256": "2ded918605a002364692165f9817810ae2a01558c5217e0e3997eefeec6dc322",
+  "manual_audit_catalog": "/Users/aekuleshevskii/product_matching/configs/generation_rule_catalog_statistical_v1/semantic_all_pairs_cross_split_p80_support5_scoped_v1.json",
+  "manual_audit_catalog_sha256": "c378138cab7b04e116f094fe02a5170de004ecca3eb1a93f243c65514aee0456",
+  "selection": {
+    "retain_all_label0_from_v2": true,
+    "positive_selection": "manual_generation_rule_id_allowlist",
+    "positive_allowlist": [
+      "gen_sem_all_2bd42ae67368b6da139a",
+      "gen_sem_all_fc1bf7245474d5979bbc",
+      "gen_sem_all_a29a2640f81133199b22",
+      "gen_sem_all_bb884e95495f2e4053ad",
+      "gen_sem_all_1fd8ee0362b4a69694eb",
+      "gen_sem_all_3eab364eedff30a6ccec"
+    ],
+    "positive_manual_tier": "SEMANTIC_ALL_PAIRS_LABEL1_MANUAL_ALLOWLIST_COMPACT_SAFE_POSITIVE_V3_EXPERIMENTAL_CORRELATIONAL",
+    "recommended_first_experiment_two_rule_fraction": 0.0,
+    "evidence_interpretation": "experimental_correlational_not_causal"
+  },
+  "manual_positive_tier_diagnostics": {
+    "source_positive_profiles": 22,
+    "allowed_positive_profiles": 6,
+    "excluded_positive_profiles": 16,
+    "allowed_generation_rule_ids": [
+      "gen_sem_all_2bd42ae67368b6da139a",
+      "gen_sem_all_fc1bf7245474d5979bbc",
+      "gen_sem_all_a29a2640f81133199b22",
+      "gen_sem_all_bb884e95495f2e4053ad",
+      "gen_sem_all_1fd8ee0362b4a69694eb",
+      "gen_sem_all_3eab364eedff30a6ccec"
+    ],
+    "excluded_generation_rule_ids": [
+      "gen_sem_all_0f1d58cbfb059010fe8d",
+      "gen_sem_all_11fec84718bf581a5153",
+      "gen_sem_all_227415cb128d6b0a7603",
+      "gen_sem_all_2c7367920561a10c83d2",
+      "gen_sem_all_3ce04373b8a37b9fdf1e",
+      "gen_sem_all_42ea0cde5322ede915ea",
+      "gen_sem_all_449b0e307d8a55fb50ca",
+      "gen_sem_all_572f3dc1a4c38c403129",
+      "gen_sem_all_7514771fa52231a37f9b",
+      "gen_sem_all_7e60b85ee526069721b3",
+      "gen_sem_all_943689c5278a23ac6990",
+      "gen_sem_all_9b2ee22c34ed60080573",
+      "gen_sem_all_9fab4b73b4d4fcde48bb",
+      "gen_sem_all_b343894f573aa05552c1",
+      "gen_sem_all_d25280ec8c2845bb7e21",
+      "gen_sem_all_d38f94352827c630cdad"
+    ],
+    "allowed_profiles": [
+      {
+        "generation_rule_id": "gen_sem_all_2bd42ae67368b6da139a",
+        "source_rule_id": "semantic_94b58ccf9b3217b76840",
+        "category": "Хобби и творчество",
+        "product_type": "настольная игра",
+        "concept": "age_rating",
+        "attribute_key": "возраст от",
+        "profile_pair_support": 11,
+        "profile_target_probability": 0.9090909090909091,
+        "audited_generation_rule_id": "gen_sem_all_2bd42ae67368b6da139a",
+        "resolved_compact_v2_generation_rule_id": "gen_sem_all_5e1a58f30892b37a3a6f"
+      },
+      {
+        "generation_rule_id": "gen_sem_all_fc1bf7245474d5979bbc",
+        "source_rule_id": "semantic_082001f5a5276acbde39",
+        "category": "Детские товары",
+        "product_type": "настольная игра",
+        "concept": "game_type",
+        "attribute_key": "тип",
+        "profile_pair_support": 10,
+        "profile_target_probability": 1.0,
+        "audited_generation_rule_id": "gen_sem_all_fc1bf7245474d5979bbc",
+        "resolved_compact_v2_generation_rule_id": "gen_sem_all_9178f2680e915203b887"
+      },
+      {
+        "generation_rule_id": "gen_sem_all_a29a2640f81133199b22",
+        "source_rule_id": "semantic_46ff240c5c044c783755",
+        "category": "Хобби и творчество",
+        "product_type": "настольная игра",
+        "concept": "target_audience",
+        "attribute_key": "Целевая аудитория",
+        "profile_pair_support": 24,
+        "profile_target_probability": 0.9166666666666666,
+        "audited_generation_rule_id": "gen_sem_all_a29a2640f81133199b22",
+        "resolved_compact_v2_generation_rule_id": "gen_sem_all_2006d79d05b4a35e5e6b"
+      },
+      {
+        "generation_rule_id": "gen_sem_all_bb884e95495f2e4053ad",
+        "source_rule_id": "semantic_3e85d67a892b6813597e",
+        "category": "Хобби и творчество",
+        "product_type": "набор для опытов",
+        "concept": "science_type",
+        "attribute_key": "наука",
+        "profile_pair_support": 9,
+        "profile_target_probability": 0.8888888888888888,
+        "audited_generation_rule_id": "gen_sem_all_bb884e95495f2e4053ad",
+        "resolved_compact_v2_generation_rule_id": "gen_sem_all_e2e3e7e698476a37d711"
+      },
+      {
+        "generation_rule_id": "gen_sem_all_1fd8ee0362b4a69694eb",
+        "source_rule_id": "semantic_1866df8881b1aa9f9e8c",
+        "category": "Хобби и творчество",
+        "product_type": "настольная игра",
+        "concept": "target_audience_age",
+        "attribute_key": "целевая аудитория",
+        "profile_pair_support": 47,
+        "profile_target_probability": 0.9148936170212766,
+        "audited_generation_rule_id": "gen_sem_all_1fd8ee0362b4a69694eb",
+        "resolved_compact_v2_generation_rule_id": "gen_sem_all_2ec1715e91d0de36e20e"
+      },
+      {
+        "generation_rule_id": "gen_sem_all_3eab364eedff30a6ccec",
+        "source_rule_id": "semantic_b13e14a9045cc4e20c4f",
+        "category": "Хобби и творчество",
+        "product_type": "настольная игра",
+        "concept": "game_mechanic",
+        "attribute_key": "вид настольной игры",
+        "profile_pair_support": 9,
+        "profile_target_probability": 0.8888888888888888,
+        "audited_generation_rule_id": "gen_sem_all_3eab364eedff30a6ccec",
+        "resolved_compact_v2_generation_rule_id": "gen_sem_all_ee9f42e937f3372c967a"
+      }
+    ]
+  },
+  "exported_rules": 3680,
+  "label_counts": {
+    "0": 3674,
+    "1": 6
+  },
+  "category_counts": {
+    "Автотовары": 141,
+    "Аптека": 137,
+    "Бытовая химия": 30,
+    "Галантерея и аксессуары": 343,
+    "Детские товары": 41,
+    "Дом и сад": 317,
+    "Канцелярские товары": 155,
+    "Красота и гигиена": 86,
+    "Мебель": 409,
+    "Музыкальные инструменты": 154,
+    "Обувь": 105,
+    "Продукты питания": 210,
+    "Спорт и отдых": 236,
+    "Строительство и ремонт": 462,
+    "Товары для животных": 107,
+    "Хобби и творчество": 116,
+    "Электроника": 406,
+    "Ювелирные изделия": 225
+  },
+  "category_coverage": 18,
+  "tier_counts": {
+    "SEMANTIC_ALL_PAIRS_LABEL0_CROSS_SPLIT_SUPPORT5_P80_SCOPED_COMPACT_V2_EXPERIMENTAL_CORRELATIONAL": 3674,
+    "SEMANTIC_ALL_PAIRS_LABEL1_MANUAL_ALLOWLIST_COMPACT_SAFE_POSITIVE_V3_EXPERIMENTAL_CORRELATIONAL": 6
+  },
+  "output": "/Users/aekuleshevskii/product_matching/configs/generation_rule_catalog_statistical_v1/semantic_all_pairs_cross_split_p80_support5_scoped_compact_safe_positive_v3.json",
+  "output_sha256": "569518c074da166dcac74b12a0c8ee313d08840468ac6bfddafcd4d90cfb3be2"
+}

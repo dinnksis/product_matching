@@ -1,0 +1,12 @@
+{
+  "comparison_action": "updated",
+  "comparison_sheet": "sft_exps",
+  "completion_canonical_sha256": "62430b363680230e3276289bcc1dd7348d9ddc99080a4d1d5b29b1fe259693b6",
+  "experiment_action": "appended",
+  "experiment_group": "sft",
+  "run_id": "a2e3e08c011c45a59599595a840600fe",
+  "spreadsheet_id": "1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA",
+  "spreadsheet_url": "https://docs.google.com/spreadsheets/d/1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA/edit",
+  "status": "synced_comparison",
+  "synced_at_utc": "2026-08-29T11:52:23Z"
+}

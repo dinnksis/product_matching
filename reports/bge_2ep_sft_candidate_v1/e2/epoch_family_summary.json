@@ -1,0 +1,112 @@
+{
+  "anchor": {
+    "campaign_identity_sha256": "de25c35eabf487178244d5ca32108435081a5118822bc8a18e09478a3b13f7ed",
+    "checkpoint_manifest_sha256": "9ce70e52e5981470b30126f34c0b6eacaf3b38d27da93c8d8c3aca3328850cf5",
+    "checkpoint_model_sha256": "c21ccfcd5de310ca0328620bf8ba09e838dbe3f6394be656bd7fec16ad8377d1",
+    "config": {
+      "attention_implementation": "sdpa",
+      "batch_size": 8,
+      "bucket_size_multiplier": 50,
+      "dataloader_workers": 2,
+      "epochs": 1,
+      "eval_batch_size": 32,
+      "gradient_accumulation": 12,
+      "gradient_checkpointing": true,
+      "label_smoothing": 0.0,
+      "learning_rate": 2e-05,
+      "lexical_hard_negative_strength": 0.0,
+      "log_every": 50,
+      "loss_weighting": "none",
+      "max_grad_norm": 0.5,
+      "max_length": 384,
+      "model": "model/pretrain_bge_2ep",
+      "model_backend": "sequence_classification",
+      "model_load_kwargs": {},
+      "prefetch_factor": 2,
+      "sampling": "none",
+      "seed": 42,
+      "symmetric_validation": true,
+      "tokenization_batch_size": 1024,
+      "tokenization_log_every": 20,
+      "train_subset": "all",
+      "trust_remote_code": false,
+      "warmup_ratio": 0.05,
+      "weight_decay": 0.01
+    },
+    "experiment": "bge2_sft_oodtrain_e1_lr2e5_baseline_v1",
+    "loss_hook_sha256": "37a7173f708420128b8ca24aa0be073698dcad3e0e2bbc3a39c6d958be9c7e30",
+    "recipe_sha256": "2071b5596695033a2f122a68e4e059bc144cbcace2f569340ad4378e77e813d9",
+    "run_id": "e8b39f13d236484091ea65dd91112931",
+    "source_sha256": "9fdf243d10223f1cafc677544d972f8e4739b7de49bc6de0d50c862109970e96",
+    "validation_manifest_sha256": "b64a1902d86c9ad896a626b2a17bf018341f1d9c5fefa124834b525c84808f3c"
+  },
+  "campaign": "bge_2ep_sft_oodtrain_v1",
+  "candidate": {
+    "experiment": "bge2_sft_oodtrain_e2_lr2e5_v1",
+    "recipe_sha256": "d46be9217a43396ecc8c594fc1864ee93761d288c30e5a40041adbb28bd7adfe",
+    "run_id": "a2e3e08c011c45a59599595a840600fe"
+  },
+  "diagnostic_splits": [
+    "hard"
+  ],
+  "family_name": "bge2_sft_selected_lr_epoch_line_v1",
+  "hard_used_for_selection": false,
+  "ood_used_for_selection": false,
+  "practical_tie_margin": 0.002,
+  "primary_split": "iid",
+  "schema_version": 1,
+  "selection": {
+    "rule": "select e2 iff paired IID delta > 0.002",
+    "selected_epoch": 2,
+    "selected_experiment": "bge2_sft_oodtrain_e2_lr2e5_v1",
+    "selected_run_id": "a2e3e08c011c45a59599595a840600fe"
+  },
+  "splits": {
+    "hard": {
+      "baseline_macro_average_precision": 0.4147173717878038,
+      "bootstrap_resamples": 2000,
+      "candidate_macro_average_precision": 0.4377746475442678,
+      "categories": 18,
+      "ci95_high": 0.031227287620514934,
+      "ci95_low": 0.013548572646471468,
+      "components": 5200,
+      "delta_macro_average_precision": 0.02305727575646399,
+      "examples": 5814,
+      "holm_family": "bge2_sft_selected_lr_epoch_line_v1",
+      "holm_family_size": 1,
+      "p_value": 0.0004997501249375312,
+      "p_value_holm": 0.0004997501249375312,
+      "permutations": 2000,
+      "seed": 43
+    },
+    "iid": {
+      "baseline_macro_average_precision": 0.8182905487436897,
+      "bootstrap_resamples": 2000,
+      "candidate_macro_average_precision": 0.8234607352184464,
+      "categories": 18,
+      "ci95_high": 0.009875334860213802,
+      "ci95_low": 3.9825629648160405e-06,
+      "components": 11263,
+      "delta_macro_average_precision": 0.005170186474756755,
+      "examples": 12000,
+      "holm_family": "bge2_sft_selected_lr_epoch_line_v1",
+      "holm_family_size": 1,
+      "p_value": 0.063968015992004,
+      "p_value_holm": 0.063968015992004,
+      "permutations": 2000,
+      "seed": 42
+    },
+    "ood": {
+      "ci95_high": null,
+      "ci95_low": null,
+      "delta_macro_average_precision": null,
+      "evaluated": false,
+      "examples": 0,
+      "p_value": null,
+      "p_value_holm": null,
+      "reason": "former frozen OOD pairs are part of BGE supervised training",
+      "status": "disabled_train_contaminated"
+    }
+  },
+  "status": "complete"
+}
