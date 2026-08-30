@@ -1,0 +1,37 @@
+{
+  "experiment": "minilm_5ep_human_error_curriculum_v1",
+  "candidate_run_id": "3c9eda4d1a7d4a12b1c77085df124621",
+  "baseline_run_id": "67f4fe76886b43d6b52ed5cb49068e1e",
+  "training": {
+    "base_human_pairs": 306669,
+    "curriculum_pairs": 9311,
+    "curriculum_sample_weight": 2.0,
+    "other_sample_weight": 1.0,
+    "human_labels_only": true,
+    "synthetic_pairs_used": false,
+    "qwen_output_used_as_model_input_or_target": false,
+    "qwen_role": "label-free semantic analysis and curriculum filtering only"
+  },
+  "macro_average_precision": {
+    "iid": {
+      "baseline": 0.789388132774931,
+      "candidate": 0.7880331992522103,
+      "delta": -0.0013549335227207582,
+      "holm_p_value": 0.37381309345327335
+    },
+    "hard": {
+      "baseline": 0.3655009201486312,
+      "candidate": 0.3664640139591716,
+      "delta": 0.000963093810540383,
+      "holm_p_value": 0.39480259870064965
+    },
+    "ood": {
+      "baseline": 0.6426602624552971,
+      "candidate": 0.6406083915687455,
+      "delta": -0.0020518708865515656,
+      "holm_p_value": 0.004497751124437781
+    }
+  },
+  "google_sheet": "data_exps",
+  "conclusion": "Uniform x2 weighting of the selected human curriculum did not improve the baseline; this was not a Qwen teacher-distillation experiment."
+}
