@@ -1,0 +1,200 @@
+[
+  {
+    "run_id": "diversity_a21d1a90a4eced4c8a077474",
+    "models": "gte vs rumodernbert",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_1bfd1c780e29aafbf8006f13",
+    "models": "gte vs bge",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_9af2da48aa20369af3874926",
+    "models": "gte vs minilm",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_da8f0fc9b1a27e909d208527",
+    "models": "rumodernbert vs bge",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_77a20e414909c1f131f92392",
+    "models": "rumodernbert vs minilm",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_98c466b154306819c184afbc",
+    "models": "bge vs minilm",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_828bb92889ecb1675b7fd1ea",
+    "models": "gte vs rumodernbert",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_f19350f06509a3bdc29d49bd",
+    "models": "gte vs bge",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_b1756c5332dbfc8618ae30c4",
+    "models": "gte vs minilm",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_cc28f774e512aec5ede55558",
+    "models": "rumodernbert vs bge",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_3c3b120c0a8a6a7f08a23bff",
+    "models": "rumodernbert vs minilm",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_cca308ec693f0f827520cd8c",
+    "models": "bge vs minilm",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_a2c1789087ac51a104982111",
+    "models": "gte vs rumodernbert",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_03334a17f1cbe618f8a1ae8d",
+    "models": "gte vs bge",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_1b23347772356af78b323263",
+    "models": "gte vs minilm",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_ce30e57e59a9efbf5bfbc57e",
+    "models": "rumodernbert vs bge",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_53b36930bd6b092a9ae2cfc8",
+    "models": "rumodernbert vs minilm",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_90140e0ca21079ae7e91192e",
+    "models": "bge vs minilm",
+    "aggregation_method": "pairwise_error_overlap",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_73297ce5387c04dcac13577d",
+    "models": "gte",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_e81afc823f3aacde3c2b8c7c",
+    "models": "rumodernbert",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_f68ac70e0c3323fae31e92cb",
+    "models": "bge",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_9a895f249aaf839a32911e83",
+    "models": "minilm",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_1620768efd602d5951598129",
+    "models": "gte",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_6804fd6ee7c7787f47926ace",
+    "models": "rumodernbert",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_d58f783491b960bd313c7ebb",
+    "models": "bge",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_e2e0e998fdd8cda952caada9",
+    "models": "minilm",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_8222f84c18041fb80b0d2714",
+    "models": "gte",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_a4f2256ddbf05813d68bcc9e",
+    "models": "rumodernbert",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_f3e54bdc3b8c15ffbb4b9c88",
+    "models": "bge",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_5b073833b5b2da9c4e2a3cf7",
+    "models": "minilm",
+    "aggregation_method": "model_unique_errors",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_e0d0a5f881961dac96a5dff7",
+    "models": "gte",
+    "aggregation_method": "hard_vs_minilm",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_43d7761e1e4aa37a4e958179",
+    "models": "rumodernbert",
+    "aggregation_method": "hard_vs_minilm",
+    "action": "appended"
+  },
+  {
+    "run_id": "diversity_6318e067d9f3259c15f57605",
+    "models": "bge",
+    "aggregation_method": "hard_vs_minilm",
+    "action": "appended"
+  }
+]

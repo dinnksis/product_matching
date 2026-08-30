@@ -1,0 +1,3 @@
+candidate_role,architecture,scheme,mini_coverage,ru_coverage,ru_router_target,mini_weight,ru_weight,oof_macro_ap,iid_macro_ap,hard_macro_ap,ood_macro_ap,mean_macro_ap,delta_vs_full_bge_minilm,estimated_private_runtime_seconds,passes_13_minutes
+production_quality,hierarchical_m0.60_r0.05,hierarchical,0.6,0.05,vs_bge_minilm,0.5,0.5,0.791914810598241,0.7940336037270487,0.37525634730565444,0.6434387308733526,0.6042428939686851,0.001692267292284999,,
+reserved_compute,hierarchical_m0.40_r0.05,hierarchical,0.4,0.05,vs_bge_minilm,0.5,0.5,0.7911725970528525,0.7925338669582519,0.37613887490428943,0.6438662281386123,0.6041796566670512,0.0016290299906510652,,

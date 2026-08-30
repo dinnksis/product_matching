@@ -12,6 +12,8 @@ from pathlib import Path
 from unittest.mock import Mock, call, patch
 
 from src.google_sheets_logger import (
+    ARCHITECTURE_EXPERIMENT_HEADERS,
+    ARCHITECTURE_EXPERIMENTS_SHEET,
     CATEGORY_HEADERS,
     COMPARISON_DATA_START_ROW,
     COMPARISON_HEADERS,
@@ -22,13 +24,16 @@ from src.google_sheets_logger import (
     SheetsLoggerError,
     SheetsRestClient,
     _comparison_format_requests,
+    _upsert_architecture_experiment,
     _upsert_categories,
     _upsert_comparison_experiment,
     _upsert_experiment,
+    build_architecture_experiment_row,
     build_category_rows,
     build_comparison_row,
     build_experiment_row,
     column_letter,
+    ensure_architecture_table,
     ensure_comparison_tables,
     ensure_tables,
     experiment_group,
@@ -170,6 +175,47 @@ def sheet_metadata(*, experiments_columns: int = 50) -> dict[str, object]:
 
 
 class RowBuildingTest(unittest.TestCase):
+    def test_architecture_row_contains_runtime_and_artifact_paths(self) -> None:
+        completion = sample_completion()
+        completion.update(
+            {
+                "architecture": "gte",
+                "initial_checkpoint_ref": "Alibaba-NLP/gte-multilingual-reranker-base",
+                "serialization": "S2_VALUES_ONLY",
+                "serialization_sha256": "serial-hash",
+                "technical_notes": "none",
+                "artifacts": {
+                    "checkpoint": "gte/final",
+                    "predictions": {
+                        "iid": "gte/iid_validation_predictions.parquet",
+                        "hard": "gte/hard_validation_predictions.parquet",
+                        "ood": "gte/ood_validation_predictions.parquet",
+                    },
+                },
+            }
+        )
+        report = completion["training_report"]
+        report["amp_dtype"] = "torch.float16"
+        report["world_size"] = 2
+        report["tokenization_seconds"] = 42.0
+        report["validation_seconds_by_split"] = {
+            "iid": 1.0,
+            "hard": 2.0,
+            "ood": 3.0,
+        }
+        row = build_architecture_experiment_row(completion)
+        values = dict(zip(ARCHITECTURE_EXPERIMENT_HEADERS, row, strict=True))
+
+        self.assertEqual(values["architecture"], "gte")
+        self.assertEqual(values["serialization"], "S2_VALUES_ONLY")
+        self.assertEqual(values["effective_batch"], 256)
+        self.assertEqual(values["iid_inference_seconds"], 1.0)
+        self.assertEqual(values["checkpoint_path"], "gte/final")
+        self.assertEqual(
+            values["ood_predictions_path"],
+            "gte/ood_validation_predictions.parquet",
+        )
+
     def test_experiment_row_contains_three_protocol_scores_and_core_config(self) -> None:
         completion = sample_completion()
         row = build_experiment_row(
@@ -468,6 +514,37 @@ class RestClientTest(unittest.TestCase):
 
 
 class TableSetupTest(unittest.TestCase):
+    def test_architecture_table_is_created_without_other_sheets(self) -> None:
+        client = Mock()
+        created = {
+            "sheets": [
+                {
+                    "properties": {
+                        "sheetId": 404,
+                        "title": ARCHITECTURE_EXPERIMENTS_SHEET,
+                        "gridProperties": {"columnCount": 50},
+                    }
+                }
+            ]
+        }
+        client.metadata.side_effect = [{"sheets": []}, created]
+        client.get_values.return_value = []
+
+        sheet_id = ensure_architecture_table(client)
+
+        self.assertEqual(sheet_id, 404)
+        create_requests = client.batch_update_spreadsheet.call_args_list[0].args[0]
+        self.assertEqual(len(create_requests), 1)
+        self.assertEqual(
+            create_requests[0]["addSheet"]["properties"]["title"],
+            ARCHITECTURE_EXPERIMENTS_SHEET,
+        )
+        last_column = column_letter(len(ARCHITECTURE_EXPERIMENT_HEADERS))
+        client.update_values.assert_called_once_with(
+            f"'architecture_exps'!A1:{last_column}1",
+            [ARCHITECTURE_EXPERIMENT_HEADERS],
+        )
+
     def test_missing_tables_are_created_and_headers_are_initialized(self) -> None:
         client = Mock()
         client.metadata.side_effect = [{"sheets": []}, sheet_metadata()]
@@ -617,6 +694,23 @@ class TableSetupTest(unittest.TestCase):
 
 
 class UpsertTest(unittest.TestCase):
+    def test_architecture_upsert_never_targets_other_worksheets(self) -> None:
+        completion = sample_completion()
+        completion["architecture"] = "gte"
+        row = build_architecture_experiment_row(completion)
+        client = Mock()
+        client.max_attempts = 4
+        client.sleep = Mock()
+        client.get_values.return_value = []
+
+        action = _upsert_architecture_experiment(client, row)
+
+        self.assertEqual(action, "appended")
+        range_name = client.append_values_once.call_args.args[0]
+        self.assertTrue(range_name.startswith("'architecture_exps'!"))
+        self.assertNotIn("experiments_v2", range_name)
+        self.assertNotIn("data_exps", range_name)
+
     def test_new_experiment_is_appended_and_second_sync_updates_same_row(self) -> None:
         row = build_experiment_row(
             sample_completion(), synced_at_utc="2026-08-13T10:16:00Z"

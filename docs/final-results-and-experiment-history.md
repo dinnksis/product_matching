@@ -96,6 +96,33 @@ blend. Вариант `0.7 × BGE e2 + 0.3 × MiniLM` дал IID macro AP `0.826
 консервативный single-model выбор — BGE. Это не доказательство прироста на
 hidden test.
 
+## Финальные ансамбли и routing
+
+После одиночных моделей были подготовлены три production-oriented варианта:
+
+- full BGE + MiniLM: обе модели считают 100% пар, probabilities смешиваются
+  50/50;
+- hierarchical 40/5: BGE считает все пары, compact CatBoost направляет 40% в
+  MiniLM и 5% внутри этого subset в RuModernBERT;
+- full triple: равное среднее probabilities BGE, MiniLM и RuModernBERT.
+
+Подтверждённый runtime anchor — full BGE+MiniLM в one-way
+SentenceTransformers/FP16/SDPA реализации. Для routed 40/5 и full triple
+актуальный competition runtime не подтверждён: предыдущие H100-прогоны падали на
+startup RuModernBERT до законченного forward. Их builders и bundles сохранены,
+но README не заявляет, что они укладываются в лимит.
+
+Routing models обучались component-disjoint на OOF предыдущих neural
+checkpoints. Они полезны как эксперимент по compute allocation, но их AP нельзя
+автоматически переносить на финальные all-human checkpoints без свежего OOF.
+Подробный протокол и таблицы находятся в
+[`final-ensemble-architecture.md`](final-ensemble-architecture.md).
+
+MiniLM и RuModernBERT также имеют отдельный финальный all-human stage: после
+выбора параметров на holdout каждый специалист дообучается на всех 365 654 human
+парах, без validation и без дальнейшего выбора гиперпараметров. См.
+[`final-human-finetuning.md`](final-human-finetuning.md).
+
 ## Генерация и расширение данных
 
 В репозитории сохранён отдельный воспроизводимый `item_pipeline` для

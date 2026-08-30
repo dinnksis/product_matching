@@ -1,0 +1,3 @@
+routing,budget,score_mode,status,selection_basis
+uncertainty_abs_minilm,0.1,requires_neural_oof_selection,protocol_candidate_not_approved,predeclared simplicity and measured MiniLM runtime
+domain_conflict_minilm,0.1,requires_neural_oof_selection,protocol_candidate_not_approved,predeclared domain prior and measured MiniLM runtime

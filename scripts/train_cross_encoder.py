@@ -24,6 +24,7 @@ from torch.nn.parallel import DistributedDataParallel
 from torch.optim import AdamW
 from torch.utils.data import DataLoader
 from transformers import (
+    AutoConfig,
     AutoModel,
     AutoModelForSequenceClassification,
     AutoTokenizer,
@@ -62,6 +63,7 @@ CONFIG_KEYS = {
     "model_backend",
     "model_load_kwargs",
     "trust_remote_code",
+    "classifier_dropout",
     "epochs",
     "batch_size",
     "eval_batch_size",
@@ -69,6 +71,7 @@ CONFIG_KEYS = {
     "learning_rate",
     "weight_decay",
     "warmup_ratio",
+    "scheduler",
     "max_length",
     "attention_implementation",
     "sampling",
@@ -86,6 +89,7 @@ CONFIG_KEYS = {
     "max_grad_norm",
     "log_every",
     "seed",
+    "skip_validation",
 }
 
 
@@ -101,6 +105,9 @@ class ValidationResult:
     scores: np.ndarray
     scores_ab: np.ndarray
     scores_ba: np.ndarray
+    logits: np.ndarray
+    logits_ab: np.ndarray
+    logits_ba: np.ndarray
 
 
 def load_config_from_cli() -> tuple[Path, dict[str, Any]]:
@@ -143,6 +150,12 @@ def parse_args() -> argparse.Namespace:
         help="Allow Hugging Face model/tokenizer repositories to execute custom code",
     )
     parser.add_argument(
+        "--classifier-dropout",
+        type=float,
+        default=configured("classifier_dropout", None),
+        help="Explicit classifier-head dropout; omit to keep the checkpoint config",
+    )
+    parser.add_argument(
         "--model-load-kwarg",
         action="append",
         default=[],
@@ -173,6 +186,12 @@ def parse_args() -> argparse.Namespace:
             "paths are resolved below --prepared-dir. Defaults to iid=val_pairs.parquet."
         ),
     )
+    parser.add_argument(
+        "--skip-validation",
+        action=argparse.BooleanOptionalAction,
+        default=configured("skip_validation", False),
+        help="Train and save the model without loading or evaluating validation data",
+    )
     parser.add_argument("--epochs", type=int, default=configured("epochs", 1))
     parser.add_argument("--batch-size", type=int, default=configured("batch_size", 96), help="Per GPU")
     parser.add_argument("--eval-batch-size", type=int, default=configured("eval_batch_size", 192), help="Per GPU")
@@ -184,6 +203,11 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument("--learning-rate", type=float, default=configured("learning_rate", 2e-5))
     parser.add_argument("--weight-decay", type=float, default=configured("weight_decay", 0.01))
     parser.add_argument("--warmup-ratio", type=float, default=configured("warmup_ratio", 0.05))
+    parser.add_argument(
+        "--scheduler",
+        choices=["cosine"],
+        default=configured("scheduler", "cosine"),
+    )
     parser.add_argument("--max-length", type=int, default=configured("max_length", 256))
     parser.add_argument(
         "--attention-implementation",
@@ -281,6 +305,8 @@ def validate_args(args: argparse.Namespace) -> None:
         raise ValueError("warmup-ratio must be in [0, 1)")
     if not 0 <= args.label_smoothing < 1:
         raise ValueError("label-smoothing must be in [0, 1)")
+    if args.classifier_dropout is not None and not 0 <= args.classifier_dropout < 1:
+        raise ValueError("classifier-dropout must be in [0, 1)")
 
 
 def model_load_kwargs(args: argparse.Namespace) -> dict[str, Any]:
@@ -428,7 +454,7 @@ def evaluate(
     model_backend: str,
 ) -> ValidationResult | None:
     model.eval()
-    local: list[tuple[int, bool, float]] = []
+    local: list[tuple[int, bool, float, float]] = []
     with torch.inference_mode():
         for packed in loader:
             pair_indices = packed.pop("pair_indices").tolist()
@@ -441,11 +467,12 @@ def evaluate(
             }
             with torch.autocast(device_type="cuda", dtype=amp_dtype):
                 logits = relevance_logits(model(**batch), model_backend)
-            probabilities = logits.float().sigmoid().cpu().tolist()
+            raw_logits = logits.float().cpu()
+            probabilities = raw_logits.sigmoid().tolist()
             local.extend(
-                (int(index), bool(reverse), float(probability))
-                for index, reverse, probability in zip(
-                    pair_indices, orientations, probabilities
+                (int(index), bool(reverse), float(probability), float(raw_logit))
+                for index, reverse, probability, raw_logit in zip(
+                    pair_indices, orientations, probabilities, raw_logits.tolist()
                 )
             )
 
@@ -459,15 +486,19 @@ def evaluate(
 
     scores_ab = np.full(len(targets), np.nan, dtype=np.float32)
     scores_ba = np.full(len(targets), np.nan, dtype=np.float32)
+    logits_ab = np.full(len(targets), np.nan, dtype=np.float32)
+    logits_ba = np.full(len(targets), np.nan, dtype=np.float32)
     for part in gathered:
-        for index, reverse, score in part:
-            destination = scores_ba if reverse else scores_ab
-            if np.isfinite(destination[index]):
+        for index, reverse, score, raw_logit in part:
+            score_destination = scores_ba if reverse else scores_ab
+            logit_destination = logits_ba if reverse else logits_ab
+            if np.isfinite(score_destination[index]):
                 raise RuntimeError(
                     f"Validation produced a duplicate score for pair {index}, "
                     f"reverse={reverse}"
                 )
-            destination[index] = score
+            score_destination[index] = score
+            logit_destination[index] = raw_logit
     if not np.isfinite(scores_ab).all():
         missing = int((~np.isfinite(scores_ab)).sum())
         raise RuntimeError(f"Validation produced {missing} missing A/B scores")
@@ -479,6 +510,11 @@ def evaluate(
         (scores_ab + scores_ba) / 2.0
         if has_reverse_scores
         else scores_ab.copy()
+    )
+    logits = (
+        (logits_ab + logits_ba) / 2.0
+        if has_reverse_scores
+        else logits_ab.copy()
     )
     frame = pd.DataFrame({"target": targets, "predict": scores, "category": categories})
     per_category = frame.groupby("category").apply(
@@ -504,6 +540,9 @@ def evaluate(
         scores=scores,
         scores_ab=scores_ab,
         scores_ba=scores_ba,
+        logits=logits,
+        logits_ab=logits_ab,
+        logits_ba=logits_ba,
     )
 
 
@@ -555,6 +594,12 @@ def build_validation_predictions(
     predictions["score"] = result.scores
     predictions["score_ab"] = result.scores_ab
     predictions["score_ba"] = result.scores_ba
+    predictions["logit"] = result.logits
+    predictions["logit_ab"] = result.logits_ab
+    predictions["logit_ba"] = result.logits_ba
+    predictions["probability"] = result.scores
+    predictions["probability_ab"] = result.scores_ab
+    predictions["probability_ba"] = result.scores_ba
     predictions["score_order_gap"] = np.abs(result.scores_ab - result.scores_ba)
     predictions["token_length_ab"] = validation_cache.forward_lengths.astype(np.int32)
     predictions["token_length_ba"] = validation_cache.reverse_lengths.astype(np.int32)
@@ -598,9 +643,10 @@ def main() -> None:
         columns=["id", "product_text", "category"],
     )
     train_pairs = pd.read_parquet(args.prepared_dir / "train_pairs.parquet")
-    validation_paths = validation_split_paths(
-        args.prepared_dir,
-        args.validation_split,
+    validation_paths = (
+        {}
+        if args.skip_validation
+        else validation_split_paths(args.prepared_dir, args.validation_split)
     )
     missing_validation_files = [
         str(path) for path in validation_paths.values() if not path.is_file()
@@ -644,6 +690,7 @@ def main() -> None:
             tokenizer.pad_token = tokenizer.unk_token
         else:
             raise ValueError("Cross-encoder tokenizer must define pad_token_id")
+    tokenization_started = time.perf_counter()
     train_cache, validation_caches = create_caches(
         train,
         validations,
@@ -653,6 +700,7 @@ def main() -> None:
         distributed,
         control_group,
     )
+    tokenization_seconds = time.perf_counter() - tokenization_started
     os.environ["TOKENIZERS_PARALLELISM"] = "false"
 
     train_targets = train["target"].to_numpy(dtype=np.float32)
@@ -760,9 +808,16 @@ def main() -> None:
     amp_dtype = preferred_cuda_dtype()
     extra_model_load_kwargs = model_load_kwargs(args)
     if args.model_backend == "sequence_classification":
+        model_config = AutoConfig.from_pretrained(
+            args.model,
+            trust_remote_code=args.trust_remote_code,
+        )
+        model_config.num_labels = 1
+        if args.classifier_dropout is not None:
+            model_config.classifier_dropout = args.classifier_dropout
         model = AutoModelForSequenceClassification.from_pretrained(
             args.model,
-            num_labels=1,
+            config=model_config,
             attn_implementation=args.attention_implementation,
             trust_remote_code=args.trust_remote_code,
             **extra_model_load_kwargs,
@@ -841,6 +896,9 @@ def main() -> None:
                     "model": args.model,
                     "model_backend": args.model_backend,
                     "architecture": type(model).__name__,
+                    "classifier_dropout": getattr(
+                        model.config, "classifier_dropout", None
+                    ),
                     "amp_dtype": str(amp_dtype),
                     "trainable_parameters": sum(p.numel() for p in trainable_parameters),
                     "train_pairs": len(train_dataset),
@@ -856,7 +914,9 @@ def main() -> None:
                     * world_size
                     * args.gradient_accumulation,
                     "dataloader_workers_total": args.dataloader_workers * world_size,
-                    "validation_schedule": "after_training",
+                    "validation_schedule": (
+                        "skipped" if args.skip_validation else "after_training"
+                    ),
                     "sampling": args.sampling,
                     "loss_weighting": args.loss_weighting,
                     "loss_hook": loss_hook.metadata,
@@ -1117,9 +1177,16 @@ def main() -> None:
                     float(order_gap.mean()) if order_gap.notna().any() else None
                 ),
             }
-        primary_name = "iid" if "iid" in validation_reports else next(iter(validation_reports))
-        primary = validation_reports[primary_name]
+        primary_name = (
+            "iid"
+            if "iid" in validation_reports
+            else next(iter(validation_reports), None)
+        )
+        primary = validation_reports.get(primary_name) if primary_name else None
         report = {
+            "world_size": world_size,
+            "amp_dtype": str(amp_dtype),
+            "tokenization_seconds": tokenization_seconds,
             "training_seconds": float(elapsed.item()),
             "validation_seconds": validation_seconds,
             "validation_seconds_by_split": validation_seconds_by_split,
@@ -1144,19 +1211,31 @@ def main() -> None:
             "validation_splits": validation_reports,
             # Compatibility aliases for older analysis tools. The canonical
             # multi-split results live under validation_splits.
-            "validation_examples": primary["examples"],
-            "validation_positive_examples": primary["positive_examples"],
-            "validation_positive_rate": primary["positive_rate"],
+            "validation_examples": primary["examples"] if primary else 0,
+            "validation_positive_examples": (
+                primary["positive_examples"] if primary else 0
+            ),
+            "validation_positive_rate": (
+                primary["positive_rate"] if primary else None
+            ),
             "examples_per_second": float(totals[0].item() / elapsed.item()),
             "padding_efficiency": float(totals[1].item() / totals[2].item()),
             "peak_vram_gib_by_rank": peak_memory_by_rank,
-            "macro_average_precision": primary["macro_average_precision"],
-            "overall_average_precision": primary["overall_average_precision"],
-            "per_category_average_precision": primary[
-                "per_category_average_precision"
-            ],
-            "validation_predictions_file": primary["predictions_file"],
-            "mean_score_order_gap": primary["mean_score_order_gap"],
+            "macro_average_precision": (
+                primary["macro_average_precision"] if primary else None
+            ),
+            "overall_average_precision": (
+                primary["overall_average_precision"] if primary else None
+            ),
+            "per_category_average_precision": (
+                primary["per_category_average_precision"] if primary else {}
+            ),
+            "validation_predictions_file": (
+                primary["predictions_file"] if primary else None
+            ),
+            "mean_score_order_gap": (
+                primary["mean_score_order_gap"] if primary else None
+            ),
             "args": vars(args),
         }
         args.output_dir.mkdir(parents=True, exist_ok=True)

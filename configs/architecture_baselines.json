@@ -1,0 +1,69 @@
+{
+  "protocol": {
+    "epochs": 1,
+    "learning_rate": 2e-5,
+    "weight_decay": 0.01,
+    "warmup_ratio": 0.05,
+    "max_length": 384,
+    "sampling": "none",
+    "train_subset": "all",
+    "loss_weighting": "none",
+    "label_smoothing": 0.0,
+    "symmetric_validation": true,
+    "seed": 42,
+    "target_effective_batch": 192,
+    "serialization": "S2_VALUES_ONLY"
+  },
+  "profiles": {
+    "gte": {
+      "experiment": "gte_multilingual_reranker_base_human_ft_v1",
+      "model": "Alibaba-NLP/gte-multilingual-reranker-base",
+      "architecture": "gte-multilingual-reranker-base",
+      "batch_size": 16,
+      "eval_batch_size": 64,
+      "gradient_accumulation": 6,
+      "attention_implementation": "eager",
+      "gradient_checkpointing": false,
+      "trust_remote_code": true,
+      "technical_notes": "Uses trusted upstream remote code. Eager attention is fixed because the existing H100 baseline reproduced non-finite loss with SDPA."
+    },
+    "rumodernbert": {
+      "experiment": "rumodernbert_base_random_head_human_ft_v1",
+      "model": "deepvk/RuModernBERT-base",
+      "architecture": "RuModernBERT-base",
+      "batch_size": 32,
+      "eval_batch_size": 128,
+      "gradient_accumulation": 3,
+      "attention_implementation": "sdpa",
+      "gradient_checkpointing": false,
+      "trust_remote_code": false,
+      "technical_notes": "The upstream base encoder receives a newly initialized one-logit binary classification head before one human epoch."
+    },
+    "bge-v2-m3": {
+      "experiment": "bge_reranker_v2_m3_human_ft_v1",
+      "model": "BAAI/bge-reranker-v2-m3",
+      "architecture": "bge-reranker-v2-m3",
+      "batch_size": 8,
+      "eval_batch_size": 32,
+      "gradient_accumulation": 12,
+      "attention_implementation": "sdpa",
+      "gradient_checkpointing": true,
+      "trust_remote_code": false,
+      "technical_notes": "Gradient checkpointing and a smaller per-device batch are the minimum conservative 16 GiB T4 memory adaptation; effective batch remains 192."
+    },
+    "minilm-5ep": {
+      "experiment": "minilm_5ep_synthetic_pretrain_human_ft_s2_v1",
+      "model": "model/pretrain_minilm_5ep",
+      "architecture": "mMiniLMv2-L12-H384",
+      "batch_size": 96,
+      "eval_batch_size": 192,
+      "gradient_accumulation": 1,
+      "attention_implementation": "sdpa",
+      "gradient_checkpointing": false,
+      "trust_remote_code": false,
+      "initial_checkpoint_dataset": "alexproger23/product-matching-minilm-llm-pretrain-5ep",
+      "initial_checkpoint_manifest_sha256": "354c7006898a9a44a3115c8384f12dbab520cfec7723a675f8ccedb108544533",
+      "technical_notes": "Starts from the frozen five-epoch 11M synthetic checkpoint. That checkpoint was pretrained with S1_KEY_VALUE; this controlled human stage uses the common S2_VALUES_ONLY representation required for all four architectures."
+    }
+  }
+}

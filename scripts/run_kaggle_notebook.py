@@ -131,9 +131,15 @@ def validate_slug(value: str, label: str) -> str:
 
 
 def kaggle_command() -> list[str]:
-    local_executable = ROOT / ".venv" / "bin" / "kaggle"
-    if local_executable.is_file():
-        return [str(local_executable)]
+    local_candidates = [
+        Path(sys.executable).with_name("kaggle.exe"),
+        Path(sys.executable).with_name("kaggle"),
+        ROOT / ".venv" / "Scripts" / "kaggle.exe",
+        ROOT / ".venv" / "bin" / "kaggle",
+    ]
+    for local_executable in local_candidates:
+        if local_executable.is_file():
+            return [str(local_executable)]
     executable = shutil.which("kaggle")
     if executable:
         return [executable]
@@ -159,6 +165,98 @@ def run_command(command: list[str], *, check: bool = True) -> subprocess.Complet
     if check and result.returncode:
         fail(f"command failed with exit code {result.returncode}", result.returncode)
     return result
+
+
+def safe_http_error_message(error: Exception) -> str:
+    """Return the Kaggle response body without exposing configured credentials."""
+    response = getattr(error, "response", None)
+    status = getattr(response, "status_code", "unknown")
+    body = str(getattr(response, "text", "") or "").strip()
+    if body:
+        try:
+            payload = json.loads(body)
+        except json.JSONDecodeError:
+            message = body
+        else:
+            if isinstance(payload, dict):
+                selected = {
+                    key: payload[key]
+                    for key in ("code", "message", "error", "details")
+                    if key in payload
+                }
+                message = json.dumps(
+                    selected or payload, ensure_ascii=False, default=str
+                )
+            else:
+                message = json.dumps(payload, ensure_ascii=False, default=str)
+    else:
+        message = str(error)
+    for variable in ("KAGGLE_API_TOKEN", "KAGGLE_KEY"):
+        secret = os.getenv(variable, "")
+        if secret:
+            message = message.replace(secret, "[REDACTED]")
+    return f"HTTP {status}: {message[:4000]}"
+
+
+def push_kernel(stage_dir: Path, *, timeout: int, accelerator: str | None) -> None:
+    """Push through the Python API so a rejected SaveKernel keeps its message."""
+    try:
+        import requests
+        import ssl
+        from kaggle.api.kaggle_api_extended import KaggleApi
+        from kagglesdk.kaggle_http_client import KaggleHttpClient
+    except ImportError as error:
+        fail(f"Kaggle Python API is unavailable: {error}")
+
+    # Some Windows networks terminate Kaggle's automatically negotiated TLS
+    # connection with SSLEOFError while accepting TLS 1.2 to the same endpoint.
+    # Mounting a scoped adapter on Kaggle SDK sessions avoids changing global
+    # requests behavior or disabling certificate verification.
+    original_init_session = KaggleHttpClient._init_session
+
+    class KaggleTls12Adapter(requests.adapters.HTTPAdapter):
+        def init_poolmanager(self, *args: object, **kwargs: object) -> None:
+            context = ssl.create_default_context()
+            context.minimum_version = ssl.TLSVersion.TLSv1_2
+            context.maximum_version = ssl.TLSVersion.TLSv1_2
+            kwargs["ssl_context"] = context
+            super().init_poolmanager(*args, **kwargs)
+
+    def init_tls12_session(client: object) -> object:
+        result = original_init_session(client)
+        session = getattr(client, "_session", None)
+        if session is not None and not getattr(session, "_kaggle_tls12", False):
+            session.mount("https://", KaggleTls12Adapter())
+            session._kaggle_tls12 = True
+        return result
+
+    KaggleHttpClient._init_session = init_tls12_session
+    api = KaggleApi()
+    try:
+        api.authenticate()
+        print(f"$ KaggleApi.kernels_push({stage_dir}) [TLS 1.2]", flush=True)
+        response = api.kernels_push(
+            str(stage_dir),
+            timeout=str(timeout),
+            acc=accelerator,
+        )
+    except requests.exceptions.HTTPError as error:
+        fail(
+            "Kaggle SaveKernel rejected the staged notebook. Server response: "
+            + safe_http_error_message(error),
+            1,
+        )
+    except (requests.exceptions.ConnectionError, requests.exceptions.Timeout) as error:
+        fail(
+            "Kaggle connection failed before SaveKernel completed: "
+            + safe_http_error_message(error),
+            1,
+        )
+    finally:
+        KaggleHttpClient._init_session = original_init_session
+    print("Kaggle accepted the kernel version.", flush=True)
+    if getattr(response, "error_message", None):
+        fail(f"Kaggle returned an error after SaveKernel: {response.error_message}")
 
 
 def prepare_notebook(source: Path, destination: Path, *, gpu_check: bool) -> None:
@@ -319,6 +417,12 @@ def build_parser() -> argparse.ArgumentParser:
     parser.add_argument("--dataset", action="append", default=[], help="attach owner/dataset")
     parser.add_argument("--competition", action="append", default=[], help="attach competition slug")
     parser.add_argument("--kernel", action="append", default=[], help="attach owner/kernel-slug output")
+    parser.add_argument(
+        "--model",
+        action="append",
+        default=[],
+        help="attach owner/model/framework/variation/version",
+    )
     parser.add_argument("--no-wait", action="store_true", help="return immediately after push")
     parser.add_argument("--no-download", action="store_true", help="do not download outputs")
     parser.add_argument(
@@ -336,6 +440,14 @@ def build_parser() -> argparse.ArgumentParser:
         "--no-google-sheets-credentials",
         action="store_true",
         help="do not attach the private Google Sheets credential Dataset",
+    )
+    parser.add_argument(
+        "--skip-cli-checks",
+        action="store_true",
+        help=(
+            "skip Kaggle CLI credentials/source checks and push directly through "
+            "the authenticated Python API"
+        ),
     )
     parser.add_argument("--dry-run", action="store_true", help="prepare files but do not call Kaggle")
     return parser
@@ -398,9 +510,10 @@ def main() -> int:
     kernel_sources = args.kernel + (
         [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_KERNEL_SOURCES"))
     )
-    model_sources = (
+    model_sources = args.model + (
         [] if args.no_env_sources else split_sources(os.getenv("KAGGLE_MODEL_SOURCES"))
     )
+    model_sources = unique_sources(model_sources)
 
     stage_dir = STAGE_ROOT / slug
     stage_dir.mkdir(parents=True, exist_ok=True)
@@ -445,31 +558,25 @@ def main() -> int:
             else "GPU preflight disabled"
         )
         print(f"GPU:      {accelerator} ({gpu_check_note})")
-    print(f"Sources:  {len(datasets)} dataset(s), {len(competitions)} competition(s)")
+    print(
+        f"Sources:  {len(datasets)} dataset(s), {len(competitions)} competition(s), "
+        f"{len(model_sources)} model(s)"
+    )
     if args.dry_run:
         print("Dry run complete; Kaggle was not contacted.")
         return 0
 
     cli = kaggle_command()
-    print("Checking Kaggle credentials...")
-    run_command(cli + ["kernels", "list", "--mine", "--page-size", "1"])
-    push_command = cli + [
-        "kernels",
-        "push",
-        "-p",
-        str(stage_dir),
-        "--timeout",
-        str(run_timeout),
-    ]
-    if accelerator is not None:
-        push_command.extend(["--accelerator", accelerator])
-    push_result = run_command(push_command)
-    if "not valid dataset sources" in push_result.stdout.lower():
-        fail(
-            "Kaggle rejected one or more Dataset attachments during kernel push; "
-            "the run cannot read /kaggle/input"
-        )
-    verify_remote_sources(cli, kernel_ref, expected_datasets=datasets)
+    if args.skip_cli_checks:
+        print("Skipping optional Kaggle CLI preflight; Python API authentication is used by push.")
+    else:
+        print("Checking Kaggle credentials...")
+        run_command(cli + ["kernels", "list", "--mine", "--page-size", "1"])
+    push_kernel(stage_dir, timeout=run_timeout, accelerator=accelerator)
+    if args.skip_cli_checks:
+        print("Skipped post-push CLI attachment verification by request.")
+    else:
+        verify_remote_sources(cli, kernel_ref, expected_datasets=datasets)
 
     if args.no_wait:
         print("Notebook was submitted; not waiting for completion.")

@@ -1,0 +1,25 @@
+{
+  "variant": "score_title",
+  "target": "classification logloss benefit, MiniLM_AB over BGE_AB",
+  "coverage": 0.4,
+  "feature_columns": [
+    "category",
+    "title_exact",
+    "title_ratio",
+    "title_token_sort",
+    "title_token_jaccard",
+    "title_length_ratio",
+    "title_length_delta",
+    "title_number_overlap",
+    "title_number_jaccard",
+    "bge_probability",
+    "bge_logit",
+    "bge_abs_from_half",
+    "bge_uncertainty",
+    "bge_entropy",
+    "bge_raw_logit"
+  ],
+  "categorical_columns": [
+    "category"
+  ]
+}

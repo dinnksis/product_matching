@@ -1,0 +1,4 @@
+split,n,minilm_better,rumodernbert_better,both_better,minilm_only,rumodernbert_only,neither_better
+hard,5814,1958,1631,982,976,649,3207
+iid,12000,3558,2573,1587,1971,986,7456
+ood,41171,10586,8608,5145,5441,3463,27122

@@ -1,0 +1,16 @@
+split,route_budget,abs_entropy_masks_equal
+iid,0.05,True
+iid,0.1,True
+iid,0.15,True
+iid,0.2,True
+iid,0.3,True
+hard,0.05,True
+hard,0.1,True
+hard,0.15,True
+hard,0.2,True
+hard,0.3,True
+ood,0.05,True
+ood,0.1,True
+ood,0.15,True
+ood,0.2,True
+ood,0.3,True

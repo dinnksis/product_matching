@@ -1,0 +1,13 @@
+split,routing,specialist,route_budget,score_mode,route_coverage,minilm_coverage,rumodernbert_coverage,macro_ap,baseline_bge_macro_ap,delta_vs_bge,routing_uses_labels
+iid,full_bge,BGE,0.0,baseline_fixed,0.0,0.0,0.0,0.7822219461825138,0.7822219461825138,0.0,False
+iid,full_bge_minilm_50_50,BGE+MiniLM,1.0,baseline_fixed,1.0,1.0,0.0,0.7928572484420844,0.7822219461825138,0.010635302259570545,False
+iid,full_bge_rumodernbert_50_50,BGE+RuModernBERT,1.0,baseline_fixed,1.0,0.0,1.0,0.788812108779721,0.7822219461825138,0.006590162597207128,False
+iid,full_triple_equal,BGE+MiniLM+RuModernBERT,2.0,baseline_fixed,1.0,1.0,1.0,0.7966345880718311,0.7822219461825138,0.014412641889317235,False
+hard,full_bge,BGE,0.0,baseline_fixed,0.0,0.0,0.0,0.3759746515593398,0.3759746515593398,0.0,False
+hard,full_bge_minilm_50_50,BGE+MiniLM,1.0,baseline_fixed,1.0,1.0,0.0,0.37347953928110134,0.3759746515593398,-0.002495112278238454,False
+hard,full_bge_rumodernbert_50_50,BGE+RuModernBERT,1.0,baseline_fixed,1.0,0.0,1.0,0.3632315672981379,0.3759746515593398,-0.012743084261201909,False
+hard,full_triple_equal,BGE+MiniLM+RuModernBERT,2.0,baseline_fixed,1.0,1.0,1.0,0.3661327888052932,0.3759746515593398,-0.009841862754046582,False
+ood,full_bge,BGE,0.0,baseline_fixed,0.0,0.0,0.0,0.6412704537924441,0.6412704537924441,0.0,False
+ood,full_bge_minilm_50_50,BGE+MiniLM,1.0,baseline_fixed,1.0,1.0,0.0,0.6413150923060148,0.6412704537924441,4.4638513570727234e-05,False
+ood,full_bge_rumodernbert_50_50,BGE+RuModernBERT,1.0,baseline_fixed,1.0,0.0,1.0,0.6494011463110853,0.6412704537924441,0.00813069251864118,False
+ood,full_triple_equal,BGE+MiniLM+RuModernBERT,2.0,baseline_fixed,1.0,1.0,1.0,0.648387111308492,0.6412704537924441,0.007116657516047953,False

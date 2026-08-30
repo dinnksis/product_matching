@@ -1,0 +1,182 @@
+[
+  {
+    "run_id": "ensemble_868c9c05565692a5387cb264",
+    "models": "bge",
+    "aggregation_method": "mean_probability",
+    "action": "updated"
+  },
+  {
+    "run_id": "ensemble_1ad501030b998e7c065c175a",
+    "models": "bge",
+    "aggregation_method": "mean_rank",
+    "action": "updated"
+  },
+  {
+    "run_id": "ensemble_179ffb74f992f89e6b2a7522",
+    "models": "gte",
+    "aggregation_method": "mean_probability",
+    "action": "updated"
+  },
+  {
+    "run_id": "ensemble_111f78bc2a50534c9fe58338",
+    "models": "gte",
+    "aggregation_method": "mean_rank",
+    "action": "updated"
+  },
+  {
+    "run_id": "ensemble_ad214ba51dd28557811267bf",
+    "models": "minilm",
+    "aggregation_method": "mean_probability",
+    "action": "updated"
+  },
+  {
+    "run_id": "ensemble_a7b8f9698263b78d173e0e94",
+    "models": "minilm",
+    "aggregation_method": "mean_rank",
+    "action": "updated"
+  },
+  {
+    "run_id": "ensemble_7231e07f96aecb4fb3fa0adf",
+    "models": "rumodernbert",
+    "aggregation_method": "mean_probability",
+    "action": "updated"
+  },
+  {
+    "run_id": "ensemble_f7303816919a36a5de5a2fd9",
+    "models": "rumodernbert",
+    "aggregation_method": "mean_rank",
+    "action": "updated"
+  },
+  {
+    "run_id": "ensemble_30b44d5a8b56322b1f6cc80d",
+    "models": "bge+minilm",
+    "aggregation_method": "mean_probability",
+    "action": "updated"
+  },
+  {
+    "run_id": "ensemble_1ee57d163392a1a838ff5916",
+    "models": "bge+minilm",
+    "aggregation_method": "mean_rank",
+    "action": "updated"
+  },
+  {
+    "run_id": "ensemble_faf6afa4a0577620b8d56121",
+    "models": "gte+bge",
+    "aggregation_method": "mean_probability",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_1922d0d7e09f1fd7854ecdaa",
+    "models": "gte+bge",
+    "aggregation_method": "mean_rank",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_b86ccd1fd3ffeab6397d508b",
+    "models": "gte+minilm",
+    "aggregation_method": "mean_probability",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_7e0d05c3e4582ae33c1bdc05",
+    "models": "gte+minilm",
+    "aggregation_method": "mean_rank",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_8e82eaf4bb3f7cf891f108b1",
+    "models": "gte+rumodernbert",
+    "aggregation_method": "mean_probability",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_a2d97425da8db2908109b5f0",
+    "models": "gte+rumodernbert",
+    "aggregation_method": "mean_rank",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_d1f28e01d80e4b438f048564",
+    "models": "rumodernbert+bge",
+    "aggregation_method": "mean_probability",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_795299d162cf08a33b955a1b",
+    "models": "rumodernbert+bge",
+    "aggregation_method": "mean_rank",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_38af2ddbb5a31e1d3565aafd",
+    "models": "rumodernbert+minilm",
+    "aggregation_method": "mean_probability",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_927efbaaa9a5dc6ea5af200b",
+    "models": "rumodernbert+minilm",
+    "aggregation_method": "mean_rank",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_6d252cb13af3dec209f71ea8",
+    "models": "gte+bge+minilm",
+    "aggregation_method": "mean_probability",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_b3f43577837f1bf51fc95ab9",
+    "models": "gte+bge+minilm",
+    "aggregation_method": "mean_rank",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_0a1a0884e04d088a35717dfa",
+    "models": "gte+rumodernbert+bge",
+    "aggregation_method": "mean_probability",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_9aa1cf9cfbd9cdea256caba7",
+    "models": "gte+rumodernbert+bge",
+    "aggregation_method": "mean_rank",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_af8b66a0437d7e6d5ff15fa6",
+    "models": "gte+rumodernbert+minilm",
+    "aggregation_method": "mean_probability",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_6feab2cb697730cdae48da19",
+    "models": "gte+rumodernbert+minilm",
+    "aggregation_method": "mean_rank",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_cc3d65cb26c1d73120e160e3",
+    "models": "rumodernbert+bge+minilm",
+    "aggregation_method": "mean_probability",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_fbba47bc81f2b210ee495098",
+    "models": "rumodernbert+bge+minilm",
+    "aggregation_method": "mean_rank",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_cf5e8e29dec4dff3930cde51",
+    "models": "gte+rumodernbert+bge+minilm",
+    "aggregation_method": "mean_probability",
+    "action": "appended"
+  },
+  {
+    "run_id": "ensemble_342b1b596840a8b2d6b8053e",
+    "models": "gte+rumodernbert+bge+minilm",
+    "aggregation_method": "mean_rank",
+    "action": "appended"
+  }
+]

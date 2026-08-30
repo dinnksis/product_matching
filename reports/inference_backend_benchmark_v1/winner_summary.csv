@@ -1,0 +1,4 @@
+model,backend,t4_batch,precision,load_seconds,tokenize_seconds,inference_seconds,total_seconds_5000,pairs_per_second,peak_vram_gib,baseline_seconds_5000,time_reduction_pct,pearson,spearman,mean_abs_difference,max_abs_difference,sample_ap_delta
+bge,transformers_native_pretokenized_bucketed,32,float16,22.406189,2.610438,80.958944,84.937805,58.866602,3.427791,93.023703,8.692298,0.9999999774,0.9999999315,0.0000117128,0.002692938,-0.000003760
+minilm,transformers_native_pretokenized_bucketed,192,float16,0.884645,3.014037,10.062626,14.463022,345.709218,2.283355,16.667834,13.227947,1.0000000000,0.9999999994,0.0000000078,0.000028940,0.000000000
+rumodernbert,transformers_native_pretokenized_bucketed,192,float16,3.855768,2.924139,43.024910,47.285200,105.741332,3.408510,73.978375,36.082403,0.9999996370,0.9999987841,0.0001299303,0.005141854,0.000489275

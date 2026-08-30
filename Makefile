@@ -1,4 +1,5 @@
 .PHONY: setup notebook attributes-notebook validation-audit-notebooks validation-split-audit error-pattern-audit report prepare-human prepare-mxbai-balanced analyze-validation train-qwen train-cross-encoder train-llm-full train-llm-full-margin train-llm-full-symmetric kaggle-google-credentials kaggle-google-credentials-dry-run kaggle-significance-baseline kaggle-significance-baseline-dry-run kaggle-sheets-init kaggle-sheets-retry kaggle-train-build kaggle-train-data kaggle-cross-build kaggle-cross-dry-run kaggle-cross-run kaggle-mxbai-build kaggle-mxbai-data-dry-run kaggle-mxbai-dry-run kaggle-mxbai-run kaggle-minilm-balanced-build kaggle-minilm-balanced-dry-run kaggle-minilm-balanced-run kaggle-validation-data-dry-run kaggle-validation-data kaggle-minilm-validation-build kaggle-minilm-validation-dry-run kaggle-minilm-validation-run kaggle-run kaggle-dry-run serialization-ablation-build serialization-ablation-dry-run serialization-ablation-run serialization-ablation-monitor submit-build submit-archive submit-jina-build submit-jina-archive submit-minilm-s2 embedding-boosting-dry-run embedding-boosting-run embedding-boosting-monitor submit-embedding-build submit-embedding-archive
+.PHONY: architecture-baselines-build architecture-baselines-dry-run architecture-baselines-run architecture-baselines-download architecture-baselines-summary submit-bge submit-bge-minilm
 
 CROSS_ENCODER_CONFIG ?= configs/cross_encoder_minilm.json
 VALIDATION_PREDICTIONS ?= data/runs/validation_predictions_v1.parquet
@@ -136,6 +137,23 @@ kaggle-minilm-validation-dry-run:
 kaggle-minilm-validation-run:
 	uv run python scripts/run_minilm_validation_baseline_kaggle.py
 
+architecture-baselines-build:
+	uv run python scripts/create_architecture_baseline_notebooks.py
+
+architecture-baselines-dry-run:
+	uv run python scripts/run_architecture_baseline_kaggle.py all --dry-run
+
+architecture-baselines-run:
+	@test -n "$(ARCH_PROFILE)" || (echo "Usage: make architecture-baselines-run ARCH_PROFILE=gte"; exit 2)
+	uv run python scripts/run_architecture_baseline_kaggle.py "$(ARCH_PROFILE)"
+
+architecture-baselines-download:
+	@test -n "$(ARCH_PROFILE)" || (echo "Usage: make architecture-baselines-download ARCH_PROFILE=gte"; exit 2)
+	uv run python scripts/run_architecture_baseline_kaggle.py "$(ARCH_PROFILE)" --download-existing
+
+architecture-baselines-summary:
+	uv run python scripts/summarize_architecture_baselines.py
+
 kaggle-minilm-pretrain-checkpoint-dry-run:
 	uv run python scripts/push_minilm_pretrain_checkpoint_dataset.py --dry-run
 
@@ -182,6 +200,12 @@ submit-jina-archive:
 
 submit-minilm-s2:
 	python scripts/build_minilm_s2_submit.py
+
+submit-bge:
+	python scripts/build_bge_reranker_submit.py
+
+submit-bge-minilm:
+	python scripts/build_bge_minilm_ensemble_submit.py
 
 embedding-boosting-dry-run:
 	python scripts/run_embedding_boosting_kaggle.py --dry-run

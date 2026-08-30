@@ -1,0 +1,4 @@
+model,reference_model,corrected_hard_negatives,regressed_hard_negatives,net_hard_negatives,corrected_hard_positives,regressed_hard_positives,net_hard_positives
+gte,minilm,145,230,-85,69,106,-37
+rumodernbert,minilm,131,225,-94,80,95,-15
+bge,minilm,194,143,51,62,111,-49

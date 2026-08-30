@@ -1,0 +1,21 @@
+{
+  "variant": "score_category",
+  "mini_coverage": 0.4,
+  "rumodern_coverage": 0.05,
+  "mini_weight": 0.5,
+  "rumodern_weight": 0.5,
+  "rumodern_weight_candidates": [
+    {
+      "weight": 0.25,
+      "oof_macro_ap": 0.7885008886802716
+    },
+    {
+      "weight": 0.5,
+      "oof_macro_ap": 0.7885315185575779
+    },
+    {
+      "weight": 1.0,
+      "oof_macro_ap": 0.7866055188667403
+    }
+  ]
+}

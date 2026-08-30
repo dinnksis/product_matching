@@ -1,0 +1,29 @@
+{
+  "human_train_pairs_path": "data/validation_splits_v1/human_train_pairs.parquet",
+  "train_feature_cache_path": "artifacts/catboost1_negative_router_v2/feature_cache/base_features.parquet",
+  "validation_feature_cache_dir": "artifacts/catboost2_trust_router_v1/validation_feature_cache",
+  "predictions_root": "preds",
+  "oof_predictions": {
+    "bge": "preds/preds_bge/oof_predictions.parquet",
+    "minilm": "preds/preds_minilm/oof_predictions.parquet"
+  },
+  "output_dir": "artifacts/fast_oneway_benefit_router_v1",
+  "report_dir": "reports/fast_oneway_benefit_router_v1",
+  "variants": ["score_category", "score_title"],
+  "coverages": [0.20, 0.40, 0.60],
+  "blend_weights": [0.25, 0.50, 0.75, 1.00],
+  "classification_margin_logloss": 0.02,
+  "seed": 2026,
+  "threads": 20,
+  "catboost": {
+    "iterations": 300,
+    "depth": 7,
+    "learning_rate": 0.06,
+    "l2_leaf_reg": 7.0,
+    "random_strength": 0.5,
+    "bootstrap_type": "Bayesian",
+    "bagging_temperature": 0.5,
+    "border_count": 128,
+    "verbose": 100
+  }
+}

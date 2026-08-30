@@ -1,0 +1,65 @@
+{
+  "experiment": "bge_reranker_v2_m3_human_ft_v1",
+  "training_data": "306669 frozen human training pairs, one epoch",
+  "validation_macro_average_precision": {
+    "ordinary": 0.7822219461825138,
+    "hard": 0.3759746515593398,
+    "ood": 0.6412704537924441
+  },
+  "base_model": "BAAI/bge-reranker-v2-m3",
+  "serialization": "S2_VALUES_ONLY",
+  "max_length": 384,
+  "symmetric_inference": true,
+  "precision": "FP16 autocast",
+  "docker_image": "dinakepech/ecup26-bge-reranker-v2-m3:1.0",
+  "files": {
+    "attribute_name_frequency.csv": {
+      "size": 1781499,
+      "sha256": "48a3846f39c68f035ea247096c9b3c5c47242a3f5c978117c2601dd0fa5f8486"
+    },
+    "metadata.json": {
+      "size": 95,
+      "sha256": "bbd70f44b0cb2a3c98fdab9f78939ed63dd64278b9ee9f77f0af1915526509a7"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/config.json": {
+      "size": 765,
+      "sha256": "9afa1e9d9f2c711f7ec953b707ddf6f38638fbc123ffcd79e1c28791eea04977"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/model.safetensors": {
+      "size": 2271071852,
+      "sha256": "0e4e8e0b9dd5f220fd0423a5a27d8d6c09ff3697e72fbbf16f861f03df02b87e"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/sentencepiece.bpe.model": {
+      "size": 5069051,
+      "sha256": "cfc8146abe2a0488e9e2a0c56de7952f7c11ab059eca145a0a727afce0db2865"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/special_tokens_map.json": {
+      "size": 964,
+      "sha256": "8c785abebea9ae3257b61681b4e6fd8365ceafde980c21970d001e834cf10835"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/tokenizer.json": {
+      "size": 17082998,
+      "sha256": "efcbc2e883c0ef3f67ce522db4e6e4e114532aeb827b5e2cbfa89bac7da8252f"
+    },
+    "models/bge-reranker-v2-m3-human-ft-v1/tokenizer_config.json": {
+      "size": 1203,
+      "sha256": "b87c8703482b0300d3da30e201519aa641f6a450f5eb5bf1e624afbf70c74d80"
+    },
+    "README.md": {
+      "size": 1522,
+      "sha256": "ab0b96bfe6b062fbf3e24a8aa2ecbe15f579867dda330beaf847743af3cc3532"
+    },
+    "run.py": {
+      "size": 9758,
+      "sha256": "a0615c72abf0a383ae5b4541e652dc8f317fc5953e89f57418dfb59b85eb7564"
+    },
+    "serialization_ablation.py": {
+      "size": 18169,
+      "sha256": "30a6058b0a143dcaca33fe6f4f334a4740f8c9feac77cd423009dd0978f17b8d"
+    },
+    "THIRD_PARTY_NOTICES.md": {
+      "size": 356,
+      "sha256": "cd64c62c1273f757a894da58128aa40b3ff7719a4c59527d9a3570322c9162e6"
+    }
+  }
+}

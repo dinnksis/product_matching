@@ -1,0 +1,40 @@
+{
+  "human_train_pairs_path": "data/validation_splits_v1/human_train_pairs.parquet",
+  "train_feature_cache_path": "artifacts/catboost1_negative_router_v2/feature_cache/base_features.parquet",
+  "validation_feature_cache_dir": "artifacts/catboost2_trust_router_v1/validation_feature_cache",
+  "predictions_root": "preds",
+  "oof_predictions": {
+    "bge": "preds/preds_bge/oof_predictions.parquet",
+    "minilm": "preds/preds_minilm/oof_predictions.parquet",
+    "rumodernbert": "preds/preds_rumodernbert/oof_predictions.parquet"
+  },
+  "base_router_artifact_dir": "artifacts/benefit_router_all_experts_v1",
+  "sequential_router_artifact_dir": "artifacts/rumodern_over_bge_minilm_router_v1",
+  "output_dir": "reports/compute_allocation_bge_minilm_rumodern_v1",
+  "mini_coverages": [0.20, 0.40, 0.60, 1.00],
+  "ru_coverages": [0.05, 0.10],
+  "mini_weights": [0.25, 0.50, 0.75, 1.00],
+  "ru_weights": [0.25, 0.50, 1.00],
+  "classification_margin_logloss": 0.02,
+  "private_pairs": 275000,
+  "seed": 2026,
+  "threads": 20,
+  "catboost": {
+    "iterations": 400,
+    "depth": 7,
+    "learning_rate": 0.05,
+    "l2_leaf_reg": 7.0,
+    "random_strength": 0.5,
+    "bootstrap_type": "Bayesian",
+    "bagging_temperature": 0.5,
+    "border_count": 128,
+    "verbose": 100
+  },
+  "runtime_seconds": {
+    "fixed_and_routing": null,
+    "bge_100": null,
+    "minilm_100": null,
+    "rumodernbert_100": null,
+    "full_bge_minilm_end_to_end": null
+  }
+}

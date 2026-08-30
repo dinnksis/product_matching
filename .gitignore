@@ -24,6 +24,8 @@ __pycache__/
 .env.*
 !.env.example
 secrets/
+google-service-account.json
+tmp_gsheet_*.txt
 
 # Competition data are large and must be downloaded separately.
 data/*.parquet
@@ -35,6 +37,10 @@ artifacts/
 models/
 checkpoints/
 wandb/
+configs/bge_final/
+configs/minilm_final/
+configs/rumodernbert_final/
+configs/rubertmodern_final/
 
 # Generated container-submission payloads are kept locally, not in Git.
 submits/*.zip
@@ -47,11 +53,17 @@ docker/embedding-catboost-runtime/wheels/*.whl
 docker/embedding-catboost-runtime/wheels/*.tmp
 docker/embedding-catboost-runtime/st-wheels/
 docker/embedding-catboost-runtime/st-wheels-linux/
+docker/**/*.whl
 
 # Reproducible validation intermediates and fitted models are local artifacts.
 reports/**/*.parquet
 reports/**/*.cbm
 predicted/
+preds/
+
+# Fitted submission assets are recreated by the builders and must stay local.
+submits/**/*.cbm
+submits/**/attribute_name_frequency.csv
 
 # Reproducible derived artifacts above GitHub's 100 MiB per-file limit.
 reports/atomic_rule_statistics_semantic_snapshot_20260826/rule_statistics.csv
