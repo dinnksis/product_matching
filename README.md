@@ -1,155 +1,198 @@
 # E-CUP 2026 — Product Matching
 
-Решение задачи идентификации одинаковых товаров по названиям, категориям и
-структурированным атрибутам. Retrieval выполнен организаторами: на вход решения
-поступают карточки товаров и готовые пары-кандидаты, на выходе формируется
-непрерывный `predict` для каждой пары.
+Репозиторий решения задачи идентификации одинаковых товарных карточек. Retrieval
+выполнен организаторами: на вход подаются товары и готовые пары-кандидаты, на
+выходе требуется непрерывный `predict` для каждой пары.
 
-Метрика соревнования — средний по 20 категориям
-`sklearn.metrics.average_precision_score` (macro AP). Решение запускается без
+Метрика — средний по 20 категориям
+`sklearn.metrics.average_precision_score` (macro AP). Решение работает без
 интернета на NVIDIA H100 80 GB; лимит Private — 13 минут.
 
-## Итоговая архитектура
+## Итог и главные ссылки
 
-Использованы три multilingual cross-encoder модели:
+- [Полная история, результаты и ограничения интерпретации](docs/final-results-and-experiment-history.md)
+- [Все эксперименты и paired-сравнения в Google Sheets](https://docs.google.com/spreadsheets/d/1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA/edit?usp=sharing)
+- [Хронология reranker/cross-encoder экспериментов](docs/reranker-experiments.md)
+- [Архитектура ансамблей и selective routing](docs/final-ensemble-architecture.md)
+- [Финальное all-human обучение MiniLM и RuModernBERT](docs/final-human-finetuning.md)
 
-- `BAAI/bge-reranker-v2-m3` — основной backbone;
-- `cross-encoder/mmarco-mMiniLMv2-L12-H384-v1` — быстрый дополнительный эксперт;
-- `deepvk/RuModernBERT-base` — русскоязычный дополнительный эксперт.
+Основное направление после controlled-абляций — supervised multilingual
+cross-encoder на архитектуре XLM-R/BGE. Финальный подготовленный BGE submission
+использует трёхэпоховый H100 checkpoint, plain BCE, LR `2e-5` и
+`max_length=384`. MiniLM и RuModernBERT сохранены как дополнительные эксперты.
 
-Все модели получают две независимо сериализованные карточки:
+### Подтверждённые validation-результаты
+
+| модель/рецепт | IID macro AP | hard macro AP | статус |
+|---|---:|---:|---|
+| MiniLM, 3 ep, LR `8e-5`, BCE | 0.808502 | 0.423286 | лучший MiniLM anchor |
+| BGE, 1 ep, LR `2e-5`, BCE | 0.818291 | 0.414717 | BGE baseline |
+| BGE, 2 ep, LR `2e-5`, BCE | **0.823461** | 0.437775 | controlled winner |
+| BGE, 2 ep, sqrt category×class BCE | 0.822150 | 0.431759 | хуже plain BCE |
+| BGE, 3 ep на H100, symmetric eval | **0.824975** | **0.461148** | другой стартовый checkpoint |
+| тот же H100 checkpoint, single-pass eval | 0.823629 | 0.462631 | submission-oriented inference |
+
+Former OOD split включён в BGE SFT train, поэтому OOD для BGE не является
+валидацией: predictions не строятся, в отчётах записывается `-1`. IID — primary
+split, hard — диагностический. Это локальные component-disjoint результаты, не
+leaderboard и не hidden-test score.
+
+Трёхэпоховый H100 run стартует с другого checkpoint, чем controlled BGE e1/e2
+линия, поэтому его нельзя трактовать как чистую абляцию третьей эпохи.
+
+## Подготовленные inference-варианты
+
+| вариант | вычисления | статус |
+|---|---|---|
+| BGE 3ep H100 | один BGE forward, longer-card-first | основной single-model bundle |
+| Full BGE + MiniLM | обе модели на 100% пар | production runtime anchor |
+| Routed 40/5 | BGE 100%, MiniLM 40%, RuModernBERT 5% | итоговый сабмит с CatBoost routing |
+| Full triple | BGE + MiniLM + RuModernBERT на 100% | итоговый сабмит — полный ансамбль |
+
+Для current final checkpoints builders используют one-way `A → B`, FP16,
+SDPA, batch 1024 и combined `max_length=384`. Full BGE+MiniLM смешивает
+probabilities 50/50. В routed 40/5 последовательно применяются compact CatBoost
+benefit routers; они обучены на OOF предыдущих checkpoints, поэтому этот вариант
+является проверкой переноса routing policy, а не свежим OOF-оптимумом.
+
+Исходники bundles:
+
+- `submits/bge-reranker-v2-m3-3ep-h100/`;
+- `submits/bge-minilm-full-oneway-final/`;
+- `submits/bge-minilm-rumodern-fast-oneway-40-5-st-final-v1/`;
+- `submits/bge-minilm-rumodern-full-oneway-st-final-v1/`.
+
+Веса и ZIP не хранятся в Git. BGE 3ep checkpoint опубликован в private Kaggle
+Dataset [`product-matching-bge-3ep-h100-oodtrain`](https://www.kaggle.com/datasets/alexproger23/product-matching-bge-3ep-h100-oodtrain),
+version 1. SHA-256 модели:
+`d7e899ea3cd305db970aa6f3466eb71a138ad418c74b8b6ac730d1828c4a4ab8`.
+
+## Данные и валидация
+
+| файл | строки | схема |
+|---|---:|---|
+| `data/items_human.parquet` | 711 304 | `id`, `name`, `attributes`, `category` |
+| `data/matches.parquet` | 365 654 | `id1`, `id2`, `target` |
+
+В human labels 93 890 positives. Нет missing IDs, self-pairs, повторов
+неупорядоченных пар и cross-category пар. Validation делится по компонентам
+графа: карточка не может одновременно находиться в train и validation.
+
+Parquet-файлы игнорируются Git. Подготовка и структура описаны в
+[`data/README.md`](data/README.md), результаты EDA — в
+[`docs/data-findings.md`](docs/data-findings.md).
+
+## Воспроизведение
+
+Нужны Python 3.11–3.12 и [uv](https://docs.astral.sh/uv/).
+
+```bash
+uv sync
+make report
+```
+
+### BGE на одной H100
+
+Controlled 3ep server workflow:
+
+```bash
+scripts/run_bge_3ep_h100.sh /absolute/path/to/checkpoint
+```
+
+Подробности: [`docs/bge-3ep-sft-h100.md`](docs/bge-3ep-sft-h100.md). Отдельный
+all-human export без holdout описан в
+[`docs/bge-3ep-fulltrain-h100.md`](docs/bge-3ep-fulltrain-h100.md).
+
+### Kaggle 2×T4
+
+Локальный `.env` содержит Kaggle credentials и никогда не коммитится. Общий
+workflow — [`docs/kaggle-notebook.md`](docs/kaggle-notebook.md). Типичный dry-run
+и запуск:
+
+```bash
+make kaggle-dry-run NOTEBOOK=notebooks/train.ipynb
+make kaggle-run NOTEBOOK=notebooks/train.ipynb
+```
+
+Generators собирают notebook и exact code/data bundle, проверяют SHA-256,
+private Dataset refs и GPU preflight. Финальные outputs пишутся в
+`/kaggle/working` и скачиваются в игнорируемый `artifacts/kaggle/`.
+
+### Final all-human specialists
+
+MiniLM и RuModernBERT дообучаются на всех 365 654 human-labelled парах после
+выбора гиперпараметров на component-disjoint holdout:
+
+```bash
+.venv/bin/python scripts/run_minilm_5ep_full_human_kaggle.py --dry-run
+.venv/bin/python scripts/run_rumodernbert_3ep_full_human_kaggle.py --dry-run
+```
+
+Рецепты зафиксированы в
+`configs/cross_encoder_minilm_5ep_full_human_final.json` и
+`configs/cross_encoder_rumodernbert_3ep_full_human_final.json`.
+
+### Submission builders
+
+```bash
+.venv/bin/python scripts/build_bge_3ep_h100_submit.py
+.venv/bin/python scripts/build_bge_minilm_full_oneway_final_submit.py
+.venv/bin/python scripts/build_bge_minilm_rumodern_full_oneway_submit.py
+.venv/bin/python scripts/build_bge_minilm_rumodern_fast_oneway_final_40_5_submit.py
+```
+
+Builders принимают single/sharded safetensors и транспортные
+`model.safetensors.partNNN`, проверяют manifests и не изменяют source checkpoint.
+
+## Что было исследовано
+
+- lexical/JSON baselines и CatBoost;
+- Qwen3 и Jina zero-shot rerankers;
+- MiniLM LR/epoch/regularization/loss sweeps;
+- BGE LR, epoch и loss ablations;
+- RuModernBERT и архитектурное diversity;
+- BGE/MiniLM/RuModern ensembles и learned selective routing;
+- hard-label audits и human-error curriculum;
+- standalone Qwen item generation, rule-first pair generation, near duplicates,
+  soft-positive tiers, statistical/semantic atomic rules;
+- 11M probabilistic LLM labels и отдельные pretrain/server pipelines.
+
+Data-generation инфраструктура находится в [`item_pipeline/`](item_pipeline/README.md).
+Ни одна synthetic ветка не заменила финальный human-supervised BGE recipe.
+Точные метрики, runtime и статусы всех запусков собраны в
+[Google Sheets](https://docs.google.com/spreadsheets/d/1CtqT52XOrFyHfFt6rCiOMlnq6snJMlsMOJ0ubH79ikA/edit?usp=sharing).
+
+## Контракт submission
+
+CLI должен принять `--items_path`, `--matches_path`, `--output_path` и записать
+ровно `id1,id2,predict`, сохранив все пары и непрерывные finite scores. Offline
+runtime: 20 CPU, 200 GB RAM, H100 80 GB; лимиты Check/Public/Private —
+1/6/13 минут.
+
+Перед публикацией bundle проверяется на:
+
+- отсутствие internet/runtime downloads;
+- полный model load без bypass;
+- exact pair/order contract и отсутствие NaN/inf;
+- writable caches рядом с output;
+- soft deadline и полный fallback;
+- лицензии и third-party notices.
+
+## Структура репозитория
 
 ```text
-Категория: <category>
-Название: <name>
-<ключ атрибута>: <значение>
-...
-```
-
-Пустые атрибуты удаляются, остальные располагаются в детерминированном порядке.
-На этапе final inference используется SentenceTransformers `CrossEncoder`, FP16,
-SDPA, `max_length=384` для всей пары, batch 1024 и один проход `A → B`. Отказ от
-симметричного `A → B` + `B → A` inference был главным runtime-ускорением.
-
-## Подготовленные финальные submissions
-
-| Решение | Вычисления | Итоговый score | Builder |
-|---|---|---|---|
-| Full BGE + MiniLM | BGE 100%, MiniLM 100% | 50/50 sigmoid probabilities | `scripts/build_bge_minilm_full_oneway_final_submit.py` |
-| Full triple | BGE 100%, MiniLM 100%, RuModernBERT 100% | среднее трёх sigmoid probabilities | `scripts/build_bge_minilm_rumodern_full_oneway_submit.py` |
-| Routed 40/5 | BGE 100%, MiniLM 40%, RuModernBERT 5% | последовательные 50/50 blends | `scripts/build_bge_minilm_rumodern_fast_oneway_final_40_5_submit.py` |
-
-Также отправлялся BGE-only diagnostic, но он не рассматривается как основной
-финальный ансамбль. Full triple и routed 40/5 прошли контейнерный запуск. В
-routed-варианте MiniLM выбирается 7-признаковым CatBoost benefit-router, а
-RuModernBERT — 14-признаковым sequential router внутри MiniLM subset. Эти routers
-обучались на component-disjoint OOF predictions предыдущей версии нейросетевых
-checkpoints; это ограничение явно записано в submission manifest.
-
-ZIP-файлы и веса не хранятся в Git. После размещения финальных checkpoints в
-`configs/bge_final`, `configs/minilm_final` и `configs/rumodernbert_final` сборка
-выполняется командами:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\build_bge_minilm_full_oneway_final_submit.py
-.\.venv\Scripts\python.exe scripts\build_bge_minilm_rumodern_full_oneway_submit.py
-.\.venv\Scripts\python.exe scripts\build_bge_minilm_rumodern_fast_oneway_final_40_5_submit.py
-```
-
-Builder поддерживает обычный `model.safetensors`, Hugging Face sharding и
-транспортные части `model.safetensors.partNNN` с manifest-проверкой SHA-256.
-
-## Финальное human fine-tuning MiniLM и RuModernBERT
-
-Этот репозиторий фиксирует последний этап обучения двух специалистов на всех
-`365 654` human-labelled парах без validation holdout и без фильтрации. Выбор
-гиперпараметров был сделан на более ранних component-disjoint экспериментах;
-финальный all-human fit не использовался для выбора параметров.
-
-MiniLM стартует с checkpoint после пяти эпох на предоставленной организаторами
-LLM-разметке и затем обучается три эпохи на human labels:
-
-| Параметр | Значение |
-|---|---:|
-| Epochs | 3 |
-| Per-GPU batch | 96 |
-| GPU / accumulation | 2 / 1 |
-| Effective batch | 192 |
-| Learning rate | `8e-5` |
-| Weight decay / warmup | `0.01` / `0.05` |
-| Classifier dropout | `0.1` |
-| Max grad norm | `1.0` |
-
-RuModernBERT стартует с checkpoint после трёх эпох competition-pretrain и также
-дообучается три эпохи на всех human labels:
-
-| Параметр | Значение |
-|---|---:|
-| Epochs | 3 |
-| Per-GPU batch / accumulation | 24 / 4 |
-| GPU / effective batch | 2 / 192 |
-| Learning rate | `4e-5` |
-| Scheduler | cosine |
-| Weight decay / warmup | `0.01` / `0.05` |
-| Max grad norm | `0.5` |
-
-Общее для обеих моделей: seed 42, FP16, SDPA, BCE loss, `max_length=384`,
-детерминированная сериализация из `src/data_pipeline.py`, sampling/weights/label
-smoothing отключены. Точные configs:
-
-- `configs/cross_encoder_minilm_5ep_full_human_final.json`;
-- `configs/cross_encoder_rumodernbert_3ep_full_human_final.json`.
-
-Kaggle notebook генерируется из текущего source bundle и перед запуском проверяет
-число строк, SHA-256 исходников, locked config, наличие двух GPU и итоговый training
-report. Запуск:
-
-```powershell
-.\.venv\Scripts\python.exe scripts\run_minilm_5ep_full_human_kaggle.py --no-wait --no-download
-.\.venv\Scripts\python.exe scripts\run_rumodernbert_3ep_full_human_kaggle.py --no-wait --no-download
-```
-
-Подробный контракт входов, outputs и проверок описан в
-[`docs/final-human-finetuning.md`](docs/final-human-finetuning.md).
-
-## Воспроизводимость: границы текущего commit
-
-В текущем состоянии полностью зафиксированы:
-
-- финальный all-human этап MiniLM и RuModernBERT;
-- общая сериализация;
-- inference трёх итоговых архитектур;
-- сборка submission ZIP и проверка checkpoint hashes;
-- код обучения CatBoost routers и их configs.
-
-Отдельным командным вкладом должны быть добавлены исходные скрипты и configs
-competition-pretrain для MiniLM/RuModernBERT, а также точный training pipeline
-финального BGE. Приватные Kaggle checkpoint datasets не считаются единственным
-воспроизводимым источником: они являются кэшем результатов предыдущего этапа.
-
-Организаторские parquet и модельные веса не публикуются в Git. Их ожидаемые пути,
-размеры и SHA-256 фиксируются генераторами notebooks и submission manifests.
-
-## Лицензии
-
-Все три upstream модели заявлены авторами под Apache License 2.0. Точные ссылки,
-назначение моделей и основные runtime-зависимости перечислены в
-[`THIRD_PARTY_NOTICES.md`](THIRD_PARTY_NOTICES.md). Проприетарные LLM API в
-финальном training/inference pipeline не используются. 11M probabilistic labels
-предоставлены организаторами соревнования; самостоятельная проприетарная
-переразметка в финальные checkpoints не входит.
-
-## Структура
-
-```text
-configs/       фиксированные experiment configs; веса *_final игнорируются Git
+configs/       locked experiment configs; локальные *_final weights игнорируются
 docs/          протоколы, результаты и инструкции
-notebooks/     сгенерированные Kaggle notebooks
-scripts/       обучение, OOF/router experiments и submission builders
-src/           сериализация, splits, features и training utilities
-submits/       лёгкие runtime-шаблоны; ZIP и model weights игнорируются Git
-tests/         проверки locked training recipes и notebook contracts
+item_pipeline/ генерация карточек и rule-first пар
+notebooks/     EDA и сгенерированные Kaggle training notebooks
+reports/       компактные summaries, receipts и paired comparisons
+scripts/       обучение, audits, launchers и submission builders
+src/           сериализация, splits, metrics, routers и training utilities
+submits/       runtime source bundles; ZIP и model weights игнорируются
+tests/         contract, provenance и regression tests
 ```
 
-История основных ансамблевых и routing-экспериментов находится в
-[`docs/final-ensemble-architecture.md`](docs/final-ensemble-architecture.md).
+Raw data, checkpoints, credentials, model weights и локальные `artifacts/` не
+попадают в Git. Крупные воспроизводимые derived tables, превышающие практические
+лимиты GitHub, перечислены в `.gitignore`; их generators и compact summaries
+остаются в репозитории.
